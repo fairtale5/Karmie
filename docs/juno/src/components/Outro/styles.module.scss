@@ -1,0 +1,49 @@
+.section {
+  height: 650px;
+  background: var(--ifm-color-primary);
+  padding-inline: 1rem;
+  @media screen and (min-width: 768px) {
+    padding-inline: 2rem;
+  }
+}
+
+.container {
+  height: 100%;
+  overflow-y: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  picture {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    transform: translateY(8px);
+    width: min(440px, 33%);
+  }
+}
+
+.sub {
+  color: black;
+  font-weight: bold;
+  font-size: 40px;
+  line-height: 50px;
+  margin-bottom: 0.5rem;
+  @media screen and (min-width: 768px) {
+    font-size: 60px;
+    line-height: 76px;
+    max-width: 612px;
+  }
+}
+
+.subText {
+  color: black;
+}
+
+.start {
+  background: white;
+  html[data-theme="dark"] & {
+    --ifm-button-border-color: black !important;
+    --button-shadow-color: black !important;
+  }
+}

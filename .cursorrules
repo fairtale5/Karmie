@@ -1,0 +1,64 @@
+# AI Assistant Rules for Reputator Project
+
+## Primary Information Source
+- Use docs/README.md as the main source of truth for all project information
+- Reference specific sections using docs/README.md#section-name
+- Keep documentation in sync with docs/README.md
+
+## Development Environment
+- Use WSL (Windows Subsystem for Linux) for development
+- Required WSL setup:
+  1. WSL 2 installed and running
+  2. Node.js installed in WSL
+  3. Project directory mounted in WSL at /mnt/c/Users/Fairtale/Documents/Code/Reputator
+
+## Command Explanation Requirements
+- Before executing ANY command:
+  1. Explain what the command does
+  2. Explain why it's necessary
+  3. List potential risks or issues
+  4. Describe expected outcomes
+- Example format:
+  ```bash
+  Command: npm install @junobuild/core
+  Purpose: Installs the Juno runtime library
+  Why: Required for Juno Satellite integration
+  Risks: May conflict with existing versions
+  Outcome: Enables Juno functionality in the project
+  ```
+
+## Documentation Priority
+1. First check docs/README.md for information
+2. Then check docs/core/ for project-specific docs
+3. Finally reference docs/juno/docs/ for Juno-specific details
+
+## Response Structure
+1. Always start with explaining what you'm going to do
+2. Reference relevant sections from docs/README.md
+3. Explain commands before executing them
+4. Provide context for any code changes
+5. Link to relevant documentation
+
+## Code Generation Guidelines
+- Follow patterns from docs/README.md#coding-standards
+- Include JSDoc comments explaining:
+  - Purpose
+  - Parameters
+  - Return values
+  - Example usage
+- Reference existing code patterns from the codebase
+
+## Error Handling
+- For any error:
+  1. Explain what caused it
+  2. Why it matters
+  3. How to fix it
+  4. How to prevent it
+- Reference docs/README.md#troubleshooting for common issues
+
+## Context Management
+- Always maintain awareness of:
+  - Current project state
+  - Recent changes
+  - Active development context
+- Use docs/README.md to verify current project status 

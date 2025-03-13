@@ -1,0 +1,34 @@
+@use "../mixins/grid";
+
+.home {
+  overflow-x: hidden;
+}
+
+.main {
+  position: relative;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.section {
+  padding: 1rem 2rem 4rem;
+}
+
+.launch {
+  padding: 0 2rem 8rem;
+
+  @media screen and (min-width: 960px) {
+    padding: 2rem 2rem 10rem;
+  }
+}
+
+.block {
+  padding: 4rem 2rem 4rem;
+}
+
+.grid {
+  --grid-gap: 3rem;
+  @include grid.columns;
+}

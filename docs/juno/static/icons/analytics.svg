@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <line x1="0" y1="25.3" x2="28" y2="25.3"/>
+  <line x1="1" y1="2" x2="1" y2="25.3"/>
+
+  <path d="M5.31 19.67h4.95v5.61H5.31z"/>
+  <path d="M10.25 13h4.95v12.29h-4.95zm4.98 2h4.95v10.29h-4.95zm4.95-8.23h4.95v18.52h-4.95z"/>
+</svg>

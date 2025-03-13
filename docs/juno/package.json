@@ -1,0 +1,72 @@
+{
+  "name": "@junobuild/docs",
+  "version": "2.6.0",
+  "private": true,
+  "author": "David Dal Busco <david@fluster.io>",
+  "license": "AGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/junobuild/docs"
+  },
+  "bugs": {
+    "url": "https://github.com/junobuild/docs/issues"
+  },
+  "scripts": {
+    "postinstall": "rsync -aqz node_modules/@junobuild/analytics/dist/workers/*.* --exclude *.map static/workers/",
+    "docusaurus": "docusaurus",
+    "dev": "npm run start",
+    "start": "docusaurus start",
+    "build": "docusaurus build",
+    "docs:cli": "scripts/cli-to-md.sh",
+    "docs:subnets": "./scripts/subnets.mjs && npm run format",
+    "swizzle": "docusaurus swizzle",
+    "deploy": "docusaurus deploy",
+    "clear": "docusaurus clear",
+    "serve": "docusaurus serve",
+    "write-translations": "docusaurus write-translations",
+    "write-heading-ids": "docusaurus write-heading-ids",
+    "typecheck": "tsc",
+    "format": "prettier . --write ."
+  },
+  "dependencies": {
+    "@docusaurus/core": "^3.7.0",
+    "@docusaurus/preset-classic": "^3.7.0",
+    "@docusaurus/remark-plugin-npm2yarn": "^3.7.0",
+    "@junobuild/analytics": "^0.1.4",
+    "@mdx-js/react": "^3.1.0",
+    "clsx": "^2.1.1",
+    "prism-react-renderer": "^2.4.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^10.0.0",
+    "remark-gfm": "^4.0.1",
+    "use-mailchimp-form": "^3.1.0"
+  },
+  "devDependencies": {
+    "@docusaurus/module-type-aliases": "^3.7.0",
+    "@docusaurus/tsconfig": "^3.7.0",
+    "@docusaurus/types": "^3.7.0",
+    "@junobuild/config": "^0.1.2",
+    "@types/react": "^18.3.12",
+    "docusaurus-plugin-sass": "^0.2.6",
+    "prettier": "^3.5.2",
+    "prettier-plugin-organize-imports": "^4.1.0",
+    "sass": "^1.85.1",
+    "typescript": "^5.7.3"
+  },
+  "browserslist": {
+    "production": [
+      ">0.5%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 3 chrome version",
+      "last 3 firefox version",
+      "last 5 safari version"
+    ]
+  },
+  "engines": {
+    "node": "22"
+  }
+}

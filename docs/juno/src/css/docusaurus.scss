@@ -1,0 +1,140 @@
+:root {
+  --ifm-code-border-radius: var(--juno-border-radius);
+  --ifm-global-shadow-lw: none;
+  --ifm-tabs-padding-vertical: 0.25rem;
+  --ifm-tabs-color-active: #ff5df9;
+}
+
+.container {
+  @media (min-width: 1440px) {
+    max-width: 1640px;
+  }
+}
+
+.main-wrapper {
+  position: relative;
+}
+
+.footer__copyright {
+  color: var(--ifm-footer-link-color);
+  text-align: left;
+}
+
+@media screen and (min-width: 996px) {
+  .footer__copyright {
+    padding: 4rem 0 0;
+  }
+}
+
+.markdown li:not(.tabs__item) {
+  margin-bottom: var(--ifm-global-spacing);
+}
+
+div.theme-code-block {
+  height: 100%;
+  border: 4px solid black;
+
+  html[data-theme="dark"] & {
+    border: 4px solid var(--ifm-color-primary);
+  }
+
+  scrollbar-color: var(--ifm-color-primary-lighter) var(--ifm-color-primary);
+
+  ::-webkit-scrollbar-track {
+    background: var(--ifm-color-primary);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--ifm-color-primary-lighter);
+  }
+}
+
+a.pagination-nav__link,
+a.card {
+  border: 1px solid #000;
+  box-shadow: none;
+
+  transition:
+    color 0.15s ease-out,
+    background 0.15s ease-out,
+    transform 0.15s ease-out,
+    box-shadow 0.25s ease-out,
+    border 0.15s ease-out;
+
+  &:active,
+  &:active:focus {
+    box-shadow: none;
+    transform: translateX(1px) translateY(1px);
+  }
+
+  &:hover,
+  &:focus {
+    border: 1px solid var(--ifm-color-primary-light);
+    box-shadow: 2px 2px var(--ifm-color-primary-light);
+  }
+}
+
+:root {
+  &[data-theme="dark"] {
+    a.pagination-nav__link,
+    a.card {
+      border: 1px solid #fff;
+
+      &:active,
+      &:active:focus {
+        box-shadow: none;
+        transform: translateX(1px) translateY(1px);
+      }
+
+      &:hover,
+      &:focus {
+        border: 1px solid var(--ifm-color-primary-light);
+        box-shadow: 2px 2px var(--ifm-color-primary-light);
+      }
+    }
+  }
+}
+
+.markdown > pre,
+.markdown > ul,
+.markdown > p {
+  &:has(+ hr) {
+    margin-bottom: 0 !important;
+  }
+
+  & + hr {
+    margin-top: 0;
+  }
+}
+
+// Alerts
+:root {
+  &[data-theme="dark"] {
+    .alert--secondary {
+      --ifm-alert-background-color: #181818;
+    }
+
+    .alert--info {
+      --ifm-alert-background-color: var(--ifm-color-primary-lighter);
+      --ifm-alert-foreground-color: black;
+      --ifm-alert-border-color: var(--ifm-color-primary);
+      --ifm-alert-background-color-highlight: var(--ifm-color-primary);
+    }
+
+    .alert--success {
+      --ifm-alert-background-color: transparent;
+      --ifm-alert-border-color: var(--ifm-color-primary);
+      --ifm-alert-background-color-highlight: var(--ifm-color-primary);
+    }
+  }
+}
+
+// Logo when page of documentation is scrolled
+
+.theme-doc-sidebar-container a img {
+  height: 25px;
+}
+
+table {
+  --ifm-spacing-vertical: 2.5rem;
+}

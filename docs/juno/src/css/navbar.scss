@@ -1,0 +1,71 @@
+:root {
+  &.docs-wrapper {
+    .navbar {
+      border-bottom: 1px solid var(--ifm-toc-border-color);
+    }
+  }
+}
+
+.navbar {
+  height: 68px;
+
+  @media screen and (min-width: 1280px) {
+    padding-inline: 3rem;
+  }
+}
+
+.navbar__brand {
+  gap: 0.5rem;
+  margin-right: calc(4rem - var(--ifm-navbar-item-padding-horizontal));
+  @media screen and (max-width: 1160px) {
+    // Tablets & small desktops: reduce spacing between tagline and main nav links
+    margin-right: 1rem;
+  }
+
+  .navbar__logo {
+    display: flex;
+    align-items: center;
+    height: 25px;
+  }
+
+  .navbar__title {
+    font-weight: normal;
+    @media screen and (max-width: 1080px) {
+      display: none;
+    }
+  }
+}
+
+// "Start building" and GitHub links
+.navbar-menu-item {
+  display: flex;
+  gap: 4px;
+  color: var(--ifm-menu-color);
+  padding: var(--ifm-menu-link-padding-vertical)
+    var(--ifm-menu-link-padding-horizontal);
+
+  text-decoration: none !important;
+  border-radius: 0.25rem;
+
+  &:hover {
+    background: var(--ifm-menu-color-background-hover);
+    color: var(--ifm-menu-color);
+  }
+
+  @media screen and (min-width: 996px) {
+    justify-content: center;
+    align-items: center;
+    color: inherit;
+
+    padding: 0;
+
+    span {
+      display: none;
+    }
+
+    &:hover {
+      background: inherit;
+      color: var(--ifm-navbar-link-hover-color);
+    }
+  }
+}
