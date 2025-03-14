@@ -123,10 +123,11 @@ mod utils;
 // Type Definitions
 // =============================================================================
 
-/// Represents user data in the system
-/// 
-/// This struct defines the structure of user documents in the Juno datastore.
-/// It includes basic user information that can be serialized and deserialized.
+// Represents user data in the system
+// 
+// This struct defines the structure of user documents in the Juno datastore.
+// It includes basic user information that can be serialized and deserialized.
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct UserData {
     /// User's unique handle/username
@@ -139,14 +140,15 @@ pub struct UserData {
 // Active Hooks and Assertions
 // =============================================================================
 
-/// Handles document creation/update in the "users" collection
-/// 
-/// This hook is triggered whenever a document is created or updated in the
-/// "users" collection. It performs the following tasks:
-/// 1. Validates the user data
-/// 2. Normalizes the username
-/// 3. Checks for username uniqueness
-/// 4. Updates the document with normalized data
+// Handles document creation/update in the "users" collection
+// 
+// This hook is triggered whenever a document is created or updated in the
+// "users" collection. It performs the following tasks:
+// 1. Validates the user data
+// 2. Normalizes the username
+// 3. Checks for username uniqueness
+// 4. Updates the document with normalized data
+
 #[on_set_doc(collections = ["users"])]
 async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
     // Decode the document data
@@ -207,14 +209,62 @@ async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
 /// in the "users" collection. It ensures:
 /// 1. The username is valid
 /// 2. The display name meets requirements
+/// 3. The user has no other documents in the collection
+/// 4. The username is unique across all documents
 #[assert_set_doc(collections = ["users"])]
 fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
-    // Decode the document data
+    // Step 1: Decode and validate the basic document data
     let user_data: UserData = decode_doc_data(&context.data.data.proposed.data)?;
-    
-    // Handle validation results
     validate_username(&user_data.handle).map_err(|e| e.to_string())?;
     validate_display_name(&user_data.display_name).map_err(|e| e.to_string())?;
+
+    // Step 2: Check for existing documents by this user
+    // - We use ListParams to search the collection
+    // - The owner field filters documents by the caller's principal ID
+    let user_docs_params = ListParams {
+        owner: Some(context.caller),  // Filter by the current user's principal
+        ..Default::default()          // Use defaults for other parameters
+    };
+
+    // Step 3: Search for user's existing documents
+    let existing_user_docs = list_docs(String::from("users"), user_docs_params);
+    
+    // Step 4: Check each found document
+    // - Skip the current document (in case of updates)
+    // - Error if any other documents exist
+    for doc in existing_user_docs.items {
+        if doc.0 != context.data.key {
+            return Err("User already has an account in the system".to_string());
+        }
+    }
+
+    // Step 5: Check username uniqueness across all documents
+    let normalized_handle = normalize_username(&user_data.handle);
+    let username_search = format!("username:{}", normalized_handle);
+    
+    // Create a matcher for username search
+    let matcher = ListMatcher {
+        description: Some(username_search),  // Search in the description field
+        ..Default::default()
+    };
+
+    // Set up parameters for username search
+    let params = ListParams {
+        matcher: Some(matcher),
+        ..Default::default()
+    };
+
+    // Step 6: Search for documents with this username
+    let existing_docs = list_docs(String::from("users"), params);
+    
+    // Step 7: Check for username conflicts
+    // - Skip the current document (in case of updates)
+    // - Error if username exists in another document
+    for doc in existing_docs.items {
+        if doc.0 != context.data.key {
+            return Err("Username already exists".to_string());
+        }
+    }
 
     Ok(())
 }
