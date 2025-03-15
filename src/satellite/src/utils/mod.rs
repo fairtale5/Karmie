@@ -7,5 +7,4 @@
 
 // Export utility modules
 pub mod normalize;
-pub mod serialization;
 pub mod validation; 
