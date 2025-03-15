@@ -154,6 +154,9 @@ async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
     // Decode the document data
     let user_data: UserData = decode_doc_data(&context.data.data.after.data)?;
     
+    // Log the start of user data update
+    log_user!("Updating user data for key: {}", context.data.key);
+    
     // Normalize and validate the handle
     let normalized_handle = normalize_username(&user_data.handle);
     
@@ -182,9 +185,12 @@ async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
 
     // Update the document with normalized handle and description
     let updated_data = UserData {
-        handle: normalized_handle,
-        display_name: user_data.display_name,
+        handle: normalized_handle.clone(),
+        display_name: user_data.display_name.clone(),
     };
+    
+    // Log the successful update
+    log_user!("Successfully updated user {} with handle {}", context.data.key, normalized_handle);
     
     let encoded_data = encode_doc_data(&updated_data)?;
     let doc = SetDoc {
@@ -213,6 +219,9 @@ async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
 /// 4. The username is unique across all documents
 #[assert_set_doc(collections = ["users"])]
 fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
+    // Log the start of validation
+    log_user!("Validating user data for key: {}", context.data.key);
+
     // Step 1: Decode and validate the basic document data
     let user_data: UserData = decode_doc_data(&context.data.data.proposed.data)?;
     validate_username(&user_data.handle).map_err(|e| e.to_string())?;
@@ -266,6 +275,9 @@ fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
         }
     }
 
+    // Log successful validation
+    log_user!("Successfully validated user data for key: {}", context.data.key);
+    
     Ok(())
 }
 
