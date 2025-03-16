@@ -1,21 +1,21 @@
 import { initSatellite } from '@junobuild/core';
-import { junoStatus } from './stores/junoStore';
+
+// Satellite IDs for different environments
+const SATELLITE_ID = {
+    local: 'jx5yt-yyaaa-aaaal-abzbq-cai',    // Local emulator ID (fixed)
+    production: 'rigfr-siaaa-aaaal-ab4fa-cai' // Your production satellite ID
+};
 
 export const initSatelliteConnection = async () => {
-    // Reset status before attempting initialization
-    junoStatus.set({ initialized: false, error: null });
-
     try {
-        // Initialize with minimal required configuration
         await initSatellite({
-            satelliteId: 'rigfr-siaaa-aaaal-ab4fa-cai'
+            satelliteId: import.meta.env.DEV ? SATELLITE_ID.local : SATELLITE_ID.production,
+            container: import.meta.env.DEV // Enable local container in dev mode
         });
         
-        junoStatus.set({ initialized: true, error: null });
-        console.log('Satellite connection initialized successfully');
+        const envName = import.meta.env.DEV ? 'local' : 'production';
+        console.log(`Initialized Juno in ${envName} mode`);
     } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to initialize satellite connection';
-        junoStatus.set({ initialized: false, error: errorMessage });
-        console.error('Failed to initialize satellite connection:', err);
+        console.error('Satellite initialization error:', err);
     }
 }; 
