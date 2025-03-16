@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { nanoid } from 'nanoid';
-	import { listDocs, setDoc, deleteDoc, type Doc, authSubscribe, type User } from '@junobuild/core';
+	import { listDocs, setDoc, deleteDoc, type Doc, authSubscribe, type User, getDoc } from '@junobuild/core';
 	import { goto } from '$app/navigation';
 
 	// Form data for creating/updating users
@@ -15,6 +15,23 @@
 	let users: Doc<{
 		handle: string;
 		display_name: string;
+	}>[] = [];
+
+	// Form data for creating votes
+	let newVote = {
+		key: '',
+		author: '',  // User key of the vote author
+		target: '',  // User key of the vote target
+		is_positive: true,  // Default to positive vote
+		tag: ''  // Tag key
+	};
+
+	// List of all votes
+	let votes: Doc<{
+		tag: string;
+		target: string;
+		is_positive: boolean;
+		weight: number;
 	}>[] = [];
 
 	// Error message if something goes wrong
@@ -58,6 +75,26 @@
 				return;
 			}
 
+			// If we're updating an existing user, we need to get their current version
+			let version;
+			if (newUser.key) {
+				try {
+					const existingDoc = await getDoc({
+						collection: 'users',
+						key: newUser.key
+					});
+					if (!existingDoc) {
+						error = 'User not found';
+						return;
+					}
+					version = existingDoc.version;
+				} catch (e) {
+					console.error('Error fetching existing user:', e);
+					error = 'Failed to fetch existing user version';
+					return;
+				}
+			}
+
 			// Create or update user document
 			await setDoc({
 				collection: 'users',
@@ -66,7 +103,8 @@
 					data: {
 						handle: newUser.handle,
 						display_name: newUser.display_name
-					}
+					},
+					...(version && { version }) // Only include version if we're updating
 				}
 			});
 
@@ -123,7 +161,102 @@
 		document.getElementById('userForm')?.scrollIntoView({ behavior: 'smooth' });
 	}
 
-	// Load users and set up auth subscription when the component mounts
+	// Function to load all votes from Juno collection
+	async function loadVotes() {
+		try {
+			const result = await listDocs<{
+				tag: string;
+				target: string;
+				is_positive: boolean;
+				weight: number;
+			}>({
+				collection: 'votes',
+				filter: {
+					order: {
+						desc: true,
+						field: 'created_at'
+					}
+				}
+			});
+			votes = result.items;
+		} catch (e) {
+			console.error('Error loading votes:', e);
+			error = 'Failed to load votes';
+		}
+	}
+
+	// Function to create a vote
+	async function saveVote() {
+		try {
+			error = '';
+			success = '';
+
+			// Basic client-side validation
+			if (!newVote.author || !newVote.target || !newVote.tag) {
+				error = 'Author, target, and tag are required';
+				return;
+			}
+
+			// Create vote document
+			await setDoc({
+				collection: 'votes',
+				doc: {
+					key: newVote.key || nanoid(),
+					description: `author:${newVote.author},target:${newVote.target}`,
+					data: {
+						tag: newVote.tag,
+						target: newVote.target,
+						is_positive: newVote.is_positive,
+						weight: 1  // Fixed weight for now
+					}
+				}
+			});
+
+			// Clear form and show success message
+			newVote = {
+				key: '',
+				author: '',
+				target: '',
+				is_positive: true,
+				tag: ''
+			};
+			success = 'Vote created successfully!';
+
+			// Reload the vote list
+			await loadVotes();
+		} catch (e) {
+			console.error('Error saving vote:', e);
+			error = e instanceof Error ? e.message : 'Failed to save vote';
+		}
+	}
+
+	// Function to delete a vote
+	async function deleteVote(key: string) {
+		if (!confirm('Are you sure you want to delete this vote?')) {
+			return;
+		}
+
+		try {
+			error = '';
+			success = '';
+
+			await deleteDoc({
+				collection: 'votes',
+				doc: {
+					key,
+					data: {}
+				}
+			});
+
+			success = 'Vote deleted successfully!';
+			await loadVotes();
+		} catch (e) {
+			console.error('Error deleting vote:', e);
+			error = e instanceof Error ? e.message : 'Failed to delete vote';
+		}
+	}
+
+	// Load both users and votes when the component mounts
 	onMount(() => {
 		// Subscribe to auth state
 		const sub = authSubscribe((state) => {
@@ -133,8 +266,9 @@
 			if (user === null) {
 				goto('/');
 			} else {
-				// Load users if authenticated
+				// Load users and votes if authenticated
 				loadUsers();
+				loadVotes();
 			}
 		});
 
@@ -214,6 +348,85 @@
 			{/if}
 		</div>
 
+		<!-- Create Vote Form -->
+		<div class="mb-8" id="voteForm">
+			<h2 class="text-xl mb-4">Create New Vote</h2>
+			<form on:submit|preventDefault={saveVote} class="space-y-4">
+				<div>
+					<label for="author" class="block">Author (User Key):</label>
+					<select
+						id="author"
+						bind:value={newVote.author}
+						class="border p-2 w-full"
+					>
+						<option value="">Select Author</option>
+						{#each users as user}
+							<option value={user.key}>
+								{user.data.display_name} ({user.data.handle})
+							</option>
+						{/each}
+					</select>
+				</div>
+
+				<div>
+					<label for="target" class="block">Target (User Key):</label>
+					<select
+						id="target"
+						bind:value={newVote.target}
+						class="border p-2 w-full"
+					>
+						<option value="">Select Target</option>
+						{#each users as user}
+							<option value={user.key}>
+								{user.data.display_name} ({user.data.handle})
+							</option>
+						{/each}
+					</select>
+				</div>
+
+				<div>
+					<label for="tag" class="block">Tag:</label>
+					<input
+						type="text"
+						id="tag"
+						bind:value={newVote.tag}
+						class="border p-2 w-full"
+						placeholder="e.g., tag_key"
+					/>
+				</div>
+
+				<div>
+					<label class="block">Vote Type:</label>
+					<div class="flex gap-4">
+						<label class="inline-flex items-center">
+							<input
+								type="radio"
+								bind:group={newVote.is_positive}
+								value={true}
+								class="mr-2"
+							/>
+							Positive (+1)
+						</label>
+						<label class="inline-flex items-center">
+							<input
+								type="radio"
+								bind:group={newVote.is_positive}
+								value={false}
+								class="mr-2"
+							/>
+							Negative (-1)
+						</label>
+					</div>
+				</div>
+
+				<div>
+					<button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">
+						Create Vote
+					</button>
+				</div>
+			</form>
+		</div>
+
 		<!-- User List -->
 		<div>
 			<h2 class="text-xl mb-4">Existing Users</h2>
@@ -245,6 +458,45 @@
 										on:click={() => deleteUser(user.key)}
 										class="text-red-500 hover:text-red-700"
 										title="Delete user"
+									>
+										❌
+									</button>
+								</div>
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+
+		<!-- Vote List -->
+		<div>
+			<h2 class="text-xl mb-4">Existing Votes</h2>
+			<table class="w-full border-collapse border">
+				<thead>
+					<tr>
+						<th class="border p-2">Key</th>
+						<th class="border p-2">Author</th>
+						<th class="border p-2">Target</th>
+						<th class="border p-2">Tag</th>
+						<th class="border p-2">Type</th>
+						<th class="border p-2">Actions</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each votes as vote}
+						<tr>
+							<td class="border p-2 font-mono text-sm bg-gray-50">{vote.key}</td>
+							<td class="border p-2">{vote.description?.split(',')[0].split(':')[1] || 'Unknown'}</td>
+							<td class="border p-2">{vote.data.target}</td>
+							<td class="border p-2">{vote.data.tag}</td>
+							<td class="border p-2">{vote.data.is_positive ? '✅ +1' : '❌ -1'}</td>
+							<td class="border p-2">
+								<div class="flex gap-2 justify-center">
+									<button
+										on:click={() => deleteVote(vote.key)}
+										class="text-red-500 hover:text-red-700"
+										title="Delete vote"
 									>
 										❌
 									</button>
