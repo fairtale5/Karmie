@@ -21,22 +21,22 @@
 use junobuild_macros::{
     // Currently Active Macros
     // ----------------------
-    assert_set_doc,        // For asserting document creation/update
-    on_set_doc,           // For handling document creation/update
+    assert_set_doc,                 // For asserting document creation/update
+    on_set_doc,                     // For handling document creation/update
 
     // Available but Currently Unused Macros (kept as reference)
     // ------------------------------------------------------
-    // assert_delete_asset,   // For asserting asset deletion
-    // assert_delete_doc,     // For asserting document deletion
-    // assert_upload_asset,   // For asserting asset upload
-    // on_delete_asset,       // For handling asset deletion
-    // on_delete_doc,         // For handling document deletion
-    // on_delete_filtered_assets,  // For handling filtered asset deletion
-    // on_delete_filtered_docs,    // For handling filtered document deletion
-    // on_delete_many_assets,      // For handling batch asset deletion
-    // on_delete_many_docs,        // For handling batch document deletion
-    // on_set_many_docs,           // For handling batch document creation/update
-    // on_upload_asset,            // For handling asset upload
+    // assert_delete_asset,         // For asserting asset deletion
+    // assert_delete_doc,           // For asserting document deletion
+    // assert_upload_asset,         // For asserting asset upload
+    // on_delete_asset,             // For handling asset deletion
+    // on_delete_doc,               // For handling document deletion
+    // on_delete_filtered_assets,   // For handling filtered asset deletion
+    // on_delete_filtered_docs,     // For handling filtered document deletion
+    // on_delete_many_assets,       // For handling batch asset deletion
+    // on_delete_many_docs,         // For handling batch document deletion
+    // on_set_many_docs,            // For handling batch document creation/update
+    // on_upload_asset,             // For handling asset upload
 };
 
 // =============================================================================
@@ -48,11 +48,11 @@ use junobuild_macros::{
 use junobuild_satellite::{
     // Currently Active Types
     // --------------------
-    include_satellite,           // Required macro for Juno integration
-    AssertSetDocContext,         // Context for document creation/update assertion
-    OnSetDocContext,             // Context for document creation/update
-    set_doc_store,              // Function to store documents
-    SetDoc,                     // Document type for setting data
+    include_satellite,              // Required macro for Juno integration
+    AssertSetDocContext,            // Context for document creation/update assertion
+    OnSetDocContext,                // Context for document creation/update
+    set_doc_store,                  // Function to store documents
+    SetDoc,                         // Document type for setting data
 
     // Available but Currently Unused Types (kept as reference)
     // ---------------------------------------------------
@@ -62,11 +62,11 @@ use junobuild_satellite::{
     // OnDeleteAssetContext,        // Context for asset deletion handler
     // OnDeleteDocContext,          // Context for document deletion handler
     // OnDeleteFilteredAssetsContext,  // Context for filtered asset deletion
-    // OnDeleteFilteredDocsContext,    // Context for filtered document deletion
-    // OnDeleteManyAssetsContext,      // Context for batch asset deletion
-    // OnDeleteManyDocsContext,        // Context for batch document deletion
-    // OnSetManyDocsContext,           // Context for batch document creation/update
-    // OnUploadAssetContext,           // Context for asset upload handler
+    // OnDeleteFilteredDocsContext, // Context for filtered document deletion
+    // OnDeleteManyAssetsContext,   // Context for batch asset deletion
+    // OnDeleteManyDocsContext,     // Context for batch document deletion
+    // OnSetManyDocsContext,        // Context for batch document creation/update
+    // OnUploadAssetContext,        // Context for asset upload handler
 };
 
 // =============================================================================
@@ -213,67 +213,77 @@ async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
 /// 
 /// This assertion is triggered before a document is created or updated
 /// in the "users" collection. It ensures:
-/// 1. The username is valid
-/// 2. The display name meets requirements
-/// 3. The user has no other documents in the collection
-/// 4. The username is unique across all documents
+/// 1. The username and display name are valid
+/// 2. The username is unique across all documents
+/// 3. (Temporarily disabled) One document per owner limit
 #[assert_set_doc(collections = ["users"])]
 fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
     // Log the start of validation
     log_user!("Validating user data for key: {}", context.data.key);
 
-    // Step 1: Decode and validate the basic document data
+    // Step 1: Basic Data Validation
+    // ----------------------------
     let user_data: UserData = decode_doc_data(&context.data.data.proposed.data)?;
-    validate_username(&user_data.handle).map_err(|e| e.to_string())?;
-    validate_display_name(&user_data.display_name).map_err(|e| e.to_string())?;
-
-    // Step 2: Check for existing documents by this user
-    // - We use ListParams to search the collection
-    // - The owner field filters documents by the caller's principal ID
-    let user_docs_params = ListParams {
-        owner: Some(context.caller),  // Filter by the current user's principal
-        ..Default::default()          // Use defaults for other parameters
-    };
-
-    // Step 3: Search for user's existing documents
-    let existing_user_docs = list_docs(String::from("users"), user_docs_params);
     
-    // Step 4: Check each found document
-    // - Skip the current document (in case of updates)
-    // - Error if any other documents exist
-    for doc in existing_user_docs.items {
-        if doc.0 != context.data.key {
-            return Err("User already has an account in the system".to_string());
-        }
-    }
+    // Validate username and display name
+    validate_username(&user_data.handle).map_err(|e| {
+        log_user!("Username validation failed for key {}: {}", context.data.key, e);
+        e.to_string()
+    })?;
+    validate_display_name(&user_data.display_name).map_err(|e| {
+        log_user!("Display name validation failed for key {}: {}", context.data.key, e);
+        e.to_string()
+    })?;
 
-    // Step 5: Check username uniqueness across all documents
+    // Step 2: Username Uniqueness Check
+    // -------------------------------
+    // Normalize the username for consistent comparison
     let normalized_handle = normalize_username(&user_data.handle);
     let username_search = format!("username:{}", normalized_handle);
     
-    // Create a matcher for username search
+    // Search for any documents with this username
     let matcher = ListMatcher {
-        description: Some(username_search),  // Search in the description field
+        description: Some(username_search),
         ..Default::default()
     };
 
-    // Set up parameters for username search
     let params = ListParams {
         matcher: Some(matcher),
         ..Default::default()
     };
 
-    // Step 6: Search for documents with this username
+    // Check for username conflicts
     let existing_docs = list_docs(String::from("users"), params);
-    
-    // Step 7: Check for username conflicts
-    // - Skip the current document (in case of updates)
-    // - Error if username exists in another document
     for doc in existing_docs.items {
-        if doc.0 != context.data.key {
-            return Err("Username already exists".to_string());
+        // Skip our own document if this is an update
+        if context.data.data.proposed.version.is_some() && doc.0 == context.data.key {
+            continue;
+        }
+        // If username exists in any other document, log and return error
+        log_user!("Username '{}' already exists (key: {})", normalized_handle, context.data.key);
+        return Err("Username already exists".to_string());
+    }
+
+    // Step 3: One-Document-Per-Owner Check (Temporarily Disabled)
+    // --------------------------------------------------------
+    // Only check on CREATE operations (when version is not provided)
+    /*
+    if context.data.data.proposed.version.is_none() {
+        let user_docs_params = ListParams {
+            owner: Some(context.caller),
+            ..Default::default()
+        };
+
+        let existing_user_docs = list_docs(String::from("users"), user_docs_params);
+        for doc in existing_user_docs.items {
+            if doc.0 != context.data.key {
+                log_user!("User already has an account (caller: {}, attempted key: {})", 
+                    context.caller, context.data.key);
+                return Err("User already has an account in the system".to_string());
+            }
         }
     }
+    */
 
     // Log successful validation
     log_user!("Successfully validated user data for key: {}", context.data.key);

@@ -1,12 +1,12 @@
 // AVAILABLE IMPORTS FROM junobuild_macros:
 // These are the only macro decorators available:
 use junobuild_macros::{
-    assert_delete_asset,   // For asserting asset deletion
-    assert_delete_doc,     // For asserting document deletion
-    assert_set_doc,        // For asserting document creation/update
-    assert_upload_asset,   // For asserting asset upload
-    on_delete_asset,       // For handling asset deletion
-    on_delete_doc,         // For handling document deletion
+    assert_delete_asset,        // For asserting asset deletion
+    assert_delete_doc,          // For asserting document deletion
+    assert_set_doc,             // For asserting document creation/update
+    assert_upload_asset,        // For asserting asset upload
+    on_delete_asset,            // For handling asset deletion
+    on_delete_doc,              // For handling document deletion
     on_delete_filtered_assets,  // For handling filtered asset deletion
     on_delete_filtered_docs,    // For handling filtered document deletion
     on_delete_many_assets,      // For handling batch asset deletion
@@ -19,13 +19,13 @@ use junobuild_macros::{
 // AVAILABLE IMPORTS FROM junobuild_satellite:
 // These are the only context types and utilities available:
 use junobuild_satellite::{
-    include_satellite,           // Required macro for Juno integration
-    AssertDeleteAssetContext,    // Context for asset deletion assertion
-    AssertDeleteDocContext,      // Context for document deletion assertion
-    AssertSetDocContext,         // Context for document creation/update assertion
-    AssertUploadAssetContext,    // Context for asset upload assertion
-    OnDeleteAssetContext,        // Context for asset deletion handler
-    OnDeleteDocContext,          // Context for document deletion handler
+    include_satellite,              // Required macro for Juno integration
+    AssertDeleteAssetContext,       // Context for asset deletion assertion
+    AssertDeleteDocContext,         // Context for document deletion assertion
+    AssertSetDocContext,            // Context for document creation/update assertion
+    AssertUploadAssetContext,       // Context for asset upload assertion
+    OnDeleteAssetContext,           // Context for asset deletion handler
+    OnDeleteDocContext,             // Context for document deletion handler
     OnDeleteFilteredAssetsContext,  // Context for filtered asset deletion
     OnDeleteFilteredDocsContext,    // Context for filtered document deletion
     OnDeleteManyAssetsContext,      // Context for batch asset deletion

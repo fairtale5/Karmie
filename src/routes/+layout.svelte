@@ -16,9 +16,3 @@
 {/if}
 
 <slot />
-
-<style>
-	code {
-		font-family: monospace;
-	}
-</style>
