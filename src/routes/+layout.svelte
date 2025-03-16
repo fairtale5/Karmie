@@ -1,14 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { initJuno } from '$lib/juno';
-	import { junoStatus } from '$lib/stores/juno';
+	import { initSatelliteConnection } from '$lib/junoInit';
+	import { junoStatus } from '$lib/stores/junoStore';
 
 	onMount(async () => {
-		try {
-			await initJuno();
-		} catch (err) {
-			// Error is handled by the store
-		}
+		await initSatelliteConnection();
 	});
 </script>
 
@@ -23,7 +19,7 @@
 {:else if !$junoStatus.initialized}
 	<div class="container mx-auto p-4">
 		<div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative mb-4" role="alert">
-			<p>Connecting to Juno satellite...</p>
+			<p>Connecting to satellite...</p>
 		</div>
 	</div>
 {/if}

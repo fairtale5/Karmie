@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { junoStatus } from '$lib/stores/juno';
+	import { junoStatus } from '$lib/stores/junoStore';
 </script>
 
 <div class="container mx-auto p-4">

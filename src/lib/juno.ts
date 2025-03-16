@@ -1,5 +1,5 @@
 import { initJuno as initJunoCore } from '@junobuild/core';
-import { junoStatus } from './stores/juno';
+import { junoStatus } from './stores/junoStore';
 
 export const initJuno = async () => {
     // Reset status before attempting initialization
