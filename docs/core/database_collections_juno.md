@@ -52,16 +52,19 @@ const { items, items_length, matches_length } = await listDocs({
 
 ## Collections
 
+### Important Note for Test Phase
+During the initial test phase, all documents will be created by the same user (single-user testing environment). The document's author will be stored in the `description` field along with other metadata. This approach will change in production to use proper multi-user authentication.
+
 ### Users Collection
 
 Collection name: `users`
 
-#### Complete Document Structure
+#### Document Structure
 ```typescript
 interface UserDocument {
     // Standard Juno fields
     key: string;              // Generated with nanoid()
-    description: string;      // Format: "username:normalized_handle"
+    description: string;      // Format: "username:{normalized_handle},author:{author_key}"
     owner: Principal;         // Document owner's Principal ID
     created_at: bigint;      // Timestamp in nanoseconds
     updated_at: bigint;      // Timestamp in nanoseconds
@@ -69,7 +72,7 @@ interface UserDocument {
 
     // User-specific data
     data: {
-        handle: string;      // Unique identifier for the user
+        handle: string;       // Unique username
         display_name: string; // Display name (not unique)
     }
 }
@@ -92,12 +95,12 @@ interface UserDocument {
 
 Collection name: `tags`
 
-#### Complete Document Structure
+#### Document Structure
 ```typescript
 interface TagDocument {
     // Standard Juno fields
     key: string;              // Generated with nanoid()
-    description: string;      // Format: "tag:normalized_tag_name"
+    description: string;      // Format: "tag:{normalized_tag_name},author:{author_key}"
     owner: Principal;         // Document owner's Principal ID
     created_at: bigint;      // Timestamp in nanoseconds
     updated_at: bigint;      // Timestamp in nanoseconds
@@ -105,9 +108,17 @@ interface TagDocument {
 
     // Tag-specific data
     data: {
-        name: string;         // The tag name (e.g., "#teamplay", "#crypto")
-        description: string;  // Description of what this tag represents
-        founding_members: string[]; // Array of user keys (up to 100)
+        name: string;         // The tag (e.g., "#teamwork", "#coding")
+        description: string;  // What this tag represents
+        
+        // Optional: Custom decay rules for this tag
+        decay_rules?: {
+            time_brackets: Array<{
+                name: string;        // e.g., "last_24h", "current_week"
+                duration: number;    // Duration in milliseconds
+                weight: number;      // Weight percentage (0-1)
+            }>;
+        }
     }
 }
 ```
@@ -122,12 +133,12 @@ interface TagDocument {
 
 Collection name: `votes`
 
-#### Complete Document Structure
+#### Document Structure
 ```typescript
 interface VoteDocument {
     // Standard Juno fields
     key: string;              // Generated with nanoid()
-    description: string;      // Format: "author:{author_id},target:{target_id}"
+    description: string;      // Format: "author:{author_key},target:{target_key},tag:{tag_key}"
     owner: Principal;         // Document owner's Principal ID
     created_at: bigint;      // Timestamp in nanoseconds
     updated_at: bigint;      // Timestamp in nanoseconds
@@ -135,10 +146,14 @@ interface VoteDocument {
 
     // Vote-specific data
     data: {
-        tag: string;             // The tag this vote applies to
-        target: string;          // User key of the vote recipient
-        is_positive: boolean;    // true for positive, false for negative
-        weight: number;          // Weighted vote value (based on voter reputation)
+        author_key: string;   // User key who cast the vote
+        target_key: string;   // User key being voted on
+        tag_key: string;      // Tag this vote is for
+        is_positive: boolean; // true = upvote, false = downvote
+        
+        // Store these for historical tracking
+        author_reputation: number;  // Author's reputation at time of voting
+        weight: number;            // Calculated initial vote weight
     }
 }
 ```
@@ -153,12 +168,12 @@ interface VoteDocument {
 
 Collection name: `reputations`
 
-#### Complete Document Structure
+#### Document Structure
 ```typescript
 interface ReputationDocument {
     // Standard Juno fields
     key: string;              // Generated with nanoid()
-    description: string;      // Format: "user:{user_id},tag:{tag_id}"
+    description: string;      // Format: "user:{user_key},tag:{tag_key},author:{author_key}"
     owner: Principal;         // Document owner's Principal ID
     created_at: bigint;      // Timestamp in nanoseconds
     updated_at: bigint;      // Timestamp in nanoseconds
@@ -166,15 +181,17 @@ interface ReputationDocument {
 
     // Reputation-specific data
     data: {
-        tag: string;             // The tag key this reputation is for
-        reputation_score: number; // Computed reputation after applying decay
-        voting_power: number;    // Power multiplier for this tag
-        last_decay_update: bigint; // Last time decay was applied
-
-        votes_by_period: {       // Aggregated votes before decay, grouped by period
-            [period: string]: {  // Format: "YYYY-MM" (e.g., "2025-03")
-                positive: number; // Total positive vote weight before decay
-                negative: number; // Total negative vote weight before decay
+        user_key: string;     // The user this reputation is for
+        tag_key: string;      // The tag this reputation is for
+        reputation_score: number;  // Cached final score
+        last_calculation: bigint;  // When we last calculated
+        calculation_month: string; // "YYYY-MM" of last calculation
+        
+        // Store votes grouped by month for decay calculation
+        votes_by_period: {
+            [period: string]: {    // "YYYY-MM" format
+                positive: number;   // Sum of weighted positive votes
+                negative: number;   // Sum of weighted negative votes
             }
         }
     }
@@ -186,6 +203,85 @@ interface ReputationDocument {
 - Write: managed
 - Memory: stable
 - Mutable Permissions: false
+
+#### Notes
+- Each document represents one user's reputation in one tag
+- Reputation calculations are tag-specific
+- Votes are grouped by month for efficient decay calculation
+- Cached scores are updated only when needed
+- Other tags' reputations remain untouched during updates
+
+#### Query Examples
+
+```typescript
+// Get user's reputation in a specific tag
+const { items } = await listDocs({
+    collection: "reputations",
+    filter: {
+        matcher: {
+            description: `user:${userKey},tag:${tagKey}`
+        }
+    }
+});
+
+// Get all reputations for a user across all tags
+const { items } = await listDocs({
+    collection: "reputations",
+    filter: {
+        matcher: {
+            description: `user:${userKey}`
+        }
+    }
+});
+
+// Get all users' reputations in a specific tag
+const { items } = await listDocs({
+    collection: "reputations",
+    filter: {
+        matcher: {
+            description: `tag:${tagKey}`
+        }
+    }
+});
+```
+
+## Query Examples
+
+### Get User's Reputation in a Tag
+```typescript
+const { items } = await listDocs({
+    collection: "reputations",
+    filter: {
+        matcher: {
+            description: `user:${userKey},tag:${tagKey}`
+        }
+    }
+});
+```
+
+### Get All Votes by a User
+```typescript
+const { items } = await listDocs({
+    collection: "votes",
+    filter: {
+        matcher: {
+            description: `author:${userKey}`
+        }
+    }
+});
+```
+
+### Get All Votes for a User in a Tag
+```typescript
+const { items } = await listDocs({
+    collection: "votes",
+    filter: {
+        matcher: {
+            description: `target:${userKey},tag:${tagKey}`
+        }
+    }
+});
+```
 
 ## Usage Examples
 
@@ -304,9 +400,8 @@ await setManyDocs({ docs: updates });
    - Must match the current document version
    - Automatically incremented after successful updates
 
-4. **Permissions**
-   - public: Anyone can access
-   - private: Only document owner can access
-   - managed: Owner and controllers can access
-   - controllers: Only controllers can access
+4. **Test Phase Considerations**
+   - All documents created by same user during testing
+   - Author stored in description field
+   - Will change to proper multi-user system later
 
