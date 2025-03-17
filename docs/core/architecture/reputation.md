@@ -95,10 +95,10 @@ This approach ensures:
 
 ## Safeguards Against Exploitation
 
-1. **Vote Weight Normalization**
-   - Total voting power equals voter's reputation
-   - Prevents reputation inflation
-   - Maintains system stability
+1. **Vote Weight Distribution**
+   - Total voting power automatically equals voter's reputation
+   - Time-based multipliers determine vote influence
+   - System remains stable and predictable
 
 2. **Time-Based Weighting**
    - Recent votes have more influence

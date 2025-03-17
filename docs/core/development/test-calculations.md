@@ -4,7 +4,7 @@
 - [x] User creation interface
   - Create new users with handle and display name
   - Validate unique usernames
-  - Handle validation and normalization
+  - Handle validation
 - [x] Voting interface
   - Cast votes on users with specific tags
   - Support for positive/negative votes
@@ -133,7 +133,6 @@ interface ReputationCache {
 2. **Implement Calculation Functions**
 - [ ] Basic reputation aggregation
 - [ ] Time-based multiplier application
-- [ ] Vote weight normalization
 - [ ] Caching mechanism
 
 3. **Add Weight Visualization**

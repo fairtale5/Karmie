@@ -344,35 +344,31 @@ When providing assistance, ALWAYS follow these guidelines:
 
 ## Directory Structure
 
-### `/core`
-Core reference documentation and specifications:
-- `data-validation.md` (`/core/data-validation.md`) - Data validation patterns and security measures
-- `ic_and_juno_api_reference.md` (`/core/ic_and_juno_api_reference.md`) - Complete API reference
-- `technical_spec.md` (`/core/technical_spec.md`) - Technical specification
-- `resources.md` (`/core/resources.md`) - External resources and links
-- `skeleton_ui_integration.md` (`/core/skeleton_ui_integration.md`) - Skeleton UI v2 setup, configuration, and component usage
+### `/docs/core`
+Core project documentation:
 
-Key aspects:
-- Architecture decisions (`/core/technical_spec.md#architecture`)
-- Security patterns (`/core/data-validation.md#security`)
-- Technical constraints (`/core/technical_spec.md#constraints`)
-- UI setup and component patterns (`/core/skeleton_ui_integration.md`)
+#### `/docs/core/architecture`
+Architecture and design decisions:
+- `reputation-system.md` - Technical architecture of the reputation system
+- `technical_spec.md` - Technical specifications and constraints
+- `skeleton_ui_integration.md` - Skeleton UI v2 setup and component patterns
 
-### `/implementation`
-Implementation-specific documentation:
-- `reputation.md` (`/implementation/reputation.md`) - Reputation system guide
-- `juno_integration.md` (`/implementation/juno_integration.md`) - Integration patterns
+#### `/docs/core/development`
+Development guidelines and patterns:
+- `testing.md` - Testing strategy and implementation
+- `ui.md` - UI/UX guidelines and principles
+- `data-validation.md` - Data validation patterns and security measures
 
-Important considerations:
-- Business logic (`/implementation/reputation.md#core-logic`)
-- Integration patterns (`/implementation/juno_integration.md#patterns`)
-- Data structures (`/implementation/reputation.md#data-structures`)
+### `/docs/resources`
+Core reference documentation:
+- `ic_and_juno_api_reference.md` - Complete API reference for Internet Computer and Juno
+- `juno_index.md` - Quick reference guide for Juno integration, setup, and development
 
-### `/juno`
+### `/docs/juno`
 Official Juno documentation and guides, with key sections:
 
-#### Build Features (`/juno/docs/build/`)
-- **Functions** (`/juno/docs/build/functions/`): 
+#### Build Features (`/docs/juno/docs/build/`)
+- **Functions** (`/docs/juno/docs/build/functions/`): 
   - Event-driven functions (`development.md#hooks`)
   - Lifecycle hooks (`development.md#on_init`)
   - Assertions (`development.md#assertions`)
@@ -380,7 +376,7 @@ Official Juno documentation and guides, with key sections:
   - Initialization (`development.md#on_init`)
   - Collection handlers (`development.md#on_set_doc`)
 
-- **Storage** (`/juno/docs/build/storage/`): 
+- **Storage** (`/docs/juno/docs/build/storage/`): 
   - File upload (`development.md#upload-asset`)
   - Protected assets (`development.md#protected-asset`)
   - Collections (`collections.md`)
@@ -388,7 +384,7 @@ Official Juno documentation and guides, with key sections:
   - Metadata (`development.md#description`)
   - Access control (`development.md#security`)
 
-- **Analytics** (`/juno/docs/build/analytics/`): 
+- **Analytics** (`/docs/juno/docs/build/analytics/`): 
   - Page tracking (`development.md#page-views`)
   - Event tracking (`development.md#track-custom-events`)
   - Web Vitals (`development.md#performance-metrics-with-web-vitals`)
@@ -396,12 +392,12 @@ Official Juno documentation and guides, with key sections:
   - User analysis (`development.md#custom-events`)
   - Privacy (`development.md#data-collection`)
 
-- **Components** (`/juno/docs/components/`):
+- **Components** (`/docs/juno/docs/components/`):
   - Core utilities (`core.mdx`)
   - Bash helpers (`bash.mdx`)
   - Subnet tools (`subnets.md`)
 
-#### SvelteKit Integration (`/docs/guides/sveltekit.mdx`)
+#### SvelteKit Integration (`/docs/juno/docs/guides/sveltekit.mdx`)
 Essential integration points:
 - Project initialization
 - Static site generation setup
@@ -412,19 +408,19 @@ Essential integration points:
 - Component integration
 
 #### Development Guides
-- **Local Development** (`/juno/docs/guides/local-development.md`):
+- **Local Development** (`/docs/juno/docs/guides/local-development.md`):
   - Setup workflow (`#setup`)
   - Environment config (`#configuration`)
   - Testing (`#testing`)
   - Debugging (`#debugging`)
 
-- **Deployment** (`/juno/docs/guides/manual-deployment.mdx`):
+- **Deployment** (`/docs/juno/docs/guides/manual-deployment.mdx`):
   - Build process (`#build`)
   - Configuration (`#config`)
   - Verification (`#verify`)
   - Monitoring (`#monitor`)
 
-- **Component Patterns** (`/juno/docs/guides/components/`):
+- **Component Patterns** (`/docs/juno/docs/guides/components/`):
   - Build patterns (`build.mdx`)
   - Choice patterns (`choice.mdx`)
   - CLI usage (`cli.mdx`)
@@ -742,13 +738,4 @@ When suggesting solutions:
    - Match SvelteKit/Juno/ICP (`/implementation/juno_integration.md`)
    - Improve patterns (`/core/technical_spec.md#patterns`)
    - Maintain security (`/core/data-validation.md#security`)
-   - Follow documentation (`/docs/README.md#documentation-updates`)
-
-## Documentation Structure
-
-### Core Documentation
-- `docs/core/ic_and_juno_api_reference.md` - Comprehensive API reference for Internet Computer and Juno
-- `docs/core/juno_index.md` - Quick reference guide for Juno integration, setup, and development
-
-### Juno Documentation
-// ... existing code ... 
+   - Follow documentation (`
