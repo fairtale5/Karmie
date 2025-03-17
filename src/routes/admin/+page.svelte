@@ -396,27 +396,29 @@
 				</div>
 
 				<div>
-					<label class="block">Vote Type:</label>
-					<div class="flex gap-4">
-						<label class="inline-flex items-center">
-							<input
-								type="radio"
-								bind:group={newVote.is_positive}
-								value={true}
-								class="mr-2"
-							/>
-							Positive (+1)
-						</label>
-						<label class="inline-flex items-center">
-							<input
-								type="radio"
-								bind:group={newVote.is_positive}
-								value={false}
-								class="mr-2"
-							/>
-							Negative (-1)
-						</label>
-					</div>
+					<fieldset>
+						<legend class="block mb-2">Vote Type:</legend>
+						<div class="flex gap-4">
+							<label class="inline-flex items-center">
+								<input
+									type="radio"
+									bind:group={newVote.is_positive}
+									value={true}
+									class="mr-2"
+								/>
+								Positive (+1)
+							</label>
+							<label class="inline-flex items-center">
+								<input
+									type="radio"
+									bind:group={newVote.is_positive}
+									value={false}
+									class="mr-2"
+								/>
+								Negative (-1)
+							</label>
+						</div>
+					</fieldset>
 				</div>
 
 				<div>
