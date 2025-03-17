@@ -60,10 +60,10 @@ async function getUserReputation(userKey: string, tagKey: string): Promise<numbe
 }
 ```
 
-#### 2. Time-Based Decay
-Conservative multipliers for vote weighting (customizable per tag):
+#### 2. Conservative Multiplier System
+Time-based multipliers for vote weighting:
 ```typescript
-const CONSERVATIVE_MULTIPLIERS = {
+const TIME_MULTIPLIERS = {
     current_month: 2.0,    // Last 30 days
     last_3_months: 1.5,    // 31-90 days
     next_6_months: 1.3,    // 91-180 days
@@ -111,7 +111,7 @@ Benefits of this approach:
 #### 3. Vote Weight Distribution
 For a user with reputation R and N votes:
 - Base vote weight = R / N
-- Applied decay based on vote age
+- Applied multiplier based on vote age
 - Normalized to ensure total influence = R
 
 #### 4. Caching Strategy
@@ -132,13 +132,13 @@ interface ReputationCache {
 
 2. **Implement Calculation Functions**
 - [ ] Basic reputation aggregation
-- [ ] Time-based decay application
+- [ ] Time-based multiplier application
 - [ ] Vote weight normalization
 - [ ] Caching mechanism
 
 3. **Add Weight Visualization**
 - [ ] Show vote weights in UI
-- [ ] Display decay factors
+- [ ] Display multipliers
 - [ ] Visualize reputation changes
 
 ### Data Structures
@@ -178,7 +178,7 @@ interface Vote {
 
 6. Reputation Calculation Tests
    - Create users with various voting patterns
-   - Verify decay calculations
+   - Verify multiplier calculations
    - Test weight distribution
    - Validate caching behavior
 
@@ -219,7 +219,7 @@ interface Vote {
    - Minimal duplicate data
 
 ### Future Improvements
-1. **Custom Decay Rules**
+1. **Custom Multiplier Rules**
    - Per-tag time brackets
    - Adjustable weights
    - Community-specific rules

@@ -145,35 +145,39 @@ Additional guidelines:
 
   ## Directory Structure
 
-### `/core`
-Core reference documentation and specifications:
-- `data-validation.md` (`/core/data-validation.md`) - Data validation patterns and security measures
-- `ic_and_juno_api_reference.md` (`/core/ic_and_juno_api_reference.md`) - Complete API reference
-- `technical_spec.md` (`/core/technical_spec.md`) - Technical specification
-- `resources.md` (`/core/resources.md`) - External resources and links
-- `skeleton_ui_integration.md` (`/core/skeleton_ui_integration.md`) - Skeleton UI v2 setup, configuration, and component usage
+### `/docs`
+Main documentation directory containing all project documentation:
+
+#### `/docs/resources`
+Core reference documentation:
+- `ic_and_juno_api_reference.md` (`/docs/resources/ic_and_juno_api_reference.md`) - Complete API reference for Internet Computer and Juno
+- `juno_index.md` (`/docs/resources/juno_index.md`) - Quick reference guide for Juno integration, setup, and development
+
+#### `/docs/core`
+Core project documentation:
+- `data-validation.md` (`/docs/core/data-validation.md`) - Data validation patterns and security measures
+- `resources.md` (`/docs/core/resources.md`) - External resources and links
+- `skeleton_ui_integration.md` (`/docs/core/skeleton_ui_integration.md`) - Skeleton UI v2 setup, configuration, and component usage
 
 Key aspects:
-- Architecture decisions (`/core/technical_spec.md#architecture`)
-- Security patterns (`/core/data-validation.md#security`)
-- Technical constraints (`/core/technical_spec.md#constraints`)
-- UI setup and component patterns (`/core/skeleton_ui_integration.md`)
+- Security patterns (`/docs/core/data-validation.md#security`)
+- UI setup and component patterns (`/docs/core/skeleton_ui_integration.md`)
 
-### `/implementation`
+#### `/docs/implementation`
 Implementation-specific documentation:
-- `reputation.md` (`/implementation/reputation.md`) - Reputation system guide
-- `juno_integration.md` (`/implementation/juno_integration.md`) - Integration patterns
+- `reputation.md` (`/docs/implementation/reputation.md`) - Reputation system guide
+- `juno_integration.md` (`/docs/implementation/juno_integration.md`) - Integration patterns
 
 Important considerations:
-- Business logic (`/implementation/reputation.md#core-logic`)
-- Integration patterns (`/implementation/juno_integration.md#patterns`)
-- Data structures (`/implementation/reputation.md#data-structures`)
+- Business logic (`/docs/implementation/reputation.md#core-logic`)
+- Integration patterns (`/docs/implementation/juno_integration.md#patterns`)
+- Data structures (`/docs/implementation/reputation.md#data-structures`)
 
-### `/juno`
+#### `/docs/juno`
 Official Juno documentation and guides, with key sections:
 
-#### Build Features (`/juno/docs/build/`)
-- **Functions** (`/juno/docs/build/functions/`): 
+##### Build Features (`/docs/juno/docs/build/`)
+- **Functions** (`/docs/juno/docs/build/functions/`): 
   - Event-driven functions (`development.md#hooks`)
   - Lifecycle hooks (`development.md#on_init`)
   - Assertions (`development.md#assertions`)
@@ -181,7 +185,7 @@ Official Juno documentation and guides, with key sections:
   - Initialization (`development.md#on_init`)
   - Collection handlers (`development.md#on_set_doc`)
 
-- **Storage** (`/juno/docs/build/storage/`): 
+- **Storage** (`/docs/juno/docs/build/storage/`): 
   - File upload (`development.md#upload-asset`)
   - Protected assets (`development.md#protected-asset`)
   - Collections (`collections.md`)
@@ -189,7 +193,7 @@ Official Juno documentation and guides, with key sections:
   - Metadata (`development.md#description`)
   - Access control (`development.md#security`)
 
-- **Analytics** (`/juno/docs/build/analytics/`): 
+- **Analytics** (`/docs/juno/docs/build/analytics/`): 
   - Page tracking (`development.md#page-views`)
   - Event tracking (`development.md#track-custom-events`)
   - Web Vitals (`development.md#performance-metrics-with-web-vitals`)
@@ -197,12 +201,12 @@ Official Juno documentation and guides, with key sections:
   - User analysis (`development.md#custom-events`)
   - Privacy (`development.md#data-collection`)
 
-- **Components** (`/juno/docs/components/`):
+- **Components** (`/docs/juno/docs/components/`):
   - Core utilities (`core.mdx`)
   - Bash helpers (`bash.mdx`)
   - Subnet tools (`subnets.md`)
 
-#### SvelteKit Integration (`/docs/guides/sveltekit.mdx`)
+##### SvelteKit Integration (`/docs/juno/docs/guides/sveltekit.mdx`)
 Essential integration points:
 - Project initialization
 - Static site generation setup
@@ -212,20 +216,20 @@ Essential integration points:
 - Authentication flows
 - Component integration
 
-#### Development Guides
-- **Local Development** (`/juno/docs/guides/local-development.md`):
+##### Development Guides
+- **Local Development** (`/docs/juno/docs/guides/local-development.md`):
   - Setup workflow (`#setup`)
   - Environment config (`#configuration`)
   - Testing (`#testing`)
   - Debugging (`#debugging`)
 
-- **Deployment** (`/juno/docs/guides/manual-deployment.mdx`):
+- **Deployment** (`/docs/juno/docs/guides/manual-deployment.mdx`):
   - Build process (`#build`)
   - Configuration (`#config`)
   - Verification (`#verify`)
   - Monitoring (`#monitor`)
 
-- **Component Patterns** (`/juno/docs/guides/components/`):
+- **Component Patterns** (`/docs/juno/docs/guides/components/`):
   - Build patterns (`build.mdx`)
   - Choice patterns (`choice.mdx`)
   - CLI usage (`cli.mdx`)
@@ -234,9 +238,9 @@ Essential integration points:
 ## Documentation Updates
 
 When updating documentation:
-1. Core API changes in `ic_and_juno_api_reference.md` (`/core/ic_and_juno_api_reference.md`)
-2. Implementation changes in respective files (`/implementation/`)
-3. External resource links in `resources.md` (`/core/resources.md`)
+1. Core API changes in `ic_and_juno_api_reference.md` (`/docs/resources/ic_and_juno_api_reference.md`)
+2. Implementation changes in respective files (`/docs/implementation/`)
+3. External resource links in `resources.md` (`/docs/core/resources.md`)
 4. Cross-references validation (`/docs/README.md`)
 
 ## Best Practices (`/juno/docs/miscellaneous/best-practices.md`)

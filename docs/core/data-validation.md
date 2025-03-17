@@ -1,214 +1,308 @@
-# Data Validation in Juno: Best Practices and Security Considerations
+# Data Validation Guide
 
-## Why Data Validation Matters
+## Data Structures
 
-When building applications with Juno's Datastore, data validation is crucial because:
-1. Client-side code can be manipulated by users
-2. Direct API calls can bypass client validation
-3. Invalid data structures can break application functionality
-4. Malicious users could inject harmful data
-5. Data consistency is essential for reliable applications
-
-## Available Approaches
-
-Juno offers three main approaches for data validation:
-
-1. **Hooks** (Recommended)
-2. **Custom Endpoints**
-3. **Serverless Functions**
-
-### Security Analysis
-
-#### Custom Endpoints (Vulnerable)
+### Vote Data
 ```typescript
-// Custom endpoint approach
-const createUser = async (userData: UserData) => {
-  // Validation here
-  const response = await fetch('/api/createUser', {
-    method: 'POST',
-    body: JSON.stringify(userData)
-  });
+interface VoteData {
+    key: string;           // Unique identifier
+    author_key: string;    // User who created the vote
+    target_key: string;    // User being voted on
+    tag_key: string;       // Tag for the vote
+    is_positive: boolean;  // true = upvote, false = downvote
+    created_at: bigint;    // Timestamp
+    updated_at: bigint;    // Last update timestamp
+    owner: Principal;      // Owner of the vote
+    description: string;   // Searchable description
 }
 ```
-**Problems:**
-- Original `setDoc` endpoint remains accessible
-- Users can bypass custom endpoint entirely
-- Validation can be circumvented
 
-#### Serverless Functions (Vulnerable)
+### Reputation Data
 ```typescript
-// Serverless function approach
-export const validateUser = async (context: Context) => {
-  const data = await context.request.json();
-  // Validation here
+interface ReputationData {
+    key: string;           // Unique identifier
+    user_key: string;      // User whose reputation this is
+    tag_key: string;       // Tag for the reputation
+    reputation_score: number; // Current reputation score
+    total_votes: number;   // Total number of votes
+    weighted_votes: number; // Total weighted votes
+    calculation_month: string; // "YYYY-MM" format
+    created_at: bigint;    // Creation timestamp
+    updated_at: bigint;    // Last update timestamp
+    owner: Principal;      // Owner of the reputation
+    description: string;   // Searchable description
 }
 ```
-**Problems:**
-- Same issues as custom endpoints
-- Direct Datastore operations bypass these functions
-- Only validates when explicitly called
 
-## Best Approach: Hooks
+## Validation Functions
 
-Hooks provide the most secure validation because:
-- They run automatically for EVERY Datastore operation
-- Cannot be bypassed or circumvented
-- Integrate directly with Juno's core functionality
-
-### Implementation Example
-
+### Vote Validation
 ```typescript
-import { setDoc, type Doc } from "@junobuild/core";
-
-// Define data structures
-interface UserData {
-  name: string;
-  email: string;
+function isVoteData(data: unknown): data is VoteData {
+    if (!data || typeof data !== 'object') return false;
+    
+    const vote = data as VoteData;
+    
+    return (
+        typeof vote.key === 'string' &&
+        typeof vote.author_key === 'string' &&
+        typeof vote.target_key === 'string' &&
+        typeof vote.tag_key === 'string' &&
+        typeof vote.is_positive === 'boolean' &&
+        typeof vote.created_at === 'bigint' &&
+        typeof vote.updated_at === 'bigint' &&
+        vote.owner instanceof Principal &&
+        typeof vote.description === 'string' &&
+        vote.description.length <= 1024 &&
+        vote.author_key !== vote.target_key // Prevent self-voting
+    );
 }
+```
 
-interface PostData {
-  title: string;
-  content: string;
+### Reputation Validation
+```typescript
+function isReputationData(data: unknown): data is ReputationData {
+    if (!data || typeof data !== 'object') return false;
+    
+    const reputation = data as ReputationData;
+    
+    return (
+        typeof reputation.key === 'string' &&
+        typeof reputation.user_key === 'string' &&
+        typeof reputation.tag_key === 'string' &&
+        typeof reputation.reputation_score === 'number' &&
+        typeof reputation.total_votes === 'number' &&
+        typeof reputation.weighted_votes === 'number' &&
+        typeof reputation.calculation_month === 'string' &&
+        /^\d{4}-\d{2}$/.test(reputation.calculation_month) &&
+        typeof reputation.created_at === 'bigint' &&
+        typeof reputation.updated_at === 'bigint' &&
+        reputation.owner instanceof Principal &&
+        typeof reputation.description === 'string' &&
+        reputation.description.length <= 1024 &&
+        reputation.total_votes >= 0 &&
+        reputation.weighted_votes >= 0
+    );
 }
+```
 
-// Validation functions
-const isUserData = (data: unknown): data is UserData => {
-  const d = data as UserData;
-  return (
-    typeof d.name === 'string' &&
-    d.name.length >= 2 &&
-    typeof d.email === 'string' &&
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)
-  );
-};
+## Juno Integration
 
-const isPostData = (data: unknown): data is PostData => {
-  const d = data as PostData;
-  return (
-    typeof d.title === 'string' &&
-    d.title.length >= 3 &&
-    typeof d.content === 'string' &&
-    d.content.length >= 10
-  );
-};
+### Collection Validation
+```typescript
+import { initJuno } from "@junobuild/core";
 
-// Initialize Juno with validation hooks
-await initJuno({
-  satelliteId: "YOUR_SATELLITE_ID",
-  hooks: {
-    datastore: {
-      // Runs BEFORE data is written - can prevent invalid writes
-      preSet: async ({ collection, doc }) => {
-        // Collection-specific validation
-        switch (collection) {
-          case 'users':
-            if (!isUserData(doc.data)) {
-              throw new Error('Invalid user data structure');
+initJuno({
+    satelliteId: "your-satellite-id",
+    collections: {
+        votes: {
+            pre_set: (data) => {
+                if (!isVoteData(data)) {
+                    throw new Error("Invalid vote data");
+                }
+                
+                // Additional validation rules
+                if (data.description.length > 1024) {
+                    throw new Error("Description too long");
+                }
+                
+                // Validate vote weight
+                if (data.weight && data.weight > 1000) {
+                    throw new Error("Vote weight exceeds maximum");
+                }
             }
-            break;
-
-          case 'posts':
-            if (!isPostData(doc.data)) {
-              throw new Error('Invalid post data structure');
+        },
+        reputations: {
+            pre_set: (data) => {
+                if (!isReputationData(data)) {
+                    throw new Error("Invalid reputation data");
+                }
+                
+                // Additional validation rules
+                if (data.description.length > 1024) {
+                    throw new Error("Description too long");
+                }
+                
+                // Validate reputation score
+                if (data.reputation_score < 0) {
+                    throw new Error("Reputation score cannot be negative");
+                }
+                
+                // Validate vote counts
+                if (data.total_votes < 0 || data.weighted_votes < 0) {
+                    throw new Error("Vote counts cannot be negative");
+                }
             }
-            break;
-
-          default:
-            throw new Error(`Unknown collection: ${collection}`);
         }
-
-        return true;
-      },
-
-      // Runs AFTER successful write - good for logging
-      postSet: async ({ collection, doc }) => {
-        console.log(`Document ${doc.key} set in ${collection}`);
-      }
     }
-  }
 });
 ```
 
-### Usage Examples
+## Validation Rules
 
+### Vote Rules
+1. **Basic Validation**
+   - All required fields must be present
+   - Fields must have correct types
+   - Description must be ≤ 1024 characters
+
+2. **Business Rules**
+   - Cannot vote on yourself
+   - One vote per user per target per tag
+   - Vote weight must be ≤ 1000
+   - Created timestamp must be valid
+
+3. **Security Rules**
+   - Owner must match author
+   - Cannot modify vote after creation
+   - Cannot delete votes (only mark as deleted)
+
+### Reputation Rules
+1. **Basic Validation**
+   - All required fields must be present
+   - Fields must have correct types
+   - Description must be ≤ 1024 characters
+
+2. **Business Rules**
+   - Score must be ≥ 0
+   - Total votes must be ≥ 0
+   - Weighted votes must be ≥ 0
+   - Calculation month must be valid
+
+3. **Security Rules**
+   - Owner must match user
+   - Cannot modify historical data
+   - Can only update current month
+
+## Error Handling
+
+### Validation Errors
 ```typescript
-// Create new document
-const createUser = async (userData: UserData) => {
-  return await setDoc({
-    collection: "users",
-    doc: {
-      key: nanoid(),
-      data: userData
+class ValidationError extends Error {
+    constructor(
+        message: string,
+        public field?: string,
+        public value?: unknown
+    ) {
+        super(message);
+        this.name = 'ValidationError';
     }
-  });
-};
+}
 
-// Update existing document
-const updateUser = async (existingDoc: Doc<UserData>, updates: Partial<UserData>) => {
-  return await setDoc({
-    collection: "users",
-    doc: {
-      key: existingDoc.key,
-      data: {
-        ...existingDoc.data,
-        ...updates
-      },
-      version: existingDoc.version // For concurrency control
+function validateVote(vote: unknown): VoteData {
+    if (!isVoteData(vote)) {
+        throw new ValidationError(
+            'Invalid vote data structure',
+            undefined,
+            vote
+        );
     }
-  });
-};
-```
-
-## Hook Execution Flow
-
-1. User calls `setDoc`
-2. `preSet` hook runs
-   - If validation passes → continue
-   - If validation fails → operation cancelled
-3. Data is written to Datastore
-4. `postSet` hook runs
-5. Operation completes
-
-## Additional Security Measures
-
-### 1. Collection Configuration
-```typescript
-{
-    key: "users",
-    readPermission: "private",
-    writePermission: "managed",
-    maxChangesPerUser: 100,
-    maxUpdatesPerMinute: 10,
-    immutablePermissions: true
+    
+    if (vote.author_key === vote.target_key) {
+        throw new ValidationError(
+            'Cannot vote on yourself',
+            'target_key',
+            vote.target_key
+        );
+    }
+    
+    return vote;
 }
 ```
 
-### 2. Type Safety
-- Use TypeScript interfaces
-- Implement type guards
-- Validate data structures
+### Error Recovery
+```typescript
+async function createVote(data: unknown): Promise<VoteData> {
+    try {
+        const vote = validateVote(data);
+        return await setDoc({
+            collection: "votes",
+            doc: vote
+        });
+    } catch (error) {
+        if (error instanceof ValidationError) {
+            // Handle validation errors
+            console.error('Validation failed:', error.message);
+        } else {
+            // Handle other errors
+            console.error('Unexpected error:', error);
+        }
+        throw error;
+    }
+}
+```
 
-### 3. Concurrency Control
-- Use version checking
-- Let Juno handle timestamps
-- Prevent race conditions
+## Testing
 
-## Best Practices Summary
+### Validation Tests
+```typescript
+describe('Vote Validation', () => {
+    test('validates correct vote data', () => {
+        const validVote: VoteData = {
+            key: 'vote1',
+            author_key: 'user1',
+            target_key: 'user2',
+            tag_key: 'gaming',
+            is_positive: true,
+            created_at: BigInt(Date.now()),
+            updated_at: BigInt(Date.now()),
+            owner: new Principal(),
+            description: 'Great player'
+        };
+        
+        expect(isVoteData(validVote)).toBe(true);
+    });
+    
+    test('rejects invalid vote data', () => {
+        const invalidVote = {
+            key: 'vote1',
+            author_key: 'user1',
+            target_key: 'user1', // Self-vote
+            tag_key: 'gaming',
+            is_positive: true,
+            created_at: BigInt(Date.now()),
+            updated_at: BigInt(Date.now()),
+            owner: new Principal(),
+            description: 'Great player'
+        };
+        
+        expect(isVoteData(invalidVote)).toBe(false);
+    });
+});
+```
 
-1. **Always use hooks** for validation
-2. Implement **type guards** for data structures
-3. Set appropriate **collection permissions**
-4. Use **version control** for updates
-5. Implement **proper error handling**
-6. Add **logging** for audit trails
-
-## Why This Approach Works
-
-1. **Unavoidable Validation**: Every write operation must pass validation
-2. **Type Safety**: TypeScript ensures data structure integrity
-3. **Atomic Operations**: Validation and writes are atomic
-4. **Performance**: No additional network requests
-5. **Simplicity**: Centralized validation logic
-6. **Reliability**: Consistent validation for all operations
-
-Remember: Security is about preventing unauthorized or invalid operations, not just making them difficult. Hooks provide the only guaranteed way to validate all data operations in Juno's Datastore. 
+### Integration Tests
+```typescript
+describe('Vote Creation', () => {
+    test('creates valid vote', async () => {
+        const vote = await createVote({
+            key: 'vote1',
+            author_key: 'user1',
+            target_key: 'user2',
+            tag_key: 'gaming',
+            is_positive: true,
+            created_at: BigInt(Date.now()),
+            updated_at: BigInt(Date.now()),
+            owner: new Principal(),
+            description: 'Great player'
+        });
+        
+        expect(vote).toBeDefined();
+        expect(vote.key).toBe('vote1');
+    });
+    
+    test('rejects invalid vote', async () => {
+        await expect(createVote({
+            key: 'vote1',
+            author_key: 'user1',
+            target_key: 'user1', // Self-vote
+            tag_key: 'gaming',
+            is_positive: true,
+            created_at: BigInt(Date.now()),
+            updated_at: BigInt(Date.now()),
+            owner: new Principal(),
+            description: 'Great player'
+        })).rejects.toThrow('Cannot vote on yourself');
+    });
+});
+``` 

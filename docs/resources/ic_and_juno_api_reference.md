@@ -1,5 +1,12 @@
 # Internet Computer & Juno SDK Complete Reference
 
+> **Purpose**: This document serves as a comprehensive technical reference for the Internet Computer (IC) and Juno SDK APIs. It complements the implementation guides in `/docs/implementation/` and the Juno documentation in `/docs/juno/`.
+
+> **Related Documentation**:
+> - Implementation guides: `/docs/implementation/`
+> - Juno documentation: `/docs/juno/`
+> - Core specifications: `/docs/core/`
+
 This document provides a comprehensive reference of all capabilities available in both the Internet Computer Rust CDK and Juno SDK.
 
 ## IC Rust CDK Complete Reference (`ic-cdk`)

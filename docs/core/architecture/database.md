@@ -1,54 +1,6 @@
-# Database Collections in Juno
+# Database Schema
 
-This document defines how to work with documents in the Juno datastore.
-For more info, check /docs/juno/docs/build/datastore/development.md
-
-## Document Format
-
-### Setting a Document
-```typescript
-// Format for setDoc()
-{
-    collection: string,  // The collection name (e.g., "users")
-    doc: {
-        key: string,    // Document identifier (use nanoid())
-        data: any,      // Your document data
-        description?: string,  // Optional, max 1024 chars
-        version?: bigint      // Required for updates
-    }
-}
-```
-
-### Retrieving Documents
-```typescript
-// Single document
-const doc = await getDoc({
-    collection: "collection_name",
-    key: "document_key"
-});
-
-// Multiple documents
-const { items, items_length, matches_length } = await listDocs({
-    collection: "collection_name",
-    filter: {
-        matcher: {
-            key?: string,          // Regex for document keys
-            description?: string,   // Regex for descriptions
-            createdAt?: ListTimestampMatcher,
-            updatedAt?: ListTimestampMatcher
-        },
-        paginate: {
-            startAfter?: string,
-            limit?: number
-        },
-        order: {
-            desc: boolean,
-            field: "keys" | "updated_at" | "created_at"
-        },
-        owner?: string | Principal
-    }
-});
-```
+This document defines the database schema for the Reputator project.
 
 ## Collections
 
@@ -211,40 +163,6 @@ interface ReputationDocument {
 - Cached scores are updated only when needed
 - Other tags' reputations remain untouched during updates
 
-#### Query Examples
-
-```typescript
-// Get user's reputation in a specific tag
-const { items } = await listDocs({
-    collection: "reputations",
-    filter: {
-        matcher: {
-            description: `user:${userKey},tag:${tagKey}`
-        }
-    }
-});
-
-// Get all reputations for a user across all tags
-const { items } = await listDocs({
-    collection: "reputations",
-    filter: {
-        matcher: {
-            description: `user:${userKey}`
-        }
-    }
-});
-
-// Get all users' reputations in a specific tag
-const { items } = await listDocs({
-    collection: "reputations",
-    filter: {
-        matcher: {
-            description: `tag:${tagKey}`
-        }
-    }
-});
-```
-
 ## Query Examples
 
 ### Get User's Reputation in a Tag
@@ -283,107 +201,6 @@ const { items } = await listDocs({
 });
 ```
 
-## Usage Examples
-
-### Creating a Document
-```typescript
-import { setDoc } from "@junobuild/core";
-import { nanoid } from "nanoid";
-
-await setDoc({
-    collection: "users",
-    doc: {
-        key: nanoid(),
-        data: {
-            handle: "alice",
-            display_name: "Alice in Cryptoland"
-        }
-    }
-});
-```
-
-### Updating a Document
-```typescript
-await setDoc({
-    collection: "users",
-    doc: {
-        key: existingDoc.key,
-        data: {
-            handle: "alice_updated",
-            display_name: "Alice Updated"
-        },
-        version: existingDoc.version  // Required for updates
-    }
-});
-```
-
-### Querying Documents
-```typescript
-// List all documents in a collection
-const allDocs = await listDocs({
-    collection: "users"
-});
-
-// Query with filters
-const filteredDocs = await listDocs({
-    collection: "users",
-    filter: {
-        matcher: {
-            description: "username:alice"
-        }
-    }
-});
-
-// Paginated query
-const paginatedDocs = await listDocs({
-    collection: "users",
-    filter: {
-        paginate: {
-            limit: 10,
-            startAfter: "last_doc_key"
-        },
-        order: {
-            desc: true,
-            field: "created_at"
-        }
-    }
-});
-```
-
-### Batch Operations
-```typescript
-import { setManyDocs } from "@junobuild/core";
-
-const updates = [
-    {
-        collection: "votes",
-        doc: {
-            key: nanoid(),
-            data: {
-                tag: "tag_1",
-                target: "user_1",
-                is_positive: true,
-                weight: 1
-            }
-        }
-    },
-    {
-        collection: "votes",
-        doc: {
-            key: nanoid(),
-            data: {
-                tag: "tag_1",
-                target: "user_2",
-                is_positive: false,
-                weight: 1
-            }
-        }
-    }
-];
-
-await setManyDocs({ docs: updates });
-```
-
 ## Important Notes
 
 1. **Document Size Limits**
@@ -403,5 +220,4 @@ await setManyDocs({ docs: updates });
 4. **Test Phase Considerations**
    - All documents created by same user during testing
    - Author stored in description field
-   - Will change to proper multi-user system later
-
+   - Will change to proper multi-user system later 

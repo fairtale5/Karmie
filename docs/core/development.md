@@ -1,354 +1,388 @@
 # Development Guide
 
-## Quick Start Commands
+## Setup
 
-### Local Development (Testing)
+### Prerequisites
+- Node.js 16+
+- WSL 2 (Windows Subsystem for Linux)
+- Git
+- VS Code with recommended extensions
+
+### Environment Setup
 ```bash
-# 1. Start local blockchain emulator
-juno dev start
+# Clone repository
+git clone https://github.com/yourusername/reputator.git
+cd reputator
 
-# 2. Start development server
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env
+```
+
+### VS Code Extensions
+- ESLint
+- Prettier
+- TypeScript and JavaScript Language Features
+- GitLens
+- Error Lens
+- Jest Runner
+
+## Development Workflow
+
+### Branch Strategy
+1. Main branch: `main`
+2. Development branch: `develop`
+3. Feature branches: `feature/*`
+4. Bug fix branches: `fix/*`
+5. Release branches: `release/*`
+
+### Commit Messages
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer]
+```
+
+Types:
+- feat: New feature
+- fix: Bug fix
+- docs: Documentation
+- style: Formatting
+- refactor: Code restructuring
+- test: Adding tests
+- chore: Maintenance
+
+### Code Style
+- Use TypeScript for type safety
+- Follow ESLint rules
+- Format with Prettier
+- Use meaningful variable names
+- Add JSDoc comments for public APIs
+
+## Testing
+
+### Unit Tests
+```bash
+# Run all tests
+npm test
+
+# Run specific test file
+npm test -- path/to/test.ts
+
+# Run tests with coverage
+npm test -- --coverage
+
+# Run tests in watch mode
+npm test -- --watch
+```
+
+### Integration Tests
+```bash
+# Run integration tests
+npm run test:integration
+
+# Run integration tests with coverage
+npm run test:integration -- --coverage
+```
+
+### E2E Tests
+```bash
+# Run E2E tests
+npm run test:e2e
+
+# Run E2E tests in headless mode
+npm run test:e2e -- --headless
+```
+
+## Building
+
+### Development Build
+```bash
+# Start development server
 npm run dev
 
-# Access: http://localhost:5173
-# Login: Use test anchor 10000-99999
+# Build for development
+npm run build:dev
 ```
 
-### Production Deployment (On-Chain)
+### Production Build
 ```bash
-# 1. Stop local environment
-juno dev stop
-
-# 2. Build and deploy
-npm run build
-juno deploy
-
-# Note: Make sure to update satellite ID in juno.config.ts first!
-```
-
-## Detailed Setup Guide
-
-### Configuration Switch
-
-The `juno.config.ts` file needs to be updated when switching between local and on-chain:
-
-```typescript
-import { defineConfig } from '@junobuild/config';
-
-export default defineConfig({
-  satellite: {
-    // For local development (using emulator)
-    id: 'jx5yt-yyaaa-aaaal-abzbq-cai',
-
-    // For on-chain deployment (uncomment when deploying)
-    // id: 'rigfr-siaaa-aaaal-ab4fa-cai',
-    
-    source: 'build'
-  }
-}); 
-```
-
-### Environment Modes
-
-This project can run in two modes:
-1. **Local Development** (using Juno emulator)
-   - Uses Docker to simulate blockchain locally
-   - Provides test authentication
-   - Great for rapid development
-   
-2. **On-Chain Deployment** (on the Internet Computer)
-   - Real blockchain deployment
-   - Real Internet Identity authentication
-   - Production environment
-
-## Environment Setup
-
-### Running Locally
-
-1. Start the Juno emulator:
-   ```bash
-   juno dev start
-   ```
-   This will:
-   - Start local Internet Identity service
-   - Deploy local test satellite
-   - Set up local blockchain environment
-
-2. Make sure `juno.config.ts` uses the local ID:
-   ```typescript
-   id: 'jx5yt-yyaaa-aaaal-abzbq-cai'
-   ```
-
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-4. Access the app:
-   - Frontend: http://localhost:5173
-   - Use test anchor 10000-99999 for local authentication
-
-### Deploying On-Chain
-
-1. Stop any running local emulator:
-   ```bash
-   juno dev stop
-   ```
-
-2. Update `juno.config.ts` to use your production satellite ID:
-   ```typescript
-   id: 'rigfr-siaaa-aaaal-ab4fa-cai'
-   ```
-
-3. Build and deploy:
-   ```bash
-   npm run build
-   juno deploy
-   ```
-
-## Quick Commands Reference
-
-### Core Development Commands
-```bash
-# Start local development server with hot reload
-npm run dev
-
-# Build the project for production
+# Build for production
 npm run build
 
-# Preview production build locally
+# Preview production build
 npm run preview
-
-# Deploy to Juno satellite
-juno deploy
 ```
 
-### Local Development with Docker
+## Deployment
+
+### Local Deployment
 ```bash
-# Start the local development emulator
-juno dev start
-
-# Stop the emulator
-juno dev stop
-
-# Clear emulator data
-juno dev clear
+# Deploy to local Juno instance
+npm run deploy:local
 ```
 
-### Juno CLI Commands
+### Production Deployment
 ```bash
-# Initialize Juno in an existing project
-juno init
-
-# Login to Juno
-juno login
-
-# Check Juno version
-juno --version
-
-# Configure satellite
-juno config
-
-# Take a snapshot of your data
-juno snapshot
-
-# Clear deployed files
-juno clear
-
-# Upgrade satellite
-juno upgrade
+# Deploy to production
+npm run deploy
 ```
 
-## Command Explanations
+## Debugging
 
-### Development Commands
-- `npm run dev`: Starts development server at localhost:5173 with hot module reloading
-- `npm run build`: Creates production build in ./build directory
-- `npm run preview`: Serves production build locally for testing
-- `juno deploy`: Deploys your app to your satellite on the Internet Computer
-
-### Docker Commands
-- `juno dev start`: Launches local development environment with Docker
-  - Simulates IC environment locally
-  - Provides local testing of authentication
-  - Enables testing collections without deploying
-- `juno dev stop`: Stops the local development environment
-- `juno dev clear`: Resets local development data (useful when testing)
-
-### Configuration Commands
-- `juno init`: Creates juno.config.ts file in your project
-- `juno login`: Authenticates your terminal for deployments
-- `juno config`: Updates satellite configuration
-- `juno upgrade`: Upgrades your satellite to latest version
-
-## Development Tips
-
-### Rust and WebAssembly for Custom Backend Features
-When developing custom backend features for your Juno application (such as validation hooks, data transformation functions, or custom API endpoints), you'll be writing Rust code that needs to be compiled to WebAssembly. This is because Juno satellites run on the Internet Computer blockchain, which executes WebAssembly modules.
-
-1. **One-Time Rust Setup**
-   ```bash
-   # Run this once on your development machine (from any directory)
-   # This adds WebAssembly compilation support to your Rust installation
-   rustup target add wasm32-unknown-unknown
-   ```
-
-2. **When to Build Rust Code**
-   You need to build your Rust code whenever you:
-   - Create or modify hooks (like `on_set_doc`, `assert_set_doc`)
-   - Add custom validation logic
-   - Create new API endpoints
-   - Change any Rust code in the `src/satellite` directory
-
-3. **Building Your Rust Code**
-   ```bash
-   # Recommended Method:
-   # Run from your project root directory
-   juno dev build
-   ```
-   The `juno dev build` command handles everything for you:
-   - Compiles your Rust code to WebAssembly
-   - Ensures proper target configuration
-   - Automatically deploys to your local emulator
-   - Provides helpful error messages
-   
-   When building custom Rust code for the first time, you'll be prompted to install the candid-extractor:
-   ```bash
-   The candid-extractor tool is required to generate the API ("did file"). Would you like to install it? › (yes/no)
-   ```
-   You should select 'yes'. This tool is needed to:
-   - Generate interface definitions for your custom Rust code
-   - Allow the Internet Computer to understand your custom functions
-   - Enable frontend-backend communication with your custom code
-   - Only needs to be installed once per machine
-
-   ```bash
-   # Alternative Method (only if needed):
-   # Manual compilation from the src/satellite directory
-   cd src/satellite
-   cargo build --target wasm32-unknown-unknown
-   ```
-   The manual cargo command is shown for understanding but isn't necessary for normal development.
-
-4. **Development Workflow**
-   a. Write/modify Rust code in `src/satellite/src/lib.rs`
-   b. Run `juno dev build` from your project root
-   c. If changes aren't reflected, restart the emulator:
-      ```bash
-      juno dev stop
-      juno dev start
-      ```
-
-5. **Common Issues and Solutions**
-   - **Proc-macro errors**: Check that required features are enabled in `src/satellite/Cargo.toml`
-   - **Build failures**: Make sure you're building with the WebAssembly target
-   - **Changes not reflecting**: Remember to rebuild and restart the emulator
-   - **Missing dependencies**: Ensure all required crates are listed in `Cargo.toml`
-
-The WebAssembly compilation is specifically needed for the backend Rust code that runs on the Internet Computer. Your frontend code (JavaScript/TypeScript/Svelte) doesn't require this compilation step.
-
-### Local Development
-1. Always run `juno dev start` before `npm run dev`
-2. Use the emulator for testing authentication and collections
-3. Changes to Rust code require restarting the emulator
-
-### Deployment
-1. Always build (`npm run build`) before deploying
-2. Test the build locally with `npm run preview`
-3. Make sure you're logged in (`juno login`) before deploying
-4. Verify your satellite ID in `juno.config.ts`
-
-### Troubleshooting
-1. If emulator fails:
-   ```bash
-   juno dev stop
-   juno dev clear
-   juno dev start
-   ```
-
-2. If deployment fails:
-   - Check your internet connection
-   - Verify you're logged in
-   - Ensure build is successful
-   - Check satellite ID is correct
-
-### Environment Variables
-- Development: `.env`
-- Production: Set in Juno console
-- Local emulator: Uses development variables
-
-### Important Paths
-```
-├── src/
-│   ├── routes/         # SvelteKit routes
-│   ├── lib/           # Shared components & utilities
-│   └── backend/       # Rust endpoints
-├── static/           # Static assets
-├── build/           # Production build
-└── juno.config.ts   # Juno configuration
+### VS Code Debug Configuration
+```json
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Tests",
+            "program": "${workspaceFolder}/node_modules/jest/bin/jest",
+            "args": ["--runInBand"],
+            "console": "integratedTerminal",
+            "windows": {
+                "program": "${workspaceFolder}/node_modules/jest/bin/jest.cmd"
+            }
+        }
+    ]
+}
 ```
 
-## Useful Links
-- [Juno Console](https://console.juno.build)
-- [Internet Identity](https://identity.ic0.app)
-- [IC Dashboard](https://dashboard.internetcomputer.org)
-
-## Common Operations
-
-### Working with Collections
+### Logging
 ```typescript
-// Initialize
-const collection = new Collection({ collection: "name" });
+import { logger } from './utils/logger';
 
-// Create
-await collection.insert({ data });
+// Debug logging
+logger.debug('Debug message');
 
-// Read
-await collection.get({ key });
+// Info logging
+logger.info('Info message');
 
-// List
-await collection.list({
-  filter: {}, 
-  order: { desc: true }
-});
+// Warning logging
+logger.warn('Warning message');
 
-// Delete
-await collection.remove({ key });
+// Error logging
+logger.error('Error message', error);
 ```
 
-### Authentication Flow
+## Performance Optimization
+
+### Code Splitting
 ```typescript
-// Subscribe to auth state
-authSubscribe((user) => {
-  if (user === null) {
-    // Signed out
-  } else {
-    // Signed in
-  }
-});
+// Lazy load components
+const ReputationGraph = React.lazy(() => import('./ReputationGraph'));
 
-// Sign in/out
-await signIn();
-await signOut();
+// Lazy load routes
+const UserProfile = React.lazy(() => import('./pages/UserProfile'));
 ```
 
-### Build & Deploy Cycle
-1. Stop development server
-2. Build project: `npm run build`
-3. Test build: `npm run preview`
-4. Deploy: `juno deploy`
-5. Verify in console
+### Memoization
+```typescript
+// Memoize expensive calculations
+const memoizedCalculation = useMemo(() => {
+    return calculateReputation(votes);
+}, [votes]);
+
+// Memoize callbacks
+const handleVote = useCallback((isPositive: boolean) => {
+    submitVote(isPositive);
+}, [submitVote]);
+```
+
+### Caching
+```typescript
+// Cache API responses
+const { data } = useQuery(['user', userId], () => 
+    fetchUser(userId),
+    {
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        cacheTime: 30 * 60 * 1000 // 30 minutes
+    }
+);
+```
+
+## Security
+
+### Input Validation
+```typescript
+// Validate user input
+function validateUserInput(input: unknown): UserInput {
+    if (!isUserInput(input)) {
+        throw new ValidationError('Invalid user input');
+    }
+    return input;
+}
+
+// Sanitize HTML
+function sanitizeHtml(html: string): string {
+    return DOMPurify.sanitize(html);
+}
+```
+
+### Authentication
+```typescript
+// Check authentication
+function requireAuth() {
+    const { isAuthenticated } = useAuth();
+    if (!isAuthenticated) {
+        throw new AuthError('Authentication required');
+    }
+}
+
+// Handle authentication errors
+try {
+    requireAuth();
+} catch (error) {
+    if (error instanceof AuthError) {
+        // Handle auth error
+    }
+}
+```
+
+## Monitoring
+
+### Error Tracking
+```typescript
+// Track errors
+function trackError(error: Error, context?: Record<string, unknown>) {
+    Sentry.captureException(error, {
+        extra: context
+    });
+}
+
+// Track user actions
+function trackAction(action: string, data?: Record<string, unknown>) {
+    analytics.track(action, data);
+}
+```
+
+### Performance Monitoring
+```typescript
+// Track page load
+function trackPageLoad() {
+    performance.mark('pageLoadStart');
+    window.addEventListener('load', () => {
+        performance.mark('pageLoadEnd');
+        performance.measure('pageLoad', 'pageLoadStart', 'pageLoadEnd');
+    });
+}
+
+// Track component render
+function trackComponentRender(componentName: string) {
+    performance.mark(`${componentName}RenderStart`);
+    return () => {
+        performance.mark(`${componentName}RenderEnd`);
+        performance.measure(
+            `${componentName}Render`,
+            `${componentName}RenderStart`,
+            `${componentName}RenderEnd`
+        );
+    };
+}
+```
+
+## Documentation
+
+### Code Documentation
+```typescript
+/**
+ * Calculates user reputation based on votes
+ * @param votes - Array of votes for the user
+ * @param tag - Tag to calculate reputation for
+ * @returns Calculated reputation score
+ * @throws {ValidationError} If votes are invalid
+ */
+function calculateReputation(votes: Vote[], tag: string): number {
+    // Implementation
+}
+```
+
+### API Documentation
+```typescript
+/**
+ * @api {post} /api/votes Create a new vote
+ * @apiName CreateVote
+ * @apiGroup Votes
+ * @apiVersion 1.0.0
+ *
+ * @apiParam {String} author_key User who created the vote
+ * @apiParam {String} target_key User being voted on
+ * @apiParam {String} tag_key Tag for the vote
+ * @apiParam {Boolean} is_positive Whether the vote is positive
+ *
+ * @apiSuccess {String} key Vote identifier
+ * @apiSuccess {Number} created_at Creation timestamp
+ *
+ * @apiError {Object} 400 Invalid input
+ * @apiError {Object} 401 Unauthorized
+ */
+```
+
+## Troubleshooting
+
+### Common Issues
+1. **Build Failures**
+   - Check Node.js version
+   - Clear npm cache
+   - Delete node_modules and reinstall
+
+2. **Test Failures**
+   - Check test environment
+   - Verify mock data
+   - Check for race conditions
+
+3. **Runtime Errors**
+   - Check browser console
+   - Verify environment variables
+   - Check network requests
+
+### Debug Tools
+- Chrome DevTools
+- React DevTools
+- Redux DevTools
+- Network tab
+- Performance tab
 
 ## Maintenance
 
-### Regular Tasks
-- Take snapshots before major changes
-- Clear emulator data periodically
-- Update dependencies regularly
-- Check for Juno updates
+### Dependency Updates
+```bash
+# Check for updates
+npm outdated
 
-### Before Production
-- Test all authentication flows
-- Verify collection permissions
-- Check build size
-- Test on multiple devices 
+# Update dependencies
+npm update
+
+# Update to latest versions
+npm update --latest
+```
+
+### Code Cleanup
+```bash
+# Remove unused imports
+npm run lint:fix
+
+# Format code
+npm run format
+
+# Check for dead code
+npm run deadcode
+```
+
+### Performance Checks
+```bash
+# Run lighthouse
+npm run lighthouse
+
+# Check bundle size
+npm run analyze
+
+# Run performance tests
+npm run test:perf
+``` 
