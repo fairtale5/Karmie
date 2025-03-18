@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { initSatelliteConnection } from '$lib/junoInit';
+	import { initJuno } from '$lib/juno';
 
 	onMount(async () => {
-		await initSatelliteConnection();
+		await initJuno();
 	});
 </script>
 
