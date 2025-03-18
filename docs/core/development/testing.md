@@ -378,4 +378,67 @@ npm test -- --coverage
 - Screen reader compatibility
 - Keyboard navigation
 - Color contrast
-- ARIA attributes 
+- ARIA attributes
+
+### Time Period Tests
+
+1. **Structure Validation Tests**
+   ```typescript
+   describe('Time Period Structure', () => {
+       test('should have exactly 8 periods', () => {
+           expect(tag.time_periods.length).toBe(8);
+       });
+
+       test('first four periods should sum to 12 months', () => {
+           const firstFourMonths = tag.time_periods
+               .slice(0, 4)
+               .reduce((sum, period) => sum + period.months, 0);
+           expect(firstFourMonths).toBe(12);
+       });
+
+       test('periods should be in chronological order', () => {
+           const months = tag.time_periods.map(p => p.months);
+           expect(months).toEqual([1, 2, 3, 6, 12, 12, 12, 999]);
+       });
+   });
+   ```
+
+2. **Multiplier Validation Tests**
+   ```typescript
+   describe('Time Period Multipliers', () => {
+       test('multipliers should be within valid range', () => {
+           tag.time_periods.forEach(period => {
+               expect(period.multiplier).toBeGreaterThanOrEqual(0.25);
+               expect(period.multiplier).toBeLessThanOrEqual(1.5);
+           });
+       });
+
+       test('multipliers should use 0.05 step increments', () => {
+           tag.time_periods.forEach(period => {
+               expect(period.multiplier % 0.05).toBe(0);
+           });
+       });
+
+       test('multipliers should follow correct sequence', () => {
+           const multipliers = tag.time_periods.map(p => p.multiplier);
+           expect(multipliers).toEqual([1.5, 1.2, 1.1, 1.0, 0.95, 0.75, 0.55, 0.25]);
+       });
+   });
+   ```
+
+3. **Integration Tests**
+   ```typescript
+   describe('Time Period Integration', () => {
+       test('should calculate correct vote weights', () => {
+           const vote = createTestVote();
+           const weight = calculateVoteWeight(vote, tag.time_periods);
+           expect(weight).toBe(expectedWeight);
+       });
+
+       test('should handle votes across different periods', () => {
+           const votes = createTestVotesAcrossPeriods();
+           const totalWeight = calculateTotalWeight(votes, tag.time_periods);
+           expect(totalWeight).toBe(expectedTotalWeight);
+       });
+   });
+   ``` 

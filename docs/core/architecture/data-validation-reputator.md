@@ -174,6 +174,55 @@ initJuno({
    - Cannot modify historical data
    - Can only update current month
 
+### Time Period Validation Rules
+
+1. **Structure Validation**
+   ```typescript
+   interface TimePeriod {
+       months: number;    // Duration in months
+       multiplier: number; // Weight multiplier
+   }
+   ```
+
+2. **Months Validation**
+   - Must be a positive integer
+   - First period must be 1 month
+   - Second period must be 2 months
+   - Third period must be 3 months
+   - Fourth period must be 6 months
+   - Following periods must be 12 months
+   - Last period can be 999 (treated as infinity)
+   - Total of first four periods must equal 12 months
+
+3. **Multiplier Validation**
+   - Must be a number between 0.25 and 1.5
+   - Must use 0.05 step increments
+   - First period must be 1.5
+   - Second period must be 1.2
+   - Third period must be 1.1
+   - Fourth period must be 1.0
+   - Following periods must decrease gradually
+   - Last period must be 0.25
+
+4. **Period Count Validation**
+   - Must have exactly 8 periods
+   - Cannot add or remove periods
+   - Periods must be in chronological order
+
+Example Valid Time Periods:
+```typescript
+const validTimePeriods = [
+    { months: 1, multiplier: 1.5 },    // Period 1: First month
+    { months: 2, multiplier: 1.2 },    // Period 2: Months 2-3
+    { months: 3, multiplier: 1.1 },    // Period 3: Months 4-6
+    { months: 6, multiplier: 1.0 },    // Period 4: Months 7-12
+    { months: 12, multiplier: 0.95 },  // Period 5: Months 13-24
+    { months: 12, multiplier: 0.75 },  // Period 6: Months 25-36
+    { months: 12, multiplier: 0.55 },  // Period 7: Months 37-48
+    { months: 999, multiplier: 0.25 }  // Period 8: Months 49+ (treated as infinity)
+];
+```
+
 ## Error Handling
 
 ### Validation Errors

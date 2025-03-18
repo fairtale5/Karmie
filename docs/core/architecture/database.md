@@ -50,28 +50,38 @@ Collection name: `tags`
 #### Document Structure
 ```typescript
 interface TagDocument {
-    // Standard Juno fields
-    key: string;              // Generated with nanoid()
-    description: string;      // Format: "tag:{normalized_tag_name},author:{author_key}"
-    owner: Principal;         // Document owner's Principal ID
-    created_at: bigint;      // Timestamp in nanoseconds
-    updated_at: bigint;      // Timestamp in nanoseconds
-    version: bigint;         // Required for updates
+    key: string;      // Unique identifier
+    name: string;     // Display name
+    description: string; // Description of the tag
+    time_periods: Array<{
+        months: number;    // Duration in months (1-999)
+        multiplier: number; // Weight multiplier (0.25-1.5)
+    }>;
+    created_at: bigint;
+    updated_at: bigint;
+    owner: Principal;
+}
+```
 
-    // Tag-specific data
-    data: {
-        name: string;         // The tag (e.g., "#teamwork", "#coding")
-        description: string;  // What this tag represents
-        
-        // Optional: Custom decay rules for this tag
-        decay_rules?: {
-            time_brackets: Array<{
-                name: string;        // e.g., "last_24h", "current_week"
-                duration: number;    // Duration in milliseconds
-                weight: number;      // Weight percentage (0-1)
-            }>;
-        }
-    }
+Example Tag Document:
+```typescript
+{
+    key: "tag_123",
+    name: "Technical Skills",
+    description: "Technical expertise and knowledge",
+    time_periods: [
+        { months: 1, multiplier: 1.5 },    // Period 1: First month
+        { months: 2, multiplier: 1.2 },    // Period 2: Months 2-3
+        { months: 3, multiplier: 1.1 },    // Period 3: Months 4-6
+        { months: 6, multiplier: 1.0 },    // Period 4: Months 7-12
+        { months: 12, multiplier: 0.95 },  // Period 5: Months 13-24
+        { months: 12, multiplier: 0.75 },  // Period 6: Months 25-36
+        { months: 12, multiplier: 0.55 },  // Period 7: Months 37-48
+        { months: 999, multiplier: 0.25 }  // Period 8: Months 49+ (treated as infinity)
+    ],
+    created_at: 1234567890n,
+    updated_at: 1234567890n,
+    owner: Principal.fromText("...")
 }
 ```
 

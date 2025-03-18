@@ -13,14 +13,14 @@
 
 	const DEFAULT_VOTE_WEIGHT = 1;
 	const DEFAULT_TAG_MULTIPLIERS = [
-		{ months: 1, multiplier: 1.5 },		// First month: 1.5x weight
-		{ months: 2, multiplier: 1.2 },		// Months 2-3: 1.2x weight
-		{ months: 6, multiplier: 1.1 },		// Months 4-9: 1.1x weight
-		{ months: 12, multiplier: 1.0 },	// Months 10-21: 1.0x weight
-		{ months: 12, multiplier: 0.75 },	// Months 22-33: 0.75x weight
-		{ months: 12, multiplier: 0.5 },		// Months 34-45: 0.5x weight
-		{ months: 12, multiplier: 0.25 },	// Months 46-57: 0.25x weight
-		{ months: 999, multiplier: 0.25 }	// Months 58+: 0.25x weight (treated as infinity)
+		{ months: 1, multiplier: 1.5 },    // Period 1: First month
+		{ months: 2, multiplier: 1.2 },    // Period 2: Months 2-3
+		{ months: 3, multiplier: 1.1 },    // Period 3: Months 4-6
+		{ months: 6, multiplier: 1.0 },    // Period 4: Months 7-12
+		{ months: 12, multiplier: 0.95 },  // Period 5: Months 13-24
+		{ months: 12, multiplier: 0.75 },  // Period 6: Months 25-36
+		{ months: 12, multiplier: 0.55 },  // Period 7: Months 37-48
+		{ months: 999, multiplier: 0.25 }  // Period 8: Months 49+ (treated as infinity)
 	];
 
 	// Form data for creating/updating users

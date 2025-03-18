@@ -48,24 +48,34 @@ This document outlines the design and implementation of a user reputation system
 
 ### Conservative Multiplier Approach
 
-The system uses a conservative multiplier approach to weight votes based on their age:
+The system uses a time-based decay system to weight votes based on their age. This approach ensures that:
+- Recent votes have more influence
+- Votes gradually lose weight over time
+- Long-term sustainability is maintained
+- Historical context is preserved
 
+The time periods are structured as follows:
 ```typescript
-const TIME_MULTIPLIERS = {
-    current_month: 2.0,    // Last 30 days
-    last_3_months: 1.5,    // 31-90 days
-    next_6_months: 1.3,    // 91-180 days
-    next_18_months: 1.1,   // 181-540 days
-    older: 1.0            // 540+ days
-};
+const TIME_PERIODS = [
+    { months: 1, multiplier: 1.5 },    // Period 1: First month
+    { months: 2, multiplier: 1.2 },    // Period 2: Months 2-3
+    { months: 3, multiplier: 1.1 },    // Period 3: Months 4-6
+    { months: 6, multiplier: 1.0 },    // Period 4: Months 7-12
+    { months: 12, multiplier: 0.95 },  // Period 5: Months 13-24
+    { months: 12, multiplier: 0.75 },  // Period 6: Months 25-36
+    { months: 12, multiplier: 0.55 },  // Period 7: Months 37-48
+    { months: 999, multiplier: 0.25 }  // Period 8: Months 49+ (treated as infinity)
+];
 ```
 
-This approach ensures:
-1. Recent votes have more influence
-2. Total voting power equals voter's reputation
-3. System remains stable and predictable
-4. Meaningful differences between time periods
-5. Forgiving for new users while valuing experience
+Key aspects of this approach:
+1. First year is split into 4 periods (1+2+3+6 months = 12 months)
+2. Following years are split into 12-month periods
+3. Multipliers decrease gradually from 1.5x to 0.25x
+4. Last period uses 999 months to represent infinity
+5. All multipliers use 0.05 step increments for precision
+
+For detailed implementation and calculations, see [Test Calculations](/docs/core/development/test-calculations.md).
 
 ## Use Cases and Applications
 

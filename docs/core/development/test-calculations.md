@@ -63,41 +63,56 @@ async function getUserReputation(userKey: string, tagKey: string): Promise<numbe
 #### 2. Conservative Multiplier System
 Time-based multipliers for vote weighting:
 ```typescript
-const TIME_MULTIPLIERS = {
-    current_month: 2.0,    // Last 30 days
-    last_3_months: 1.5,    // 31-90 days
-    next_6_months: 1.3,    // 91-180 days
-    next_18_months: 1.1,   // 181-540 days
-    older: 1.0            // 540+ days
-};
+const TIME_PERIODS = [
+    { months: 1, multiplier: 1.5 },    // Period 1: First month
+    { months: 2, multiplier: 1.2 },    // Period 2: Months 2-3
+    { months: 3, multiplier: 1.1 },    // Period 3: Months 4-6
+    { months: 6, multiplier: 1.0 },    // Period 4: Months 7-12
+    { months: 12, multiplier: 0.95 },  // Period 5: Months 13-24
+    { months: 12, multiplier: 0.75 },  // Period 6: Months 25-36
+    { months: 12, multiplier: 0.55 },  // Period 7: Months 37-48
+    { months: 999, multiplier: 0.25 }  // Period 8: Months 49+ (treated as infinity)
+];
 ```
 
 Example Calculation (10 votes per period):
 ```
-Current Month (2x):
-- 10 votes * 2 = 20 weighted votes
-
-Last 3 Months (1.5x):
+Period 1 (1 month, 1.5x):
 - 10 votes * 1.5 = 15 weighted votes
 
-Next 6 Months (1.3x):
-- 10 votes * 1.3 = 13 weighted votes
+Period 2 (2 months, 1.2x):
+- 10 votes * 1.2 = 12 weighted votes
 
-Next 18 Months (1.1x):
+Period 3 (3 months, 1.1x):
 - 10 votes * 1.1 = 11 weighted votes
 
-27+ Months (1x):
-- 10 votes * 1 = 10 weighted votes
+Period 4 (6 months, 1.0x):
+- 10 votes * 1.0 = 10 weighted votes
 
-Total Weighted Votes = 69
-Power per Vote = 1000 / 69 ≈ 14.49
+Period 5 (12 months, 0.95x):
+- 10 votes * 0.95 = 9.5 weighted votes
+
+Period 6 (12 months, 0.75x):
+- 10 votes * 0.75 = 7.5 weighted votes
+
+Period 7 (12 months, 0.55x):
+- 10 votes * 0.55 = 5.5 weighted votes
+
+Period 8 (999 months, 0.25x):
+- 10 votes * 0.25 = 2.5 weighted votes
+
+Total Weighted Votes = 73.5
+Power per Vote = 1000 / 73.5 ≈ 13.61
 
 Final Distribution:
-Current Month: 20 * 14.49 = 289.8 points (29%)
-Last 3 Months: 15 * 14.49 = 217.4 points (22%)
-Next 6 Months: 13 * 14.49 = 188.4 points (19%)
-Next 18 Months: 11 * 14.49 = 159.4 points (16%)
-27+ Months: 10 * 14.49 = 144.9 points (14%)
+Period 1: 15 * 13.61 = 204.15 points (20.4%)
+Period 2: 12 * 13.61 = 163.32 points (16.3%)
+Period 3: 11 * 13.61 = 149.71 points (15.0%)
+Period 4: 10 * 13.61 = 136.10 points (13.6%)
+Period 5: 9.5 * 13.61 = 129.30 points (12.9%)
+Period 6: 7.5 * 13.61 = 102.08 points (10.2%)
+Period 7: 5.5 * 13.61 = 74.86 points (7.5%)
+Period 8: 2.5 * 13.61 = 34.03 points (3.4%)
 ```
 
 Benefits of this approach:
