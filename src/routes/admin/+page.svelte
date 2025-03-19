@@ -3,6 +3,7 @@
 	import { nanoid } from 'nanoid';
 	import { listDocs, setDoc, deleteDoc, type Doc, authSubscribe, type User, getDoc, signOut } from '@junobuild/core';
 	import { goto } from '$app/navigation';
+	import { REPUTATION_SETTINGS } from '$lib/settings';
 
 	// Configuration Constants
 	const COLLECTIONS = {
@@ -41,7 +42,10 @@
 		key: '',  // Optional - if provided, will update existing tag
 		name: '',
 		description: '',
-		time_periods: [...DEFAULT_TAG_MULTIPLIERS]
+		time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
+		reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
+		vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
+		min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
 	};
 
 	// List of all tags
@@ -49,6 +53,9 @@
 		name: string;
 		description: string;
 		time_periods: Array<{ months: number; multiplier: number }>;
+		reputation_threshold: number;
+		vote_reward: number;
+		min_users_for_threshold: number;
 	}>[] = [];
 
 	// Form data for creating votes
@@ -125,7 +132,14 @@
 	// Load tags
 	async function loadTags() {
 		try {
-			const tagsList = await listDocs<{ name: string; description: string; time_periods: { months: number; multiplier: number; }[] }>({
+			const tagsList = await listDocs<{ 
+				name: string; 
+				description: string; 
+				time_periods: { months: number; multiplier: number; }[];
+				reputation_threshold: number;
+				vote_reward: number;
+				min_users_for_threshold: number;
+			}>({
 				collection: COLLECTIONS.TAGS
 			});
 			tags = tagsList.items;
@@ -177,7 +191,10 @@
 					data: {
 						name: newTag.name,
 						description: newTag.description,
-						time_periods: newTag.time_periods
+						time_periods: newTag.time_periods,
+						reputation_threshold: newTag.reputation_threshold,
+						vote_reward: newTag.vote_reward,
+						min_users_for_threshold: newTag.min_users_for_threshold
 					},
 					...(version && { version })
 				}
@@ -188,7 +205,10 @@
 				key: '',
 				name: '',
 				description: '',
-				time_periods: [...DEFAULT_TAG_MULTIPLIERS]
+				time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
+				reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
+				vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
+				min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
 			};
 			success = newTag.key ? 'Tag updated successfully!' : 'Tag created successfully!';
 
@@ -246,12 +266,22 @@
 	 * Loads tag data into the form for editing
 	 * @param tagDoc - The tag document to edit
 	 */
-	function editTag(tagDoc: Doc<{ name: string; description: string; time_periods: Array<{ months: number; multiplier: number }> }>) {
+	function editTag(tagDoc: Doc<{ 
+		name: string; 
+		description: string; 
+		time_periods: Array<{ months: number; multiplier: number }>;
+		reputation_threshold: number;
+		vote_reward: number;
+		min_users_for_threshold: number;
+	}>) {
 		newTag = {
 			key: tagDoc.key,
 			name: tagDoc.data.name,
 			description: tagDoc.data.description,
-			time_periods: [...tagDoc.data.time_periods]
+			time_periods: [...tagDoc.data.time_periods],
+			reputation_threshold: tagDoc.data.reputation_threshold,
+			vote_reward: tagDoc.data.vote_reward,
+			min_users_for_threshold: tagDoc.data.min_users_for_threshold
 		};
 		// Scroll to form
 		document.getElementById('tagForm')?.scrollIntoView({ behavior: 'smooth' });
@@ -822,6 +852,41 @@
 					</div>
 				</div>
 
+				<div class="mb-4">
+					<label for="reputation_threshold" class="block text-sm font-medium text-gray-700">Reputation Threshold</label>
+					<input
+						type="number"
+						id="reputation_threshold"
+						bind:value={newTag.reputation_threshold}
+						step="1"
+						min="0"
+						class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+					/>
+				</div>
+				<div class="mb-4">
+					<label for="vote_reward" class="block text-sm font-medium text-gray-700">Vote Reward</label>
+					<input
+						type="number"
+						id="vote_reward"
+						bind:value={newTag.vote_reward}
+						step="0.1"
+						min="0"
+						class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+					/>
+				</div>
+				<div class="mb-4">
+					<label for="min_users_for_threshold" class="block text-sm font-medium text-gray-700">Minimum Users for Threshold</label>
+					<input
+						type="number"
+						id="min_users_for_threshold"
+						bind:value={newTag.min_users_for_threshold}
+						step="1"
+						min="1"
+						class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+					/>
+					<p class="mt-1 text-sm text-gray-500">Number of users that need to reach threshold before vote rewards are restricted</p>
+				</div>
+
 				<div class="flex gap-4">
 					<button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">
 						{newTag.key ? 'Update Tag' : 'Create Tag'}
@@ -835,7 +900,10 @@
 									key: '',
 									name: '',
 									description: '',
-									time_periods: [...DEFAULT_TAG_MULTIPLIERS]
+									time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
+									reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
+									vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
+									min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
 								};
 							}}
 						>
@@ -863,6 +931,9 @@
 						<th class="border p-2">Name</th>
 						<th class="border p-2">Description</th>
 						<th class="border p-2">Time Periods</th>
+						<th class="border p-2">Threshold</th>
+						<th class="border p-2">Reward</th>
+						<th class="border p-2">Min Users</th>
 						<th class="border p-2">Actions</th>
 					</tr>
 				</thead>
@@ -879,6 +950,9 @@
 									{/each}
 								</ul>
 							</td>
+							<td class="border p-2">{tag.data.reputation_threshold}</td>
+							<td class="border p-2">{tag.data.vote_reward}</td>
+							<td class="border p-2">{tag.data.min_users_for_threshold}</td>
 							<td class="border p-2">
 								<div class="flex gap-2 justify-center">
 									<button

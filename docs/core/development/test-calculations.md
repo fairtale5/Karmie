@@ -247,3 +247,333 @@ interface Vote {
    - Reputation graphs
    - Weight visualizations
    - History tracking 
+
+### Reputation Calculation Implementation
+
+#### 1. Vote Processing
+When a vote is cast, we:
+1. Check if the author has reached the threshold
+2. If yes, update the target's reputation immediately
+3. If no, mark the vote as inactive
+
+```rust
+// In lib.rs (Satellite backend)
+
+#[on_set_doc(collections = ["votes"])]
+async fn on_set_vote(context: OnSetDocContext) -> Result<(), String> {
+    let vote = context.doc.data;
+    
+    // Get author's current reputation
+    let author_reputation = get_reputation(&vote.author_key, &vote.tag_key).await?;
+    
+    // Check if author has reached threshold
+    let is_active = author_reputation >= get_tag_threshold(&vote.tag_key).await?;
+    
+    // Update vote with active status
+    update_vote_status(&context.doc.key, is_active).await?;
+    
+    // If vote is active, update target's reputation
+    if is_active {
+        update_target_reputation(&vote.target_key, &vote.tag_key).await?;
+    }
+    
+    Ok(())
+}
+
+async fn update_target_reputation(target_key: &str, tag_key: &str) -> Result<(), String> {
+    // Get all active votes for this user in this tag
+    let votes = get_active_votes_for_user(target_key, tag_key).await?;
+    
+    // Calculate base reputation from received votes
+    let base_reputation = calculate_base_reputation(&votes);
+    
+    // If base reputation exceeds threshold, add voting rewards
+    let final_reputation = if base_reputation >= get_tag_threshold(tag_key).await? {
+        // Get votes cast by this user
+        let cast_votes = get_votes_cast_by_user(target_key, tag_key).await?;
+        
+        // Calculate voting rewards with time decay
+        let voting_rewards = calculate_voting_rewards(&cast_votes);
+        
+        base_reputation + voting_rewards
+    } else {
+        base_reputation
+    };
+    
+    // Update reputation document atomically
+    update_reputation_doc(target_key, tag_key, final_reputation).await?;
+    
+    Ok(())
+}
+
+fn calculate_base_reputation(votes: &[Vote]) -> f64 {
+    // Group votes by time period
+    let votes_by_period = group_votes_by_period(votes);
+    
+    // Calculate weighted votes for each period
+    let weighted_votes = calculate_weighted_votes(&votes_by_period);
+    
+    // Calculate total weighted votes
+    let total_weighted = weighted_votes.iter().sum::<f64>();
+    
+    // Calculate points per vote (1000 total points)
+    let points_per_vote = 1000.0 / total_weighted;
+    
+    // Calculate final reputation score
+    weighted_votes.iter()
+        .map(|weight| weight * points_per_vote)
+        .sum::<f64>()
+}
+
+fn calculate_voting_rewards(votes: &[Vote]) -> f64 {
+    // Group votes by time period
+    let votes_by_period = group_votes_by_period(votes);
+    
+    // Calculate weighted rewards (0.1 per vote with time decay)
+    votes_by_period.iter().map(|(period, votes)| {
+        let period_multiplier = get_period_multiplier(period);
+        votes.len() as f64 * 0.1 * period_multiplier
+    }).sum()
+}
+```
+
+#### 2. Challenges and Considerations
+
+1. **Performance Impact**
+   - Each vote triggers reputation recalculation
+   - Could be slow for users with many votes
+   - Example: A user with 1000 votes might take 2-3 seconds to recalculate
+   - Solution: Consider implementing background processing for large updates
+   - Alternative: Split calculation into smaller chunks
+
+2. **Data Consistency**
+   - All votes must be processed in correct order
+   - Need to handle failed updates
+   - Example: If a vote update fails, we need to retry or mark for manual review
+   - Solution: Use `set_many_docs` for atomic operations
+   - Example of atomic update:
+   ```rust
+   await set_many_docs({
+       docs: [
+           {
+               collection: "votes",
+               doc: { /* vote update */ }
+           },
+           {
+               collection: "reputations",
+               doc: { /* reputation update */ }
+           }
+       ]
+   });
+   ```
+
+3. **Memory Usage**
+   - Each reputation calculation loads all votes
+   - Could be problematic for users with many votes
+   - Example: A user with 10,000 votes might use 100MB of memory
+   - Solution: Process votes in batches
+   - Alternative: Implement progressive loading
+
+4. **Query Patterns**
+   - Need efficient access to votes by time period
+   - Must quickly find active vs inactive votes
+   - Example: Finding all active votes from last month
+   - Solution: Use compound indexes
+   - Alternative: Pre-calculate period totals
+
+5. **Edge Cases**
+   - Users with no votes
+   - Users with only inactive votes
+   - Users who just reached threshold
+   - Example: User with 9.9 reputation needs one more vote
+   - Solution: Implement proper validation and error handling
+
+6. **Future Optimization Opportunities**
+   - Background job processing for large updates
+   - Batch updates for multiple votes
+   - Progressive updates for UI responsiveness
+   - Partial recalculation for changed votes
+   - Example: Only recalculate votes from last month
+
+### Index Structure
+
+#### Vote Indexes
+```typescript
+// Collection: vote_indexes
+interface VoteIndex {
+    key: string;              // Format: "author:{author_key},target:{target_key},tag:{tag_key}"
+    data: {
+        author_key: string;   // Indexed for quick author lookups
+        author_name: string;  // Optional: for username searches
+        target_key: string;   // Indexed for quick target lookups
+        target_name: string;  // Optional: for username searches
+        tag_key: string;      // Indexed for quick tag lookups
+        is_active: boolean;   // Indexed for active vote filtering
+        created_at: bigint;   // Indexed for time-based queries
+    }
+}
+```
+
+#### Username Indexing Considerations
+
+1. **Performance Impact**
+   - Adding usernames increases index size by ~20-30%
+   - Query performance impact is minimal (O(log n) remains)
+   - Memory usage increases linearly with number of votes
+
+2. **Search Use Cases**
+   - Enables username-based vote searches
+   - Useful for user profile views
+   - Helps with debugging and auditing
+
+3. **Implementation Options**
+   a. Include in main index:
+      - Pros: Single query for all data
+      - Cons: Larger index size
+   
+   b. Separate username index:
+      - Pros: Smaller main index
+      - Cons: Requires additional queries
+
+4. **Recommendation**
+   - Include usernames in main index for:
+     - Simpler implementation
+     - Better query performance
+     - Easier debugging
+   - The memory overhead is acceptable given the benefits
+
+## Reputation Calculation Rules
+
+### 1. Vote Processing
+When a vote is cast:
+1. Check if the author's reputation meets the tag's threshold
+2. If threshold is met, process the vote normally
+3. If threshold is not met:
+   - Count how many users have reached the threshold in this tag
+   - If count >= min_users_for_threshold:
+     - Vote is processed but with 0 weight
+     - No reputation reward is given
+   - If count < min_users_for_threshold:
+     - Vote is processed normally
+     - Reputation reward is given (bootstrap phase)
+
+### 2. Reputation Calculation
+A user's reputation in a tag is calculated as:
+```typescript
+function calculateReputation(userKey: string, tagKey: string): number {
+    // Get all active votes for this user in this tag
+    const votes = await listDocs({
+        collection: "votes",
+        filter: {
+            matcher: {
+                description: `target:${userKey},tag:${tagKey}`
+            }
+        }
+    });
+
+    // Calculate base reputation from weighted votes
+    let baseReputation = 0;
+    for (const vote of votes.items) {
+        if (vote.data.is_active) {
+            baseReputation += vote.data.weight * (vote.data.is_positive ? 1 : -1);
+        }
+    }
+
+    // Get number of users above threshold
+    const usersAboveThreshold = await countUsersAboveThreshold(tagKey);
+
+    // If we're in bootstrap phase, add voting rewards
+    if (usersAboveThreshold < tag.min_users_for_threshold) {
+        const userVotes = await listDocs({
+            collection: "votes",
+            filter: {
+                matcher: {
+                    description: `author:${userKey},tag:${tagKey}`
+                }
+            }
+        });
+        baseReputation += userVotes.items.length * tag.vote_reward;
+    }
+
+    return baseReputation;
+}
+
+async function countUsersAboveThreshold(tagKey: string): Promise<number> {
+    const reputations = await listDocs({
+        collection: "reputations",
+        filter: {
+            matcher: {
+                description: `tag:${tagKey}`
+            }
+        }
+    });
+
+    return reputations.items.filter(
+        rep => rep.data.reputation_score >= tag.reputation_threshold
+    ).length;
+}
+```
+
+### 3. Vote Weight Calculation
+Vote weight is calculated based on:
+1. Author's reputation at time of voting
+2. Time period multipliers
+3. Tag's threshold status
+
+```typescript
+function calculateVoteWeight(vote: VoteDocument, tag: TagDocument): number {
+    // If author's reputation is below threshold and we're past bootstrap
+    if (vote.data.author_reputation < tag.reputation_threshold) {
+        const usersAboveThreshold = await countUsersAboveThreshold(tag.key);
+        if (usersAboveThreshold >= tag.min_users_for_threshold) {
+            return 0; // Vote has no weight
+        }
+    }
+
+    // Calculate time-based weight
+    const monthsOld = (Date.now() - vote.created_at) / (30 * 24 * 60 * 60 * 1000);
+    const period = tag.time_periods.find(p => monthsOld <= p.months);
+    const timeMultiplier = period ? period.multiplier : tag.time_periods[tag.time_periods.length - 1].multiplier;
+
+    return timeMultiplier;
+}
+```
+
+### 4. Example Scenarios
+
+#### Scenario 1: Bootstrap Phase
+- Tag has reputation_threshold = 10
+- min_users_for_threshold = 5
+- vote_reward = 0.1
+- Only 3 users have reached threshold
+- New user casts 20 votes
+- Result: User gets 2.0 reputation (20 * 0.1)
+
+#### Scenario 2: Post-Bootstrap Phase
+- Same tag settings
+- 6 users have reached threshold
+- New user casts 20 votes
+- Result: User gets 0 reputation (votes have 0 weight)
+
+#### Scenario 3: Threshold User
+- User has 10.5 reputation
+- Casts 20 votes
+- Result: Votes have normal weight, but no additional rewards
+
+### 5. Performance Considerations
+1. Cache user counts above threshold
+2. Update cache when reputations change
+3. Use indexes for efficient querying
+4. Batch process reputation updates
+
+### 6. Security Considerations
+1. Validate all inputs
+2. Prevent vote spam
+3. Rate limit reputation updates
+4. Monitor for abuse patterns
+
+### 7. Testing Strategy
+1. Unit tests for calculations
+2. Integration tests for thresholds
+3. Load tests for performance
+4. Security tests for abuse prevention 

@@ -57,6 +57,10 @@ interface TagDocument {
         months: number;    // Duration in months (1-999)
         multiplier: number; // Weight multiplier (0.25-1.5)
     }>;
+    reputation_threshold: number;  // Minimum reputation needed for voting power (whole number)
+    vote_reward: number;          // Reputation points given for casting a vote (e.g., 0.1)
+    min_users_for_threshold: number; // Minimum number of users that need to reach threshold
+                                    // before vote rewards are restricted
     created_at: bigint;
     updated_at: bigint;
     owner: Principal;
@@ -79,6 +83,9 @@ Example Tag Document:
         { months: 12, multiplier: 0.55 },  // Period 7: Months 37-48
         { months: 999, multiplier: 0.25 }  // Period 8: Months 49+ (treated as infinity)
     ],
+    reputation_threshold: 10,     // Users need 10 reputation to get voting power
+    vote_reward: 0.1,            // Users get 0.1 reputation for each vote they cast
+    min_users_for_threshold: 5,  // Need 5 users to reach threshold before restricting rewards
     created_at: 1234567890n,
     updated_at: 1234567890n,
     owner: Principal.fromText("...")
