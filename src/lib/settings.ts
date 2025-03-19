@@ -43,7 +43,7 @@ export const REPUTATION_SETTINGS = {
         { months: 6, multiplier: 1.0 },    // Period 4: Months 7-12
         { months: 12, multiplier: 0.95 },  // Period 5: Months 13-24
         { months: 12, multiplier: 0.75 },  // Period 6: Months 25-36
-        { months: 12, multiplier: 0.55 },  // Period 7: Months 37-48
+        { months: 12, multiplier: 0.50 },  // Period 7: Months 37-48
         { months: 999, multiplier: 0.25 }  // Period 8: Months 49+ (treated as infinity)
     ] as TimePeriod[],
 
@@ -51,7 +51,7 @@ export const REPUTATION_SETTINGS = {
     VOTE: {
         DEFAULT_WEIGHT: 1,              // Base weight for all votes
         MIN_WEIGHT: 0,                  // Minimum possible vote weight
-        MAX_WEIGHT: 2,                  // Maximum possible vote weight
+        MAX_WEIGHT: 10,                  // Maximum possible vote weight
     } as VoteSettings,
 
     // UI settings
