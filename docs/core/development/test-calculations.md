@@ -19,6 +19,81 @@
 
 ## Phase 2: Reputation System 🚧
 
+### Core Reputation Rules
+
+#### 1. Reputation Threshold System
+The reputation system uses a threshold-based approach to determine who can influence the system:
+
+1. **Reputation Threshold**
+   - Each tag has a minimum reputation requirement
+   - Users below this threshold are considered "untrusted"
+   - Users above this threshold are considered "trusted" and "active"
+   - Only trusted users can give meaningful votes to others
+
+2. **Minimum Users Threshold**
+   - Each tag requires a minimum number of trusted users
+   - Before this threshold is reached:
+     - All users can give votes
+     - All users receive voting rewards
+     - System is in "bootstrap phase"
+   - After threshold is reached:
+     - Only trusted users can give meaningful votes
+     - Only trusted users receive voting rewards
+     - System is in "restricted phase"
+
+3. **Voting Rewards**
+   - Users receive reputation points for voting
+   - Reward amount is configured per tag
+   - Eligibility rules:
+     - In bootstrap phase: Everyone gets rewards
+     - In restricted phase: Only trusted users get rewards
+   - Example: If reward is 0.1 points per vote:
+     - Trusted user casting 20 votes = 2.0 points
+     - Untrusted user casting 20 votes = 0 points (in restricted phase)
+
+#### 2. Example Scenarios
+
+**Bootstrap Phase:**
+```
+Tag Configuration:
+- Reputation Threshold: 10 points
+- Minimum Users: 100
+- Vote Reward: 0.1 points
+- Current Trusted Users: 50
+
+Scenario:
+1. New user joins
+2. Casts 20 votes
+3. Result: Gets 2.0 points (20 * 0.1)
+   - Because we're in bootstrap phase (< 100 trusted users)
+   - Everyone gets voting rewards
+```
+
+**Restricted Phase:**
+```
+Same Configuration but:
+- Current Trusted Users: 150
+
+Scenario:
+1. New user joins
+2. Casts 20 votes
+3. Result: Gets 0 points
+   - Because we're in restricted phase (≥ 100 trusted users)
+   - Only trusted users get voting rewards
+```
+
+**Trusted User:**
+```
+Scenario:
+1. User has 15 points (above 10-point threshold)
+2. Casts 20 votes
+3. Result: Gets 2.0 points
+   - Because they're above threshold
+   - They get voting rewards in any phase
+```
+
+---
+
 ### Reputation Calculation Approach
 
 #### 1. On-Demand Calculation
@@ -35,44 +110,7 @@ Key Features:
 - Efficient querying by tag
 
 Example Implementation:
-```typescript
-async function getUserReputation(userKey: string, tagKey: string): Promise<number> {
-    // 1. Check if we need to recalculate
-    const reputation = await getReputationDoc(userKey, tagKey);
-    const currentMonth = getCurrentYearMonth();
-    
-    if (!reputation || reputation.calculation_month !== currentMonth) {
-        // 2. Get only votes for this specific tag
-        const votes = await listDocs({
-            collection: "votes",
-            filter: {
-                matcher: {
-                    description: `target:${userKey},tag:${tagKey}`
-                }
-            }
-        });
-        
-        // 3. Calculate reputation for this tag only
-        return await recalculateReputation(userKey, tagKey, votes);
-    }
-    
-    return reputation.reputation_score;
-}
 ```
-
-#### 2. Conservative Multiplier System
-Time-based multipliers for vote weighting:
-```typescript
-const TIME_PERIODS = [
-    { months: 1, multiplier: 1.5 },    // Period 1: First month
-    { months: 2, multiplier: 1.2 },    // Period 2: Months 2-3
-    { months: 3, multiplier: 1.1 },    // Period 3: Months 4-6
-    { months: 6, multiplier: 1.0 },    // Period 4: Months 7-12
-    { months: 12, multiplier: 0.95 },  // Period 5: Months 13-24
-    { months: 12, multiplier: 0.75 },  // Period 6: Months 25-36
-    { months: 12, multiplier: 0.55 },  // Period 7: Months 37-48
-    { months: 999, multiplier: 0.25 }  // Period 8: Months 49+ (treated as infinity)
-];
 ```
 
 Example Calculation (10 votes per period):
@@ -102,18 +140,65 @@ Period 8 (999 months, 0.25x):
 - 10 votes * 0.25 = 2.5 weighted votes
 
 Total Weighted Votes = 73.5
-Power per Vote = 1000 / 73.5 ≈ 13.61
+We use that to calculate the individual vote weight in percentage:
+individualVoteWeightForThisUserOnly = 100% / 73.5 ≈ %1.361
 
-Final Distribution:
-Period 1: 15 * 13.61 = 204.15 points (20.4%)
-Period 2: 12 * 13.61 = 163.32 points (16.3%)
-Period 3: 11 * 13.61 = 149.71 points (15.0%)
-Period 4: 10 * 13.61 = 136.10 points (13.6%)
-Period 5: 9.5 * 13.61 = 129.30 points (12.9%)
-Period 6: 7.5 * 13.61 = 102.08 points (10.2%)
-Period 7: 5.5 * 13.61 = 74.86 points (7.5%)
-Period 8: 2.5 * 13.61 = 34.03 points (3.4%)
-```
+
+This means each vote has a participation of %1.361 of the user's total voting power.
+
+
+So to calculate the effective reputation of a vote, we can now take:
+the vote's multiplier from its date
+the vote's weight from the user's `reputation` document for this `tag`.
+and the vote author's total effective reputation also from the `reputation` document for this `tag`
+
+So in this example, a vote from the current month (multiplier 1.5x) would be calculated like this:
+Each vote worth %1.361 * 1.5 = %2,0415
+His ffective reputation for example 1000
+so 1000 * %2.0415 = 20,415 effective reputation for the vote
+
+So this specific user's votes would look like this if he did 10 votes in each period:
+
+period   | votes | multi | weight | reput = result
+Period 1:   10   * 1.50  * %1.361 * 1000  = 204,15
+Period 2:   10   * 1.20  * %1.361 * 1000  = 163.32
+Period 3:   10   * 1.10  * %1.361 * 1000  = 149.71
+Period 4:   10   * 1.00  * %1.361 * 1000  = 136.1
+Period 5:   10   * 0.95  * %1.361 * 1000  = 129.295
+Period 6:   10   * 0.75  * %1.361 * 1000  = 102.075
+Period 7:   10   * 0.50  * %1.361 * 1000  = 68.05
+Period 8:   10   * 0.25  * %1.361 * 1000  = 34.025
+
+HOWEVER, when we calculate a user's reputation, the path we take is not this one.
+1. after each time a user VOTES on another user, we only calculate his individual vote weight using the method described above (to calculate the weight %1.361 in the example above).
+2. then we store that weight in the user's `reputation` collection for that `tag`
+ -> steps 1 and 2 are NOT used to calculate the user's own reputation, this is only used by other users when they want to calculate their reputation
+3. then we call the calculate_user_reputation function to calculate the reputation of the user who is voting.
+4. then we call the calculate_user_reputation functiona gain, this time to calculate the reputation of the user he voted on, the target.
+
+The calculate_user_reputation function works like this:
+parameters are a target user principal, and a target tag.
+    1. we query all votes where the user is the target
+    2. Generates a new list based on that, an index of unique authors+their reputation+and the weight of their votes. This way we dont have to query the same author many times if he votes many times.
+        2.1.  add a field for the reputation of the author
+        2.2.  add a field for the author's weight
+    3. Uses those two lists (or maps) together, to iterate through the first list, and getting author info from the index. Iterate through the first list, and for each row, get the author's reputation and weight and calculate:
+        3.1.  Each row's +/-1 * multiplierBasedOnDateAndTagRules * authorWeight * authorReputation
+        3.2 the sum of all rows is the total_basis_reputation
+    4. Now we check if the user is trusted. we check if the total_basis_reputation is equal or over the minimum reputation threshold of that tag. if the user is above this, he is considered trusted.
+    5 we calculate total_voting_rewards_reputation by conunting the total votes the user has CREATED targeting others, and multiplying that by the `tag`'s voting reward. we store that in the `reputation` as well
+    6 now we check if either of these conditions are true: if the user is trusted OR if the community has less than the minimum threshold of trusted users
+        6.1 if either is true, then last_known_effective_reputation = total_basis_reputation + total_voting_rewards_reputation
+        6.1 but if neither is true: if the user isn't trusted AND the community is already over the threshhold, then last_known_effective_reputation = total_basis_reputation
+    7 we store all values in the db under `reputations` collection
+        total_basis_reputation
+        total_voting_rewards_reputation
+        last_known_effective_reputation
+        last_calculation
+        vote_weight
+        has_voting_power
+
+---
 
 Benefits of this approach:
 - Balanced distribution of voting power
@@ -442,101 +527,169 @@ interface VoteIndex {
      - Easier debugging
    - The memory overhead is acceptable given the benefits
 
-## Reputation Calculation Rules
+## Reputation Calculation Process
 
-### 1. Vote Processing
-When a vote is cast:
-1. Check if the author's reputation meets the tag's threshold
-2. If threshold is met, process the vote normally
-3. If threshold is not met:
-   - Count how many users have reached the threshold in this tag
-   - If count >= min_users_for_threshold:
-     - Vote is processed but with 0 weight
-     - No reputation reward is given
-   - If count < min_users_for_threshold:
-     - Vote is processed normally
-     - Reputation reward is given (bootstrap phase)
+### Detailed Explanation
+
+When calculating a user's reputation in a tag, we need to focus on votes directed at the user. The calculation process is as follows:
+
+1. **Vote Collection**
+   - Query all votes where this user is the target in this tag
+   - We use the description field to filter votes efficiently
+   - Format: "author:{author_key},target:{target_key},tag:{tag_key}"
+
+2. **Author Index Creation**
+   - Create an index of unique authors to avoid duplicate queries
+   - We only process authors from our vote list
+   - For each author in our votes:
+     - Get their current effective reputation
+     - Get their vote weight in this tag
+     - Get their trust status (if they are trusted or not)
+     - Store all this information for use in basis reputation calculation
+
+3. **Basis Reputation Calculation**
+   - Calculate total basis reputation from all received votes
+   - For each vote, calculate its contribution by multiplying:
+     - Base value (+1 for positive, -1 for negative)
+     - Author's effective reputation
+     - Author's vote weight
+     - Time-based multiplier from tag rules
+   - Then sum all vote contributions to get total_basis_reputation
+
+4. **Trust Status Check**
+   - Compare total_basis_reputation against tag's minimum threshold
+   - User is considered "trusted" if his total_basis_reputation is above threshold
+   - If the user is trusted/untrusted, we will need to store the fact that he is trusted in the user's reputation document for this tag
+
+5. **Voting Rewards Calculation**
+   - Retrieve all votes where author is the user being calculated and uses the tag key
+   - Get voting reward value from tag's configuration (tag.vote_reward)
+   - For each vote made by user:
+     - Calculate reward = tag.vote_reward * time multiplier
+   - Sum all rewards to get total_voting_rewards_reputation
+
+6. **Final Reputation Calculation**
+   - If user is trusted OR community is in bootstrap phase:
+     - effective_reputation = total_basis_reputation + total_voting_rewards_reputation
+   - Otherwise:
+     - effective_reputation = total_basis_reputation
+
+7. **Trust Status Check and Storage**
+   - Compare total_basis_reputation against tag's minimum_reputation_threshold
+   - Store trust status in reputation document:
+     - If total_basis_reputation >= minimum_reputation_threshold:
+       - User is considered "trusted"
+       - Their votes will be active
+     - If total_basis_reputation < minimum_reputation_threshold:
+       - User is considered "untrusted"
+       - Their votes will be inactive
+   - Store all calculated values in reputations collection:
+     - total_basis_reputation
+     - total_voting_rewards_reputation
+     - last_known_effective_reputation
+     - trust status
+     - Associate with user and tag
+   - This status is used in future calculations to determine if their votes count
+
+### Time-Based Vote Weighting System
+
+The reputation system uses a sophisticated time-based weighting system to ensure that recent votes have more impact than older ones. This is implemented through the `get_period_multiplier` function, which assigns different multipliers to votes based on their age.
+
+#### Month Calculation Rules
+The system ONLY counts the number of months between dates, ignoring days completely. For example:
+- Jan 1st to Jan 31st = 0 months (same month)
+- Jan 15th to Feb 1st = 1 month (different months)
+- Jan 31st to Feb 1st = 1 month (different months)
+- Jan 1st 2024 to Mar 15th 2025 = 14 months (11 months in 2024 + 3 months in 2025)
+
+This is used for reputation calculations where we only care about how many months have passed, not the specific days.
+
+#### Period Configuration
+Each tag defines a set of time periods with corresponding multipliers:
+
+```typescript
+time_periods: [
+    { months: 1, multiplier: 1.5 },    // First month: 150% weight
+    { months: 2, multiplier: 1.2 },    // Months 2-3: 120% weight
+    { months: 3, multiplier: 1.1 },    // Months 4-6: 110% weight
+    { months: 6, multiplier: 1.0 },    // Months 7-12: 100% weight
+    { months: 12, multiplier: 0.95 },  // Months 13-24: 95% weight
+    { months: 12, multiplier: 0.75 },  // Months 25-36: 75% weight
+    { months: 12, multiplier: 0.55 },  // Months 37-48: 55% weight
+    { months: 999, multiplier: 0.25 }  // Months 49+: 25% weight
+]
+```
+
+#### How It Works
+
+1. **Age Calculation**
+   - When a vote is processed, its age is calculated in months
+   - The system looks at the vote's timestamp and compares it with the current time
+   - The age is used to determine which time period the vote falls into
+   - Days are completely ignored - only month boundaries matter
+
+2. **Multiplier Assignment**
+   - The system iterates through the time periods in order
+   - For each period, it adds the months to an accumulated total
+   - When the vote's age is less than or equal to the accumulated months, that period's multiplier is used
+   - If the vote is older than all defined periods, the last period's multiplier is used
+
+3. **Example Scenarios**
+
+   **Recent Vote (1 week old):**
+   ```
+   Age: 0 months (same month)
+   Result: Uses first period multiplier (1.5)
+   Vote Impact: 150% of base value
+   ```
+
+   **6-Month-Old Vote:**
+   ```
+   Age: 6 months
+   Result: Uses fourth period multiplier (1.0)
+   Vote Impact: 100% of base value
+   ```
+
+   **2-Year-Old Vote:**
+   ```
+   Age: 24 months
+   Result: Uses fifth period multiplier (0.95)
+   Vote Impact: 95% of base value
+   ```
+
+   **Very Old Vote (5 years):**
+   ```
+   Age: 60 months
+   Result: Uses last period multiplier (0.25)
+   Vote Impact: 25% of base value
+   ```
+
+#### Benefits of This Approach
+
+1. **Recency Bias**
+   - Recent votes have more influence on reputation
+   - Helps maintain an active and dynamic system
+   - Encourages ongoing participation
+
+2. **Gradual Decay**
+   - Votes don't suddenly lose value
+   - Smooth transition between periods
+   - Maintains historical context while favoring recent activity
+
+3. **Configurable Per Tag**
+   - Each tag can define its own time periods
+   - Allows for different decay rates in different contexts
+   - Flexible for different use cases
+
+4. **Memory Efficient**
+   - No need to store intermediate calculations
+   - Multipliers are calculated on-demand
+   - Minimal storage overhead
 
 ### 2. Reputation Calculation
 A user's reputation in a tag is calculated as:
-```typescript
-function calculateReputation(userKey: string, tagKey: string): number {
-    // Get all active votes for this user in this tag
-    const votes = await listDocs({
-        collection: "votes",
-        filter: {
-            matcher: {
-                description: `target:${userKey},tag:${tagKey}`
-            }
-        }
-    });
-
-    // Calculate base reputation from weighted votes
-    let baseReputation = 0;
-    for (const vote of votes.items) {
-        if (vote.data.is_active) {
-            baseReputation += vote.data.weight * (vote.data.is_positive ? 1 : -1);
-        }
-    }
-
-    // Get number of users above threshold
-    const usersAboveThreshold = await countUsersAboveThreshold(tagKey);
-
-    // If we're in bootstrap phase, add voting rewards
-    if (usersAboveThreshold < tag.min_users_for_threshold) {
-        const userVotes = await listDocs({
-            collection: "votes",
-            filter: {
-                matcher: {
-                    description: `author:${userKey},tag:${tagKey}`
-                }
-            }
-        });
-        baseReputation += userVotes.items.length * tag.vote_reward;
-    }
-
-    return baseReputation;
-}
-
-async function countUsersAboveThreshold(tagKey: string): Promise<number> {
-    const reputations = await listDocs({
-        collection: "reputations",
-        filter: {
-            matcher: {
-                description: `tag:${tagKey}`
-            }
-        }
-    });
-
-    return reputations.items.filter(
-        rep => rep.data.reputation_score >= tag.reputation_threshold
-    ).length;
-}
 ```
-
-### 3. Vote Weight Calculation
-Vote weight is calculated based on:
-1. Author's reputation at time of voting
-2. Time period multipliers
-3. Tag's threshold status
-
-```typescript
-function calculateVoteWeight(vote: VoteDocument, tag: TagDocument): number {
-    // If author's reputation is below threshold and we're past bootstrap
-    if (vote.data.author_reputation < tag.reputation_threshold) {
-        const usersAboveThreshold = await countUsersAboveThreshold(tag.key);
-        if (usersAboveThreshold >= tag.min_users_for_threshold) {
-            return 0; // Vote has no weight
-        }
-    }
-
-    // Calculate time-based weight
-    const monthsOld = (Date.now() - vote.created_at) / (30 * 24 * 60 * 60 * 1000);
-    const period = tag.time_periods.find(p => monthsOld <= p.months);
-    const timeMultiplier = period ? period.multiplier : tag.time_periods[tag.time_periods.length - 1].multiplier;
-
-    return timeMultiplier;
-}
+{insert code here once we have it}
 ```
 
 ### 4. Example Scenarios
@@ -577,3 +730,78 @@ function calculateVoteWeight(vote: VoteDocument, tag: TagDocument): number {
 2. Integration tests for thresholds
 3. Load tests for performance
 4. Security tests for abuse prevention 
+
+### Vote Rewards and Threshold Conditions
+
+#### 1. Vote Reward Calculation Rules
+The system calculates vote rewards based on two key conditions:
+
+1. **User's Trust Status**
+   - A user is considered "trusted" if their reputation is above the tag's threshold
+   - Trusted users always receive vote rewards
+   - Untrusted users only receive rewards in bootstrap phase
+
+2. **Community Size Status**
+   - Each tag has a minimum number of trusted users required
+   - Below this threshold: All users receive vote rewards (bootstrap phase)
+   - Above this threshold: Only trusted users receive rewards (restricted phase)
+
+#### 2. Implementation Logic
+```rust
+// Calculate vote rewards only if:
+// 1. User is trusted (reputation above threshold) OR
+// 2. There aren't enough trusted users yet
+let mut reputation_from_voting = 0.0;
+if reputation_from_votes >= tag.reputation_threshold || total_trusted_users < tag.minimum_users {
+    let user_votes = get_user_votes(user_key, tag_key).await?;
+    for vote in user_votes {
+        let period = get_period_for_timestamp(vote.created_at);
+        let multiplier = get_period_multiplier(&period, &tag.time_periods);
+        reputation_from_voting += vote.weight * multiplier * tag.voting_reward;
+    }
+}
+```
+
+#### 3. Example Scenarios
+
+**Scenario 1: Trusted User in Restricted Phase**
+```
+Tag Configuration:
+- Reputation Threshold: 10
+- Minimum Users: 100
+- Current Trusted Users: 150
+- User's Reputation: 15
+
+Result: User receives vote rewards
+- Because they are trusted (15 > 10)
+- Regardless of community size
+```
+
+**Scenario 2: Untrusted User in Bootstrap Phase**
+```
+Same Configuration but:
+- Current Trusted Users: 50
+- User's Reputation: 5
+
+Result: User receives vote rewards
+- Because community is in bootstrap phase (< 100 trusted users)
+- Even though user is untrusted (5 < 10)
+```
+
+**Scenario 3: Untrusted User in Restricted Phase**
+```
+Same Configuration but:
+- Current Trusted Users: 150
+- User's Reputation: 5
+
+Result: User receives NO vote rewards
+- Because community is in restricted phase (≥ 100 trusted users)
+- And user is untrusted (5 < 10)
+```
+
+#### 4. Key Points
+1. Trusted users always get vote rewards
+2. Untrusted users get rewards only in bootstrap phase
+3. Community size determines phase (bootstrap vs restricted)
+4. Vote rewards help bootstrap new communities
+5. Once community is established, only trusted users get rewards 

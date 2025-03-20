@@ -1,0 +1,90 @@
+/*!
+ * Tag-related calculations and utilities
+ * 
+ * This module provides functions for calculating tag-specific metrics
+ * and handling tag-related operations.
+ * 
+ * IMPORTANT NOTE FOR TEST PHASE:
+ * During the initial test/playground phase, all documents are created by the same user
+ * (single-user testing environment). Therefore, we use the `description` field for 
+ * document identification and relationships instead of the `owner` field.
+ * 
+ * Description field formats:
+ * - Reputation docs: "user:{user_key},tag:{tag_key},author:{author_key}"
+ * - Vote docs: "author:{author_key},target:{target_key},tag:{tag_key}"
+ * - Tag docs: No special format, just descriptive text
+ * 
+ * This approach will change in production to use proper multi-user authentication
+ * where document ownership and relationships will be managed through the `owner` field
+ * (Principal IDs) instead of the description field.
+ */
+
+use junobuild_satellite::{get_doc, list_docs};
+use junobuild_shared::types::list::{ListMatcher, ListParams, ListResults};
+use junobuild_utils::decode_doc_data;
+use crate::utils::structs::{Tag, ReputationData};
+use crate::utils::logging::{log_error, log_warn, log_info, log_with_prefix};
+
+/// Calculates the number of active users for a given tag
+/// 
+/// Active users are defined as users who have a reputation above
+/// the tag's minimum reputation threshold.
+/// 
+/// # Arguments
+/// * `tag_key` - The key of the tag to check
+/// 
+/// # Returns
+/// * `Result<u32, String>` - The number of active users or an error message
+pub async fn get_active_users_count(tag_key: &str) -> Result<u32, String> {
+    // Step 1: Get tag configuration to find threshold
+    let tag_doc = get_doc(
+        String::from("tags"),
+        tag_key.to_string(),
+    ).ok_or_else(|| {
+        let err_msg = format!("Tag not found: {}", tag_key);
+        log_error(&err_msg); // This is a fatal error - we can't proceed without the tag
+        err_msg
+    })?;
+
+    let tag: Tag = decode_doc_data(&tag_doc.data)?;
+    let threshold = tag.data.reputation_threshold;
+
+    // Step 2: Get all reputations for this tag
+    // Note: In test phase, we use description field for filtering instead of owner
+    // Format: "user:{user_key},tag:{tag_key},author:{author_key}"
+    // We use ",tag:{tag_key}," to ensure we match the exact tag part of the description
+    let reputations: ListResults<_> = list_docs(
+        String::from("reputations"),
+        ListParams {
+            matcher: Some(ListMatcher {
+                description: Some(format!(",tag:{},", tag_key)),  // The commas ensure we match the exact tag part
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+    );
+
+    // Step 3: Count users above threshold
+    let active_count = reputations.items.iter()
+        .filter_map(|(doc_key, doc)| {  // doc_key is the document's key in the collection
+            match decode_doc_data(&doc.data) {
+                Ok(rep_data) => {
+                    let rep_data: ReputationData = rep_data;
+                    if rep_data.last_known_effective_reputation >= threshold {
+                        Some(1)
+                    } else {
+                        None
+                    }
+                },
+                Err(e) => {
+                    // Use log_with_prefix for non-fatal errors - we can continue processing other documents
+                    log_with_prefix("ERROR", &format!("Failed to decode reputation data for document {}: {}", doc_key, e));
+                    None
+                }
+            }
+        })
+        .sum();
+
+    log_info(&format!("Found {} active users for tag {}", active_count, tag_key));
+    Ok(active_count)
+} 

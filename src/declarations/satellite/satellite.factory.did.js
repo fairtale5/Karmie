@@ -3,7 +3,12 @@
 
 // @ts-expect-error
 export const idlFactory = ({ IDL }) => {
-  return IDL.Service({ 'build_version' : IDL.Func([], [IDL.Text], ['query']) });
+  const Result = IDL.Variant({ 'Ok' : IDL.Float64, 'Err' : IDL.Text });
+  return IDL.Service({
+    'build_version' : IDL.Func([], [IDL.Text], ['query']),
+    'get_user_reputation' : IDL.Func([IDL.Text, IDL.Text], [Result], ['query']),
+    'recalculate_reputation' : IDL.Func([IDL.Text, IDL.Text], [Result], []),
+  });
 };
 // @ts-expect-error
 export const init = ({ IDL }) => { return []; };

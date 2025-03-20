@@ -6,10 +6,10 @@
  */
 
 // Export utility modules
-pub mod normalize;
-pub mod validation;
 pub mod logging;
-
-// Re-export only the logging macro we're using
-#[allow(unused_imports)]
-pub use crate::log_user; 
+pub mod normalize;
+pub mod reputation_calculations;
+pub mod structs;
+pub mod tag_calculations;
+pub mod time;
+pub mod validation; 

@@ -75,6 +75,9 @@ use junobuild_satellite::{
 // Types for working with Juno's list functionality
 
 use junobuild_shared::types::list::{ListMatcher, ListParams};
+use ic_cdk::api::call::CallResult;
+use ic_cdk_macros::*;
+use candid::Principal;
 
 // IMPORTANT NOTE:
 // Any additional functionality needed (like data serialization, string manipulation, etc.)
@@ -109,9 +112,17 @@ use junobuild_shared::types::list::{ListMatcher, ListParams};
 use junobuild_utils::{decode_doc_data, encode_doc_data};
 use serde::{Deserialize, Serialize};
 
-// Import our utility functions
-use crate::utils::normalize::normalize_username;
-use crate::utils::validation::{validate_username, validate_display_name};
+// Import our utility modules
+use crate::utils::{
+    normalize::normalize_username,
+    validation::{validate_username, validate_display_name},
+    structs::{Vote, Tag, Reputation},
+    reputation_calculations::{
+        calculate_user_reputation, get_user_reputation_data,
+        calculate_and_store_vote_weight
+    },
+    logging::{log_error, log_warn, log_info, log_debug}
+};
 
 // =============================================================================
 // Module Declarations
@@ -149,63 +160,132 @@ pub struct UserData {
 // 3. Checks for username uniqueness
 // 4. Updates the document with normalized data
 
-#[on_set_doc(collections = ["users"])]
+#[on_set_doc(collections = ["users", "votes", "tags"])]
 async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
-    // Decode the document data
-    let user_data: UserData = decode_doc_data(&context.data.data.after.data)?;
-    
-    // Log the start of user data update
-    log_user!("Updating user data for key: {}", context.data.key);
-    
-    // Normalize and validate the handle
-    let normalized_handle = normalize_username(&user_data.handle);
-    
-    // Handle validation results
-    validate_username(&normalized_handle).map_err(|e| e.to_string())?;
-    validate_display_name(&user_data.display_name).map_err(|e| e.to_string())?;
+    match context.data.collection.as_str() {
+        "users" => {
+            // Decode the document data
+            let user_data: UserData = decode_doc_data(&context.data.data.after.data)
+                .map_err(|e| {
+                    log_error(&format!("[on_set_doc - Users] Failed to decode user data: {}", e));
+                    e.to_string()
+                })?;
+            
+            // Log the start of user data update
+            log_debug(&format!("[on_set_doc - Users] Processing update for key: {}", context.data.key));
+            
+            // Normalize and validate the handle
+            let normalized_handle = normalize_username(&user_data.handle);
+            
+            // Handle validation results
+            validate_username(&normalized_handle).map_err(|e| {
+                log_error(&format!("[on_set_doc - Users] Username validation failed: {}", e));
+                e.to_string()
+            })?;
+            validate_display_name(&user_data.display_name).map_err(|e| {
+                log_error(&format!("[on_set_doc - Users] Display name validation failed: {}", e));
+                e.to_string()
+            })?;
 
-    // Check for handle uniqueness using the description field
-    let username_search = format!("username:{}", normalized_handle);
-    let matcher = ListMatcher {
-        description: Some(username_search.clone()),
-        ..Default::default()
-    };
+            // Check for handle uniqueness using the description field
+            let username_search = format!("username:{}", normalized_handle);
+            let matcher = ListMatcher {
+                description: Some(username_search.clone()),
+                ..Default::default()
+            };
 
-    let params = ListParams {
-        matcher: Some(matcher),
-        ..Default::default()
-    };
+            let params = ListParams {
+                matcher: Some(matcher),
+                ..Default::default()
+            };
 
-    let existing_docs = list_docs(String::from("users"), params);
-    for doc in existing_docs.items {
-        if doc.0 != context.data.key {
-            return Err("Username already exists".to_string());
+            let existing_docs = list_docs(String::from("users"), params);
+            for doc in existing_docs.items {
+                if doc.0 != context.data.key {
+                    log_error(&format!("[on_set_doc - Users] Username conflict: {} already exists", normalized_handle));
+                    return Err("Username already exists".to_string());
+                }
+            }
+
+            // Update the document with normalized handle and description
+            let updated_data = UserData {
+                handle: normalized_handle.clone(),
+                display_name: user_data.display_name.clone(),
+            };
+            
+            // Log the successful update
+            log_info(&format!("[on_set_doc - Users] Successfully updated user {} with handle {}", context.data.key, normalized_handle));
+            
+            let encoded_data = encode_doc_data(&updated_data)
+                .map_err(|e| {
+                    log_error(&format!("[on_set_doc - Users] Failed to encode updated data: {}", e));
+                    e.to_string()
+                })?;
+
+            let doc = SetDoc {
+                data: encoded_data,
+                description: Some(username_search),
+                version: context.data.data.after.version,
+            };
+
+            set_doc_store(
+                context.caller,
+                context.data.collection,
+                context.data.key,
+                doc,
+            ).map_err(|e| {
+                log_error(&format!("[on_set_doc - Users] Failed to store document: {}", e));
+                e.to_string()
+            })?;
+        }
+        "votes" => {
+            log_debug("[on_set_doc - Votes] Processing new vote");
+            
+            // Decode the vote data
+            let vote: Vote = decode_doc_data(&context.data.data.after.data)
+                .map_err(|e| {
+                    log_error(&format!("[on_set_doc - Votes] Failed to decode vote data: {}", e));
+                    e.to_string()
+                })?;
+            
+            // Step 1: Calculate and store the voting user's vote weight
+            log_debug(&format!("[on_set_doc - Votes] Calculating vote weight for author: {}", vote.data.author_key));
+            calculate_and_store_vote_weight(&vote.data.author_key, &vote.data.tag_key).await
+                .map_err(|e| {
+                    log_error(&format!("[on_set_doc - Votes] Failed to calculate vote weight: {}", e));
+                    e.to_string()
+                })?;
+            
+            // Step 2: Calculate reputation for the voting user (author)
+            log_debug(&format!("[on_set_doc - Votes] Calculating reputation for author: {}", vote.data.author_key));
+            calculate_user_reputation(&vote.data.author_key, &vote.data.tag_key).await
+                .map_err(|e| {
+                    log_error(&format!("[on_set_doc - Votes] Failed to calculate author reputation: {}", e));
+                    e.to_string()
+                })?;
+            
+            // Step 3: Calculate target's reputation
+            log_debug(&format!("[on_set_doc - Votes] Calculating reputation for target: {}", vote.data.target_key));
+            calculate_user_reputation(&vote.data.target_key, &vote.data.tag_key).await
+                .map_err(|e| {
+                    log_error(&format!("[on_set_doc - Votes] Failed to calculate target reputation: {}", e));
+                    e.to_string()
+                })?;
+
+            log_info(&format!(
+                "[on_set_doc - Votes] Successfully processed vote: author={}, target={}, tag={}",
+                vote.data.author_key, vote.data.target_key, vote.data.tag_key
+            ));
+        }
+        "tags" => {
+            log_debug("[on_set_doc - Tags] Processing tag update (no reputation recalculation needed)");
+        }
+        _ => {
+            log_error(&format!("[on_set_doc] Unknown collection: {}", context.data.collection));
+            return Err(format!("Unknown collection: {}", context.data.collection));
         }
     }
-
-    // Update the document with normalized handle and description
-    let updated_data = UserData {
-        handle: normalized_handle.clone(),
-        display_name: user_data.display_name.clone(),
-    };
     
-    // Log the successful update
-    log_user!("Successfully updated user {} with handle {}", context.data.key, normalized_handle);
-    
-    let encoded_data = encode_doc_data(&updated_data)?;
-    let doc = SetDoc {
-        data: encoded_data,
-        description: Some(username_search),
-        version: context.data.data.after.version,
-    };
-
-    set_doc_store(
-        context.caller,
-        context.data.collection,
-        context.data.key,
-        doc,
-    ).map_err(|e| e.to_string())?;
-
     Ok(())
 }
 
@@ -219,25 +299,31 @@ async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
 #[assert_set_doc(collections = ["users"])]
 fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
     // Log the start of validation
-    log_user!("Validating user data for key: {}", context.data.key);
+    log_debug(&format!("[assert_set_doc] Starting validation for key: {}", context.data.key));
 
     // Step 1: Basic Data Validation
     // ----------------------------
-    let user_data: UserData = decode_doc_data(&context.data.data.proposed.data)?;
+    let user_data: UserData = decode_doc_data(&context.data.data.proposed.data)
+        .map_err(|e| {
+            log_error(&format!("[assert_set_doc] Failed to decode user data: key={}, error={}", context.data.key, e));
+            e.to_string()
+        })?;
     
     // Validate username and display name
     validate_username(&user_data.handle).map_err(|e| {
-        log_user!("Username validation failed for key {}: {}", context.data.key, e);
+        log_error(&format!("[assert_set_doc] Username validation failed: key={}, error={}", context.data.key, e));
         e.to_string()
     })?;
     validate_display_name(&user_data.display_name).map_err(|e| {
-        log_user!("Display name validation failed for key {}: {}", context.data.key, e);
+        log_error(&format!("[assert_set_doc] Display name validation failed: key={}, error={}", context.data.key, e));
         e.to_string()
     })?;
 
     // Step 2: Username Uniqueness Check
     // -------------------------------
     // Normalize the username for consistent comparison
+    log_debug(&format!("[assert_set_doc] Checking username uniqueness for: {}", user_data.handle));
+    
     let normalized_handle = normalize_username(&user_data.handle);
     let username_search = format!("username:{}", normalized_handle);
     
@@ -259,8 +345,7 @@ fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
         if context.data.data.proposed.version.is_some() && doc.0 == context.data.key {
             continue;
         }
-        // If username exists in any other document, log and return error
-        log_user!("Username '{}' already exists (key: {})", normalized_handle, context.data.key);
+        log_error(&format!("[assert_set_doc] Username conflict: {} already exists (key: {})", normalized_handle, context.data.key));
         return Err("Username already exists".to_string());
     }
 
@@ -277,8 +362,8 @@ fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
         let existing_user_docs = list_docs(String::from("users"), user_docs_params);
         for doc in existing_user_docs.items {
             if doc.0 != context.data.key {
-                log_user!("User already has an account (caller: {}, attempted key: {})", 
-                    context.caller, context.data.key);
+                log_info(&format!("User already has an account (caller: {}, attempted key: {})", 
+                    context.caller, context.data.key));
                 return Err("User already has an account in the system".to_string());
             }
         }
@@ -286,8 +371,7 @@ fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
     */
 
     // Log successful validation
-    log_user!("Successfully validated user data for key: {}", context.data.key);
-    
+    log_info(&format!("[assert_set_doc] Successfully validated user data: key={}, handle={}", context.data.key, normalized_handle));
     Ok(())
 }
 
@@ -368,5 +452,134 @@ fn assert_delete_asset(_context: AssertDeleteAssetContext) -> Result<(), String>
 // =============================================================================
 // This macro must be included at the end of the file to properly register
 // all hooks and assertions with the Juno ecosystem.
+
+/// Gets a user's current effective reputation score in a specific tag
+/// 
+/// This function retrieves the user's cached reputation score from the reputations collection.
+/// The score is a combination of:
+/// - Basis reputation (from received votes)
+/// - Voting rewards (if user is trusted or community is in bootstrap phase)
+/// 
+/// The reputation score is tag-specific and represents the user's standing in that tag's community.
+/// A higher score indicates more influence in voting and content moderation.
+/// 
+/// # Arguments
+/// * `user_key` - The unique identifier of the user
+/// * `tag_key` - The unique identifier of the tag
+/// 
+/// # Returns
+/// * `Result<f64, String>` - The user's effective reputation score or a detailed error message
+/// 
+/// # Errors
+/// - Returns error if user_key or tag_key is empty
+/// - Returns error if tag doesn't exist
+/// - Returns error if reputation calculation fails
+/// - Returns error with context about what specifically failed
+#[query]
+async fn get_user_reputation(user_key: String, tag_key: String) -> Result<f64, String> {
+    log_debug(&format!("[get_user_reputation] Fetching reputation for user={}, tag={}", user_key, tag_key));
+    
+    // Input validation
+    if user_key.is_empty() {
+        let err_msg = "User key cannot be empty";
+        log_error(&format!("[get_user_reputation] {}", err_msg));
+        return Err(err_msg.to_string());
+    }
+    if tag_key.is_empty() {
+        let err_msg = "Tag key cannot be empty";
+        log_error(&format!("[get_user_reputation] {}", err_msg));
+        return Err(err_msg.to_string());
+    }
+
+    // Attempt to calculate reputation
+    let reputation_data = calculate_user_reputation(&user_key, &tag_key).await
+        .map_err(|e| {
+            let err_msg = format!("Failed to calculate reputation: {}", e);
+            log_error(&format!("[get_user_reputation] {}: user={}, tag={}", err_msg, user_key, tag_key));
+            err_msg
+        })?;
+    
+    log_info(&format!("[get_user_reputation] Successfully retrieved reputation: user={}, tag={}, value={}", 
+        user_key, tag_key, reputation_data.last_known_effective_reputation));
+    
+    Ok(reputation_data.last_known_effective_reputation)
+}
+
+/// Forces a recalculation of a user's reputation in a specific tag
+/// 
+/// This function triggers a complete recalculation of the user's reputation, including:
+/// 1. Basis reputation from all received votes
+/// 2. Voting rewards from all votes cast
+/// 3. Trust status based on current tag thresholds
+/// 4. Final effective reputation score
+/// 
+/// Use this function when you need to ensure the reputation score is current,
+/// such as after significant changes to the voting system or tag configuration.
+/// 
+/// # Process
+/// 1. Validates input parameters
+/// 2. Verifies user exists in the tag
+/// 3. Triggers complete reputation recalculation
+/// 4. Updates all reputation components in storage
+/// 
+/// # Arguments
+/// * `user_key` - The unique identifier of the user
+/// * `tag_key` - The unique identifier of the tag
+/// 
+/// # Returns
+/// * `Result<f64, String>` - The newly calculated effective reputation score or a detailed error message
+/// 
+/// # Errors
+/// - Returns error if user_key or tag_key is empty
+/// - Returns error if user doesn't exist in the tag
+/// - Returns error if tag doesn't exist
+/// - Returns error if reputation calculation fails
+/// - Returns error with context about what specifically failed
+#[ic_cdk::update]
+async fn recalculate_reputation(user_key: String, tag_key: String) -> Result<f64, String> {
+    log_debug(&format!("[recalculate_reputation] Starting recalculation for user={}, tag={}", user_key, tag_key));
+    
+    // Input validation
+    if user_key.is_empty() {
+        let err_msg = "User key cannot be empty";
+        log_error(&format!("[recalculate_reputation] {}", err_msg));
+        return Err(err_msg.to_string());
+    }
+    if tag_key.is_empty() {
+        let err_msg = "Tag key cannot be empty";
+        log_error(&format!("[recalculate_reputation] {}", err_msg));
+        return Err(err_msg.to_string());
+    }
+
+    // Check if user exists in this tag
+    match get_user_reputation_data(&user_key, &tag_key).await {
+        Ok(None) => {
+            let err_msg = format!("No reputation data found for user {} in tag {}", user_key, tag_key);
+            log_error(&format!("[recalculate_reputation] {}", err_msg));
+            return Err(err_msg);
+        }
+        Err(e) => {
+            let err_msg = format!("Error checking user reputation data: {}", e);
+            log_error(&format!("[recalculate_reputation] {}: user={}, tag={}", err_msg, user_key, tag_key));
+            return Err(err_msg);
+        }
+        Ok(Some(_)) => {
+            log_debug(&format!("[recalculate_reputation] User found, proceeding with recalculation"));
+        }
+    }
+    
+    // Trigger complete recalculation
+    let rep_data = calculate_user_reputation(&user_key, &tag_key).await
+        .map_err(|e| {
+            let err_msg = format!("Failed to recalculate reputation: {}", e);
+            log_error(&format!("[recalculate_reputation] {}: user={}, tag={}", err_msg, user_key, tag_key));
+            err_msg
+        })?;
+    
+    log_info(&format!("[recalculate_reputation] Successfully recalculated: user={}, tag={}, value={}", 
+        user_key, tag_key, rep_data.last_known_effective_reputation));
+    
+    Ok(rep_data.last_known_effective_reputation)
+}
 
 include_satellite!();

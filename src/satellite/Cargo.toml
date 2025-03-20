@@ -17,6 +17,7 @@ junobuild-satellite = { version = "0.0.22", default-features = false, features =
 junobuild-macros = { version = "0.0.4" }
 junobuild-utils = "0.0.4"
 getrandom = { version = "0.2.3", features = ["js"] }
+chrono = "0.4"
 
 [dev-dependencies]
 serde = { version = "1.0.217", features = ["derive"] }

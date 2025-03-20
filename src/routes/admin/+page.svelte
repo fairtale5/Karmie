@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { nanoid } from 'nanoid';
-	import { listDocs, setDoc, deleteDoc, type Doc, authSubscribe, type User, getDoc, signOut } from '@junobuild/core';
+	import { listDocs, setDoc, deleteDoc, type Doc, authSubscribe, type User, getDoc, signOut, getSatelliteExtendedActor } from '@junobuild/core';
 	import { goto } from '$app/navigation';
 	import { REPUTATION_SETTINGS } from '$lib/settings';
+	import { idlFactory } from '../../declarations/satellite/satellite.factory.did.js';
+	import type { _SERVICE as SatelliteActor } from '../../declarations/satellite/satellite.did';
 
 	// Configuration Constants
 	const COLLECTIONS = {
@@ -82,7 +84,42 @@
 	// Current authenticated user
 	let user: User | null = null;
 
-	// Load initial data
+	// Add selected tag state
+	let selectedTag = '';
+
+	// Add reputation map
+	let userReputations: Record<string, number> = {};
+
+	// Function to load user reputations for selected tag
+	async function loadUserReputations(tagKey: string) {
+		try {
+			const matcher = {
+				description: `tag:${tagKey}`  // This matches the pattern used in the Rust code
+			};
+			const params = {
+				matcher
+			};
+			const reputations = await listDocs<{
+				user_key: string;
+				total_reputation: number;
+				reputation_from_votes: number;
+				reputation_from_voting: number;
+			}>({
+				collection: 'reputations',
+				...params
+			});
+			
+			userReputations = {};
+			for (const doc of reputations.items) {
+				userReputations[doc.data.user_key] = doc.data.total_reputation;
+			}
+			console.log('Loaded reputations:', userReputations); // Add logging to debug
+		} catch (error) {
+			console.error('Error loading reputations:', error);
+		}
+	}
+
+	// Update onMount to load reputations when tag is selected
 	onMount(() => {
 		// Subscribe to auth state
 		const sub = authSubscribe((state) => {
@@ -104,6 +141,11 @@
 			sub();
 		};
 	});
+
+	// Watch for tag selection changes
+	$: if (selectedTag) {
+		loadUserReputations(selectedTag);
+	}
 
 	// Load users
 	async function loadUsers() {
@@ -397,55 +439,36 @@
 		document.getElementById('userForm')?.scrollIntoView({ behavior: 'smooth' });
 	}
 
-	// Function to create a vote
+	// Function to save a vote
 	async function saveVote() {
 		try {
-			error = '';
-			success = '';
-
-			// Basic client-side validation
+			// Validate inputs
 			if (!newVote.author || !newVote.target || !newVote.tag) {
-				error = 'Author, target, and tag are required';
+				error = 'Please fill in all fields';
 				return;
 			}
 
-			// If we're updating an existing vote, we need to get its current version
-			let version;
-			if (newVote.key) {
-				try {
-					const existingDoc = await getDoc({
-						collection: COLLECTIONS.VOTES,
-						key: newVote.key
-					});
-					if (!existingDoc) {
-						error = 'Vote not found';
-						return;
-					}
-					version = existingDoc.version;
-				} catch (e) {
-					console.error('Error fetching existing vote:', e);
-					error = 'Failed to fetch existing vote version';
-					return;
-				}
-			}
+			// Create vote document
+			const voteDoc = {
+				key: newVote.key || nanoid(),
+				data: {
+					author_key: newVote.author,
+					target_key: newVote.target,
+					is_positive: newVote.is_positive,
+					tag_key: newVote.tag,
+					weight: DEFAULT_VOTE_WEIGHT,
+					created_at: Date.now() * 1_000_000 // Convert to nanoseconds
+				},
+				description: `target:${newVote.target},tag:${newVote.tag}`
+			};
 
-			// Create or update vote document
+			// Save vote
 			await setDoc({
 				collection: COLLECTIONS.VOTES,
-				doc: {
-					key: newVote.key || nanoid(),
-					description: `author:${newVote.author},target:${newVote.target}`,
-					data: {
-						tag: newVote.tag,
-						target: newVote.target,
-						is_positive: newVote.is_positive,
-						weight: DEFAULT_VOTE_WEIGHT
-					},
-					...(version && { version }) // Only include version if we're updating
-				}
+				doc: voteDoc
 			});
 
-			// Clear form and show success message
+			// Clear form
 			newVote = {
 				key: '',
 				author: '',
@@ -453,18 +476,24 @@
 				is_positive: true,
 				tag: ''
 			};
-			success = newVote.key ? 'Vote updated successfully!' : 'Vote created successfully!';
 
-			// Reload the vote list
+			// Reload votes
 			await loadVotes();
-		} catch (e) {
-			console.error('Error saving vote:', e);
-			error = e instanceof Error ? e.message : 'Failed to save vote';
+			
+			// Reload reputations if a tag is selected
+			if (selectedTag) {
+				await loadUserReputations(selectedTag);
+			}
+
+			success = 'Vote saved successfully';
+		} catch (err) {
+			console.error('Error saving vote:', err);
+			error = 'Failed to save vote';
 		}
 	}
 
 	// Function to delete a vote
-	async function deleteVote(key: string) {
+	async function deleteVote(voteKey: string) {
 		if (!confirm('Are you sure you want to delete this vote?')) {
 			return;
 		}
@@ -476,7 +505,7 @@
 			// Get the current version of the vote
 			const existingDoc = await getDoc({
 				collection: COLLECTIONS.VOTES,
-				key
+				key: voteKey
 			});
 
 			if (!existingDoc) {
@@ -487,17 +516,47 @@
 			await deleteDoc({
 				collection: COLLECTIONS.VOTES,
 				doc: {
-					key,
-					data: {},
+					key: voteKey,
+					data: existingDoc.data,
 					version: existingDoc.version
 				}
 			});
 
-			success = 'Vote deleted successfully!';
+			// Reload votes
 			await loadVotes();
-		} catch (e) {
-			console.error('Error deleting vote:', e);
-			error = e instanceof Error ? e.message : 'Failed to delete vote';
+			
+			// Reload reputations if a tag is selected
+			if (selectedTag) {
+				await loadUserReputations(selectedTag);
+			}
+
+			success = 'Vote deleted successfully';
+		} catch (err) {
+			console.error('Error deleting vote:', err);
+			error = 'Failed to delete vote';
+		}
+	}
+
+	// Add this to the script section
+	async function recalculateUserReputation(userKey: string, tagKey: string) {
+		try {
+			error = '';
+			success = '';
+			
+			// Get the satellite actor
+			const actor = await getSatelliteExtendedActor<SatelliteActor>({
+				idlFactory
+			});
+			
+			// Call our custom endpoint
+			const result = await actor.recalculate_reputation(userKey, tagKey);
+			
+			// Refresh the users list to show updated reputation
+			await loadUsers();
+			
+			success = `Reputation recalculated successfully. New score: ${result}`;
+		} catch (err) {
+			error = `Failed to recalculate reputation: ${err}`;
 		}
 	}
 </script>
@@ -512,6 +571,23 @@
 			>
 				Log Out
 			</button>
+		</div>
+
+		<!-- Tag Selector -->
+		<div class="mb-8">
+			<label for="tag-select" class="block text-lg mb-2">Select Reputation Tag:</label>
+			<select
+				id="tag-select"
+				bind:value={selectedTag}
+				class="border p-2 w-full max-w-md"
+			>
+				<option value="">Select a tag to view reputations</option>
+				{#each tags as tag}
+					<option value={tag.key}>
+						{tag.data.name}
+					</option>
+				{/each}
+			</select>
 		</div>
 
 		<!-- Create/Update User Form -->
@@ -588,6 +664,9 @@
 						<th class="border p-2 w-48">Key</th>
 						<th class="border p-2">Handle</th>
 						<th class="border p-2">Display Name</th>
+						{#if selectedTag}
+							<th class="border p-2">Reputation</th>
+						{/if}
 						<th class="border p-2">Actions</th>
 					</tr>
 				</thead>
@@ -597,21 +676,32 @@
 							<td class="border p-2 font-mono text-sm bg-gray-50">{user.key}</td>
 							<td class="border p-2">{user.data.handle}</td>
 							<td class="border p-2">{user.data.display_name}</td>
+							{#if selectedTag}
+								<td class="border p-2">
+									{userReputations[user.key]?.toFixed(2) ?? '0.00'}
+								</td>
+							{/if}
 							<td class="border p-2">
-								<div class="flex gap-2 justify-center">
+								<div class="flex gap-2">
+									{#if selectedTag}
+										<button
+											class="btn btn-sm btn-outline-primary"
+											on:click={() => recalculateUserReputation(user.key, selectedTag)}
+										>
+											Recalculate
+										</button>
+									{/if}
 									<button
+										class="btn btn-sm btn-outline-primary"
 										on:click={() => editUser(user)}
-										class="text-blue-500 hover:text-blue-700"
-										title="Edit user"
 									>
-										✏️
+										Edit
 									</button>
 									<button
+										class="btn btn-sm btn-outline-error"
 										on:click={() => deleteUser(user.key)}
-										class="text-red-500 hover:text-red-700"
-										title="Delete user"
 									>
-										❌
+										Delete
 									</button>
 								</div>
 							</td>
@@ -666,7 +756,7 @@
 					>
 						<option value="">Select Tag</option>
 						{#each tags as tag}
-							<option value={tag.key}>
+							<option value={tag.key} selected={tag.key === selectedTag}>
 								{tag.data.name}
 							</option>
 						{/each}

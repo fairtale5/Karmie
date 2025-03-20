@@ -26,6 +26,11 @@ interface ReputationData {
     reputation_score: number; // Current reputation score
     total_votes: number;   // Total number of votes
     weighted_votes: number; // Total weighted votes
+    total_voting_rewards_reputation: number;
+    last_known_effective_reputation: number;
+    last_calculation: number;  // timestamp in nanoseconds
+    vote_weight: number;
+    has_voting_power: boolean;
     calculation_month: string; // "YYYY-MM" format
     created_at: bigint;    // Creation timestamp
     updated_at: bigint;    // Last update timestamp
@@ -73,6 +78,12 @@ function isReputationData(data: unknown): data is ReputationData {
         typeof reputation.reputation_score === 'number' &&
         typeof reputation.total_votes === 'number' &&
         typeof reputation.weighted_votes === 'number' &&
+        typeof reputation.total_voting_rewards_reputation === 'number' &&
+        typeof reputation.last_known_effective_reputation === 'number' &&
+        typeof reputation.last_calculation === 'number' &&
+        reputation.last_calculation > 0 &&
+        typeof reputation.vote_weight === 'number' &&
+        typeof reputation.has_voting_power === 'boolean' &&
         typeof reputation.calculation_month === 'string' &&
         /^\d{4}-\d{2}$/.test(reputation.calculation_month) &&
         typeof reputation.created_at === 'bigint' &&

@@ -375,6 +375,7 @@ Official Juno documentation and guides, with key sections:
   - Logic execution (`development.md#implementation`)
   - Initialization (`development.md#on_init`)
   - Collection handlers (`development.md#on_set_doc`)
+  - Logging (`logs.md`) - Native and custom logging capabilities
 
 - **Storage** (`/docs/juno/docs/build/storage/`): 
   - File upload (`development.md#upload-asset`)

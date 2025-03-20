@@ -182,3 +182,38 @@ fn assert_caller_is_controller() {
 - [Juno Collections API](https://docs.juno.build/build/collections)
 - [IC Interface Spec](https://internetcomputer.org/docs/current/references/ic-interface-spec)
 - [Rust CDK Documentation](https://docs.rs/ic-cdk) 
+
+## Common Gotchas and Best Practices
+
+### Principal Type Import
+```rust
+// CORRECT: Always import Principal from candid
+use candid::Principal;
+
+// INCORRECT: Do not use these deprecated imports
+// use ic_principal::Principal;  // Deprecated
+// use ic_types::Principal;      // Deprecated
+
+// The Principal type is fundamental to IC development, representing:
+// - User identities
+// - Canister IDs
+// - Other authenticated entities
+
+// Common usage in structs:
+#[derive(Debug, Serialize, Deserialize)]
+pub struct User {
+    pub owner: Principal,  // Document owner's identity
+    // ... other fields
+}
+
+// Common usage in functions:
+fn get_caller_principal() -> Principal {
+    ic_cdk::caller()  // Returns Principal of the calling entity
+}
+```
+
+### Principal Type Migration Note
+The `Principal` type was originally part of the `ic_principal` crate but has been moved to the `candid` crate.
+Always use the `candid` import to ensure compatibility with current IC development standards.
+This change was made to consolidate core IC types into the `candid` crate, which is the standard serialization
+format for the Internet Computer. 
