@@ -116,7 +116,7 @@ use serde::{Deserialize, Serialize};
 use crate::utils::{
     normalize::normalize_username,
     validation::{validate_username, validate_display_name},
-    structs::{Vote, Tag, Reputation},
+    structs::{Vote, Tag, Reputation, UserData},
     reputation_calculations::{
         calculate_user_reputation, get_user_reputation_data,
         calculate_and_store_vote_weight
@@ -129,23 +129,6 @@ use crate::utils::{
 // =============================================================================
 
 mod utils;
-
-// =============================================================================
-// Type Definitions
-// =============================================================================
-
-// Represents user data in the system
-// 
-// This struct defines the structure of user documents in the Juno datastore.
-// It includes basic user information that can be serialized and deserialized.
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct UserData {
-    /// User's unique handle/username
-    pub handle: String,
-    /// User's display name (not necessarily unique)
-    pub display_name: String,
-}
 
 // =============================================================================
 // Active Hooks and Assertions

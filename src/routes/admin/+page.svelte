@@ -63,18 +63,18 @@
 	// Form data for creating votes
 	let newVote = {
 		key: '',
-		author: '',  // User key of the vote author
-		target: '',  // User key of the vote target
-		is_positive: true,  // Default to positive vote
-		tag: ''  // Tag key
+		author_key: '',  // User key of the vote author
+		target_key: '',  // User key of the vote target
+		value: 1,  // Vote value (+1 for upvote, -1 for downvote)
+		tag_key: ''  // Tag key
 	};
 
 	// List of all votes
 	let votes: Doc<{
-		tag: string;
-		target: string;
-		is_positive: boolean;
-		weight: number;
+		author_key: string;
+		target_key: string;
+		tag_key: string;
+		value: number;
 	}>[] = [];
 
 	// Error message if something goes wrong
@@ -162,9 +162,10 @@
 	// Load votes
 	async function loadVotes() {
 		try {
-			const votesList = await listDocs<{ tag: string; target: string; is_positive: boolean; weight: number }>({
+			const votesList = await listDocs<{ author_key: string; target_key: string; tag_key: string; value: number }>({
 				collection: COLLECTIONS.VOTES
 			});
+			console.log('Loaded votes:', votesList.items); // Debug log
 			votes = votesList.items;
 		} catch (error) {
 			console.error('Error loading votes:', error);
@@ -196,12 +197,9 @@
 	 */
 	async function saveTag() {
 		try {
-			error = '';
-			success = '';
-
-			// Basic client-side validation
+			// Validate inputs
 			if (!newTag.name || !newTag.description) {
-				error = 'Both name and description are required';
+				error = 'Please fill in all required fields';
 				return;
 			}
 
@@ -256,9 +254,10 @@
 
 			// Reload the tag list
 			await loadTags();
-		} catch (e) {
-			console.error('Error saving tag:', e);
-			error = e instanceof Error ? e.message : 'Failed to save tag';
+			success = 'Tag saved successfully';
+		} catch (err) {
+			console.error('Error saving tag:', err);
+			error = 'Failed to save tag';
 		}
 	}
 
@@ -443,24 +442,26 @@
 	async function saveVote() {
 		try {
 			// Validate inputs
-			if (!newVote.author || !newVote.target || !newVote.tag) {
+			if (!newVote.author_key || !newVote.target_key || !newVote.tag_key) {
 				error = 'Please fill in all fields';
 				return;
 			}
+
+			console.log('Creating vote:', newVote); // Debug log
 
 			// Create vote document
 			const voteDoc = {
 				key: newVote.key || nanoid(),
 				data: {
-					author_key: newVote.author,
-					target_key: newVote.target,
-					is_positive: newVote.is_positive,
-					tag_key: newVote.tag,
-					weight: DEFAULT_VOTE_WEIGHT,
-					created_at: Date.now() * 1_000_000 // Convert to nanoseconds
+					author_key: newVote.author_key,
+					target_key: newVote.target_key,
+					tag_key: newVote.tag_key,
+					value: newVote.value
 				},
-				description: `target:${newVote.target},tag:${newVote.tag}`
+				description: `author:${newVote.author_key},target:${newVote.target_key},tag:${newVote.tag_key}`
 			};
+
+			console.log('Vote document to save:', voteDoc); // Debug log
 
 			// Save vote
 			await setDoc({
@@ -468,13 +469,15 @@
 				doc: voteDoc
 			});
 
+			console.log('Vote saved successfully'); // Debug log
+
 			// Clear form
 			newVote = {
 				key: '',
-				author: '',
-				target: '',
-				is_positive: true,
-				tag: ''
+				author_key: '',
+				target_key: '',
+				value: 1,
+				tag_key: ''
 			};
 
 			// Reload votes
@@ -719,7 +722,7 @@
 					<label for="author" class="block">Author (User Key):</label>
 					<select
 						id="author"
-						bind:value={newVote.author}
+						bind:value={newVote.author_key}
 						class="border p-2 w-full"
 					>
 						<option value="">Select Author</option>
@@ -735,7 +738,7 @@
 					<label for="target" class="block">Target (User Key):</label>
 					<select
 						id="target"
-						bind:value={newVote.target}
+						bind:value={newVote.target_key}
 						class="border p-2 w-full"
 					>
 						<option value="">Select Target</option>
@@ -751,7 +754,7 @@
 					<label for="tag" class="block">Tag:</label>
 					<select
 						id="tag"
-						bind:value={newVote.tag}
+						bind:value={newVote.tag_key}
 						class="border p-2 w-full"
 					>
 						<option value="">Select Tag</option>
@@ -765,13 +768,13 @@
 
 				<div>
 					<fieldset>
-						<legend class="block mb-2">Vote Type:</legend>
+						<legend class="block mb-2">Vote Value:</legend>
 						<div class="flex gap-4">
 							<label class="inline-flex items-center">
 								<input
 									type="radio"
-									bind:group={newVote.is_positive}
-									value={true}
+									bind:group={newVote.value}
+									value={1}
 									class="mr-2"
 								/>
 								Positive (+1)
@@ -779,8 +782,8 @@
 							<label class="inline-flex items-center">
 								<input
 									type="radio"
-									bind:group={newVote.is_positive}
-									value={false}
+									bind:group={newVote.value}
+									value={-1}
 									class="mr-2"
 								/>
 								Negative (-1)
@@ -816,9 +819,9 @@
 						<tr>
 							<td class="border p-2 font-mono text-sm bg-gray-50">{vote.key}</td>
 							<td class="border p-2">{vote.description?.split(',')[0].split(':')[1] || 'Unknown'}</td>
-							<td class="border p-2">{vote.data.target}</td>
-							<td class="border p-2">{vote.data.tag}</td>
-							<td class="border p-2">{vote.data.is_positive ? '✅ +1' : '❌ -1'}</td>
+							<td class="border p-2">{vote.data.target_key}</td>
+							<td class="border p-2">{vote.data.tag_key}</td>
+							<td class="border p-2">{vote.data.value > 0 ? '✅ +1' : '❌ -1'}</td>
 							<td class="border p-2">
 								<div class="flex gap-2 justify-center">
 									<button
@@ -838,7 +841,7 @@
 
 		<!-- Create/Update Tag Form -->
 		<div class="mb-8" id="tagForm">
-			<h2 class="text-xl mb-4">{newTag.key ? 'Update Tag' : 'Create New Tag'}</h2>
+			<h2 class="text-xl mb-4">Create New Tag</h2>
 			<form on:submit|preventDefault={saveTag} class="space-y-4">
 				{#if newTag.key}
 					<div>

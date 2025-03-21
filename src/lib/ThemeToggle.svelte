@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
 
-    let isDark = false;
+    let isDark = true;
 
     onMount(() => {
         // Check localStorage first, then system preference
@@ -9,7 +9,7 @@
         if (savedTheme) {
             isDark = savedTheme === 'dark';
         } else {
-            isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            isDark = true; // Default to dark mode
         }
         updateTheme();
     });
