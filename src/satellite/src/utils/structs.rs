@@ -5,18 +5,31 @@ use serde::{Deserialize, Serialize};
 use candid::Principal;
 
 /// Represents a user in the system with their profile information
+/// See format standards in docs/core/architecture/database.md
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
     /// Unique identifier for the user document
+    /// Generated using nanoid() by Juno when the document is created
+    /// This is NOT the Principal ID - it's just a unique document identifier
     pub key: String,
-    /// Description field for filtering/search (format: "username:{normalized_handle},author:{author_key}")
+
+    /// Description field for filtering/search 
+    /// Format: [owner:{principal}],[username:{name}]
+    /// Note: owner field uses Principal ID, not document key
+    /// See: docs/core/architecture/database.md#users-collection
     pub description: String,
+
     /// Principal ID of the document owner
+    /// This is automatically set by Juno to the Principal of the creating user
+    /// Used for access control when security is set to "owner only"
     pub owner: Principal,
+
     /// Creation timestamp in nanoseconds
     pub created_at: u64,
+
     /// Last update timestamp in nanoseconds
     pub updated_at: u64,
+
     /// Document version for concurrency control
     pub version: u64,
 
@@ -29,23 +42,42 @@ pub struct User {
 pub struct UserData {
     /// Unique username (must be unique across all users)
     pub handle: String,
+
     /// Display name (not required to be unique)
     pub display_name: String,
+
+    /// Document key (used in playground mode)
+    /// This is a nanoid-generated unique identifier
+    /// Only used during development/testing when all documents share the same owner (playground mode)
+    /// In production, we will use the document's owner field (Principal ID) instead
+    pub key: String,
 }
 
 /// Represents a tag that can be used for categorizing votes and reputation
+/// See format standards in docs/core/architecture/database.md
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Tag {
     /// Unique identifier for the tag document
+    /// Generated using nanoid() by Juno when the document is created
+    /// This is NOT the Principal ID - it's just a unique document identifier
     pub key: String,
+
     /// Description field for filtering/search
+    /// Format: [owner:{principal}],[name:{name}]
+    /// Note: owner field uses Principal ID, not document key
+    /// See: docs/core/architecture/database.md#tags-collection
     pub description: String,
+
     /// Principal ID of the document owner
+    /// This is automatically set by Juno to the Principal of the creating user
     pub owner: Principal,
+
     /// Creation timestamp in nanoseconds
     pub created_at: u64,
+
     /// Last update timestamp in nanoseconds
     pub updated_at: u64,
+
     /// Document version for concurrency control
     pub version: u64,
 
@@ -70,14 +102,19 @@ pub struct TagData {
     pub min_users_for_threshold: u32,
     /// Weight multiplier for votes (default: 1.0)
     pub vote_weight: f64,
+    /// Tag's unique key (needed for description generation)
+    pub key: String,
 }
 
 /// Represents a vote cast by one user on another
+/// See format standards in docs/core/architecture/database.md
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Vote {
     /// Unique identifier for the vote document
     pub key: String,
-    /// Description field for filtering/search (format: "author:{author_key},target:{target_key},tag:{tag_key}")
+    /// Description field for filtering/search
+    /// Format: [owner:{key}][target:{key}][tag:{key}]
+    /// See: docs/core/architecture/database.md#votes-collection
     pub description: String,
     /// Principal ID of the document owner
     pub owner: Principal,
@@ -95,11 +132,11 @@ pub struct Vote {
 /// Contains the core vote information
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VoteData {
-    /// User key who cast the vote
+    /// User key who cast the vote (nanoid-generated document key)
     pub author_key: String,
-    /// User key being voted on
+    /// User key being voted on (nanoid-generated document key)
     pub target_key: String,
-    /// Tag this vote is for
+    /// Tag key this vote is for (nanoid-generated document key)
     pub tag_key: String,
     /// Vote value (+1 for upvote, -1 for downvote)
     pub value: f64,
@@ -110,11 +147,16 @@ pub struct VoteData {
 }
 
 /// Represents a user's reputation in a specific tag
+/// See format standards in docs/core/architecture/database.md
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Reputation {
     /// Unique identifier for the reputation document
+    /// Generated using nanoid() by Juno when the document is created
+    /// This is NOT the Principal ID - it's just a unique document identifier
     pub key: String,
-    /// Description field for filtering/search (format: "user:{user_key},tag:{tag_key},author:{author_key}")
+    /// Description field for filtering/search
+    /// Format: [owner:{key}][tag:{key}]
+    /// See: docs/core/architecture/database.md#reputations-collection
     pub description: String,
     /// Principal ID of the document owner
     pub owner: Principal,

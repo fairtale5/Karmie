@@ -2,6 +2,21 @@
 
 This document defines the database schema for the Reputator project.
 
+## Document Keys and Principals
+
+### Document Keys
+- All document keys are generated using [nanoid](https://github.com/ai/nanoid) when documents are created
+- Keys are unique identifiers within a collection, but have no special meaning
+- Keys are used only for document lookup and referencing
+- Example: `"user_123"`, `"tag_456"`, `"vote_789"`
+
+### Principal IDs
+- Principal IDs are automatically set by Juno to identify document owners
+- They come from the user's Internet Identity authentication
+- Used for access control when collection security is set to "owner only"
+- Not used for document references (use document keys instead)
+- Example: `"2vxsx-fae"` (actual principals are much longer)
+
 ## Collections
 
 ### Important Note for Test Phase
@@ -15,9 +30,9 @@ Collection name: `users`
 ```typescript
 interface UserDocument {
     // Standard Juno fields (automatically managed)
-    key: string;              // Generated with nanoid()
-    description: string;      // Format: "username:{normalized_handle},author:{author_key}"
-    owner: Principal;         // Automatically set to document creator's Principal
+    key: string;              // Generated with nanoid() by Juno
+    description: string;      // Format: [owner:{principal}],[username:{name}]
+    owner: Principal;         // Automatically set to user's Internet Identity Principal
     created_at: bigint;      // Automatically set on creation (nanoseconds)
     updated_at: bigint;      // Automatically updated on changes (nanoseconds)
     version: bigint;         // Automatically managed for concurrency control
@@ -26,6 +41,7 @@ interface UserDocument {
     data: {
         handle: string;       // Unique username
         display_name: string; // Display name (not unique)
+        principal: Principal; // User's Internet Identity Principal
     }
 }
 ```
@@ -230,24 +246,98 @@ const { items } = await listDocs({
    - Maximum description length: 1024 characters
    - Maximum batch operation size: 100 documents
 
-2. **Timestamps**
+2. **Key Generation**
+   - All document keys are generated using nanoid()
+   - Keys are unique within a collection
+   - Keys are used for document references
+   - Do not use Principal IDs as keys
+
+3. **Principal IDs**
+   - Set automatically by Juno on document creation
+   - Come from Internet Identity authentication
+   - Used for access control
+   - Not used for document references
+
+4. **Timestamps**
    - All timestamps are in nanoseconds
    - Use `Date.now() * 1_000_000` to convert from JavaScript
 
-3. **Version Control**
+5. **Version Control**
    - Required for updates to prevent concurrent modifications
    - Must match the current document version
    - Automatically incremented after successful updates
    - Only need to provide version when updating documents
 
-4. **Automatically Managed Fields**
+6. **Automatically Managed Fields**
    - `owner`: Set to document creator's Principal
    - `created_at`: Set on document creation
    - `updated_at`: Updated on document changes
    - `version`: Managed for concurrency control
    - Only need to provide `version` when updating documents
 
-5. **Test Phase Considerations**
+7. **Test Phase Considerations**
    - All documents created by same user during testing
    - Author stored in description field
    - Will change to proper multi-user system later 
+
+# Document Description Field Standards
+
+## Format Standard
+All document descriptions follow this format:
+`[field1:{value1}][field2:{value2}][field3:{value3}]`
+
+Rules:
+- Use brackets to wrap each field-value pair
+- No spaces
+- Consistent field order per collection
+- Use 'owner' consistently for document ownership
+
+## Collection-Specific Formats
+
+### Users Collection
+Format: `,username:{name},owner:{key},`
+Example: `,username:john_doe,owner:user_123,`
+
+### Tags Collection
+Format: `[name:{name}][owner:{key}]`
+Example: `[name:technical_skills][owner:user_123]`
+
+### Votes Collection
+Format: `[owner:{key}][target:{key}][tag:{key}]`
+Example: `[owner:user_123][target:user_456][tag:tag_789]`
+
+### Reputations Collection
+Format: `[owner:{key}][tag:{key}]`
+Example: `[owner:user_123][tag:tag_789]`
+
+## Playground vs Production Mode
+
+### Playground Mode
+- Uses description field for ownership lookup
+- Single Juno user creates all documents
+- Ownership tracked via description field
+- Format allows for simulated multi-user testing
+
+### Production Mode
+- Uses Juno's native owner field
+- Each user creates their own documents
+- Ownership tracked via Juno's Principal ID
+- Description field still maintained for compatibility
+
+## Important Notes
+1. The bracket format ensures:
+   - Clear field boundaries
+   - No issues with special characters in values
+   - Reliable pattern matching for queries
+   - Easy visual debugging
+
+2. Query Examples:
+   - Find by tag: `[tag:tag_123]`
+   - Find by owner: `[owner:user_123]`
+   - Find by multiple fields: Pattern match on `[owner:user_123][tag:tag_456]`
+
+3. Format Benefits:
+   - Values can contain any character (except `]`)
+   - No need for escaping special characters
+   - Exact field matching without false positives
+   - Future-proof for nested structures if needed

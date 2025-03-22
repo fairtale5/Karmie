@@ -9,10 +9,10 @@
  * (single-user testing environment). Therefore, we use the `description` field for 
  * document identification and relationships instead of the `owner` field.
  * 
- * Description field formats:
- * - Reputation docs: "user:{user_key},tag:{tag_key},author:{author_key}"
- * - Vote docs: "author:{author_key},target:{target_key},tag:{tag_key}"
- * - Tag docs: No special format, just descriptive text
+ * Description field formats (see docs/core/architecture/database.md):
+ * - Reputation docs: [owner:{principal_or_key}][tag:{tag_key}]
+ * - Vote docs: [owner:{principal_or_key}][target:{target_key}][tag:{tag_key}]
+ * - Tag docs: [owner:{principal_or_key}][name:{tag_name}]
  * 
  * This approach will change in production to use proper multi-user authentication
  * where document ownership and relationships will be managed through the `owner` field

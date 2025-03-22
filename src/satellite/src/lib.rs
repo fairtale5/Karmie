@@ -1,14 +1,97 @@
 /*!
- * Juno Satellite Implementation
+ * Juno Satellite Implementation for Reputator
  * 
- * This module implements the core functionality for a Juno satellite,
- * including document management, asset handling, and custom business logic.
+ * This module implements the core functionality for the Reputator satellite,
+ * focusing on comprehensive data validation and reputation management.
  * 
  * # Available Features
  * - Document Management (create, update, delete)
  * - Asset Management (upload, delete)
  * - Custom Validation Logic
  * - Event Hooks
+ * 
+ * # Data Validation Architecture
+ * The validation system follows a two-phase approach:
+ * 
+ * 1. Pre-Creation Validation (`assert_set_doc`):
+ *    - Runs BEFORE document creation/update
+ *    - Validates all data constraints
+ *    - Enforces business rules
+ *    - Prevents invalid data from being stored
+ *    - Collection-specific validation:
+ *      - Users: Username format, uniqueness, one account per identity
+ *      - Votes: Value constraints, weight limits, no self-voting
+ *      - Tags: Name requirements, time periods, reputation settings
+ *      - Reputations: Score constraints, weight limits
+ * 
+ * 2. Post-Creation Processing (`on_set_doc`):
+ *    - Runs AFTER successful document creation/update
+ *    - Handles data processing and updates:
+ *      - For votes: Recalculates reputation scores
+ *      - For users/tags: No additional processing needed
+ *    - Updates related documents as needed
+ *    - Maintains system consistency
+ * 
+ * # Playground vs Production Mode
+ * 
+ * The system operates in two modes, controlled by `IS_PLAYGROUND`:
+ * 
+ * Playground Mode (`IS_PLAYGROUND = true`):
+ * - Single user creates all documents
+ * - Uses document key in description for ownership
+ * - Relaxed validation for testing
+ * - Format: [owner:{key}],[field:{value}]
+ * 
+ * Production Mode (`IS_PLAYGROUND = false`):
+ * - Each user creates their own documents
+ * - Uses Juno's Principal ID for ownership
+ * - Strict validation rules
+ * - Format: [field:{value}]
+ * 
+ * # Document Formats
+ * 
+ * Each collection uses specific description formats:
+ * 
+ * Users Collection:
+ * ```text
+ * [owner:{id}],[username:{normalized_handle}]
+ * ```
+ * 
+ * Votes Collection:
+ * ```text
+ * [owner:{id}],[author:{key}],[target:{key}],[tag:{key}]
+ * ```
+ * 
+ * Tags Collection:
+ * ```text
+ * [owner:{id}],[name:{normalized_name}]
+ * ```
+ * 
+ * Reputations Collection:
+ * ```text
+ * [owner:{id}],[user:{key}],[tag:{key}]
+ * ```
+ * 
+ * # Logging Standards
+ * 
+ * This module uses structured logging with consistent prefixes:
+ * 
+ * - Error Format:
+ *   ```text
+ *   [ERROR] [Function - Collection] Detailed message with context
+ *   ```
+ * 
+ * - Info Format:
+ *   ```text
+ *   [INFO] [Function - Collection] Operation result with key data
+ *   ```
+ * 
+ * - Debug Format:
+ *   ```text
+ *   [DEBUG] [Function - Collection] Step-by-step operation tracking
+ *   ```
+ * 
+ * See utils/logging.rs for the complete logging system documentation.
  */
 
 // =============================================================================
@@ -121,7 +204,8 @@ use crate::utils::{
         calculate_user_reputation, get_user_reputation_data,
         calculate_and_store_vote_weight
     },
-    logging::{log_error, log_warn, log_info, log_debug}
+    logging::{log_error, log_warn, log_info, log_debug},
+    description_helpers::{DocumentDescription, create_vote_description}
 };
 
 // =============================================================================
@@ -134,93 +218,18 @@ mod utils;
 // Active Hooks and Assertions
 // =============================================================================
 
-// Handles document creation/update in the "users" collection
-// 
-// This hook is triggered whenever a document is created or updated in the
-// "users" collection. It performs the following tasks:
-// 1. Validates the user data
-// 2. Normalizes the username
-// 3. Checks for username uniqueness
-// 4. Updates the document with normalized data
-
+/// Handles document updates for users, votes, and tags collections
+/// 
+/// This function is called by Juno AFTER a document is created or updated.
+/// It handles side effects that should occur after successful document creation:
+/// - For votes: Triggers reputation recalculation
+/// - For users/tags: No side effects needed
+/// 
+/// Note: This function does NOT handle validation. All validation is done in assert_set_doc
+/// which runs BEFORE document creation.
 #[on_set_doc(collections = ["users", "votes", "tags"])]
 async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
     match context.data.collection.as_str() {
-        "users" => {
-            // Decode the document data
-            let user_data: UserData = decode_doc_data(&context.data.data.after.data)
-                .map_err(|e| {
-                    log_error(&format!("[on_set_doc - Users] Failed to decode user data: {}", e));
-                    e.to_string()
-                })?;
-            
-            // Log the start of user data update
-            log_debug(&format!("[on_set_doc - Users] Processing update for key: {}", context.data.key));
-            
-            // Normalize and validate the handle
-            let normalized_handle = normalize_username(&user_data.handle);
-            
-            // Handle validation results
-            validate_username(&normalized_handle).map_err(|e| {
-                log_error(&format!("[on_set_doc - Users] Username validation failed: {}", e));
-                e.to_string()
-            })?;
-            validate_display_name(&user_data.display_name).map_err(|e| {
-                log_error(&format!("[on_set_doc - Users] Display name validation failed: {}", e));
-                e.to_string()
-            })?;
-
-            // Check for handle uniqueness using the description field
-            let username_search = format!("username:{}", normalized_handle);
-            let matcher = ListMatcher {
-                description: Some(username_search.clone()),
-                ..Default::default()
-            };
-
-            let params = ListParams {
-                matcher: Some(matcher),
-                ..Default::default()
-            };
-
-            let existing_docs = list_docs(String::from("users"), params);
-            for doc in existing_docs.items {
-                if doc.0 != context.data.key {
-                    log_error(&format!("[on_set_doc - Users] Username conflict: {} already exists", normalized_handle));
-                    return Err("Username already exists".to_string());
-                }
-            }
-
-            // Update the document with normalized handle and description
-            let updated_data = UserData {
-                handle: normalized_handle.clone(),
-                display_name: user_data.display_name.clone(),
-            };
-            
-            // Log the successful update
-            log_info(&format!("[on_set_doc - Users] Successfully updated user {} with handle {}", context.data.key, normalized_handle));
-            
-            let encoded_data = encode_doc_data(&updated_data)
-                .map_err(|e| {
-                    log_error(&format!("[on_set_doc - Users] Failed to encode updated data: {}", e));
-                    e.to_string()
-                })?;
-
-            let doc = SetDoc {
-                data: encoded_data,
-                description: Some(username_search),
-                version: context.data.data.after.version,
-            };
-
-            set_doc_store(
-                context.caller,
-                context.data.collection,
-                context.data.key,
-                doc,
-            ).map_err(|e| {
-                log_error(&format!("[on_set_doc - Users] Failed to store document: {}", e));
-                e.to_string()
-            })?;
-        }
         "votes" => {
             log_debug("[on_set_doc - Votes] Processing new vote");
             
@@ -260,8 +269,9 @@ async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
                 vote.data.author_key, vote.data.target_key, vote.data.tag_key
             ));
         }
-        "tags" => {
-            log_debug("[on_set_doc - Tags] Processing tag update (no reputation recalculation needed)");
+        "users" | "tags" => {
+            // No side effects needed for users or tags
+            log_debug(&format!("[on_set_doc] No side effects needed for collection: {}", context.data.collection));
         }
         _ => {
             log_error(&format!("[on_set_doc] Unknown collection: {}", context.data.collection));
@@ -272,47 +282,141 @@ async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
     Ok(())
 }
 
-/// Validates document creation/update in the "users" collection
-/// 
-/// This assertion is triggered before a document is created or updated
-/// in the "users" collection. It ensures:
-/// 1. The username and display name are valid
-/// 2. The username is unique across all documents
-/// 3. (Temporarily disabled) One document per owner limit
-#[assert_set_doc(collections = ["users"])]
-fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
-    // Log the start of validation
-    log_debug(&format!("[assert_set_doc] Starting validation for key: {}", context.data.key));
+/// Configuration flag for playground mode
+pub const IS_PLAYGROUND: bool = true;  // Set to false for production
 
-    // Step 1: Basic Data Validation
-    // ----------------------------
+#[assert_set_doc(collections = ["users", "votes", "tags", "reputations"])]
+fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
+    log_debug(&format!("[assert_set_doc] Starting validation for collection: {}, key: {}", 
+        context.data.collection, context.data.key));
+
+    match context.data.collection.as_str() {
+        "users" => validate_user_document(&context),
+        "votes" => validate_vote_document(&context),
+        "tags" => validate_tag_document(&context),
+        "reputations" => validate_reputation_document(&context),
+        _ => {
+            let err_msg = format!("Unknown collection: {}", context.data.collection);
+            log_error(&format!("[assert_set_doc] {}", err_msg));
+            Err(err_msg)
+        }
+    }
+}
+
+/// Validates a username string
+/// 
+/// Requirements:
+/// 1. Not empty
+/// 2. Length between 3-30 characters
+/// 3. Only alphanumeric, underscore, and hyphen allowed
+/// 4. Must be unique (normalized to lowercase for comparison)
+/// 
+/// # Arguments
+/// * `username` - The username to validate
+/// 
+/// # Returns
+/// * `Result<(), String>` - Ok if validation passes, Err with message if it fails
+fn validate_username(username: &str) -> Result<(), String> {
+    // Step 1: Check if empty
+    if username.trim().is_empty() {
+        return Err("Username cannot be empty".to_string());
+    }
+
+    // Step 2: Check length
+    let len = username.len();
+    if len < 3 || len > 30 {
+        return Err(format!(
+            "Username must be between 3 and 30 characters (current length: {})",
+            len
+        ));
+    }
+
+    // Step 3: Check allowed characters
+    if !username.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
+        return Err("Username can only contain letters, numbers, underscores, and hyphens".to_string());
+    }
+
+    Ok(())
+}
+
+/// Validates a tag name string
+/// 
+/// Requirements:
+/// 1. Not empty
+/// 2. Length between 3-30 characters
+/// 3. Only alphanumeric, underscore, and hyphen allowed
+/// 4. Must be unique (case-insensitive comparison)
+/// 5. Can contain uppercase letters (preserved as entered)
+/// 
+/// # Arguments
+/// * `tag_name` - The tag name to validate
+/// 
+/// # Returns
+/// * `Result<(), String>` - Ok if validation passes, Err with message if it fails
+fn validate_tag_name(tag_name: &str) -> Result<(), String> {
+    // Step 1: Check if empty
+    if tag_name.trim().is_empty() {
+        return Err("Tag name cannot be empty".to_string());
+    }
+
+    // Step 2: Check length
+    let len = tag_name.len();
+    if len < 3 || len > 30 {
+        return Err(format!(
+            "Tag name must be between 3 and 30 characters (current length: {})",
+            len
+        ));
+    }
+
+    // Step 3: Check allowed characters
+    if !tag_name.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
+        return Err("Tag name can only contain letters, numbers, underscores, and hyphens".to_string());
+    }
+
+    Ok(())
+}
+
+/// Validates a user document before creation or update
+/// 
+/// This function performs comprehensive validation of user documents:
+/// 1. Decodes and validates the basic user data structure
+/// 2. Validates username format and restrictions
+/// 3. Validates display name format and restrictions
+/// 4. Ensures username uniqueness across the system
+/// 5. Enforces one-document-per-identity rule in production mode
+/// 
+/// # Arguments
+/// * `context` - The validation context containing:
+///   - caller: The Principal ID of the user making the request
+///   - collection: Must be "users"
+///   - key: The document key (nanoid-generated)
+///   - data: The proposed document data
+/// 
+/// # Returns
+/// * `Result<(), String>` - Ok if validation passes, Err with detailed message if it fails
+fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
+    // Step 1: Decode and validate the basic user data structure
+    // This ensures the document contains all required fields in the correct format
     let user_data: UserData = decode_doc_data(&context.data.data.proposed.data)
         .map_err(|e| {
-            log_error(&format!("[assert_set_doc] Failed to decode user data: key={}, error={}", context.data.key, e));
-            e.to_string()
+            log_error(&format!("[assert_set_doc] Failed to decode user data: key={}, error={}", 
+                context.data.key, e));
+            format!("Invalid user data format: {}", e)
         })?;
     
-    // Validate username and display name
-    validate_username(&user_data.handle).map_err(|e| {
-        log_error(&format!("[assert_set_doc] Username validation failed: key={}, error={}", context.data.key, e));
-        e.to_string()
-    })?;
-    validate_display_name(&user_data.display_name).map_err(|e| {
-        log_error(&format!("[assert_set_doc] Display name validation failed: key={}, error={}", context.data.key, e));
-        e.to_string()
-    })?;
+    // Step 2: Validate username format and restrictions
+    validate_username(&user_data.handle)?;
 
-    // Step 2: Username Uniqueness Check
-    // -------------------------------
-    // Normalize the username for consistent comparison
-    log_debug(&format!("[assert_set_doc] Checking username uniqueness for: {}", user_data.handle));
+    // Step 3: Validate display name format and restrictions
+    validate_display_name(&user_data.display_name)?;
+
+    // Step 4: Ensure username uniqueness across the system
+    // First, normalize the username to lowercase for comparison
+    let normalized_handle = user_data.handle.to_lowercase();
     
-    let normalized_handle = normalize_username(&user_data.handle);
-    let username_search = format!("username:{}", normalized_handle);
-    
-    // Search for any documents with this username
+    // Build the search query based on mode
     let matcher = ListMatcher {
-        description: Some(username_search),
+        description: Some(format!("[username:{}]", normalized_handle)),
         ..Default::default()
     };
 
@@ -321,40 +425,458 @@ fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
         ..Default::default()
     };
 
-    // Check for username conflicts
-    let existing_docs = list_docs(String::from("users"), params);
-    for doc in existing_docs.items {
-        // Skip our own document if this is an update
-        if context.data.data.proposed.version.is_some() && doc.0 == context.data.key {
-            continue;
+    let existing_users = list_docs(String::from("users"), params)
+        .map_err(|e| {
+            log_error(&format!("[assert_set_doc] Failed to check username uniqueness: key={}, error={}", 
+                context.data.key, e));
+            format!("Failed to check username uniqueness: {}", e)
+        })?;
+
+    // Check if we found any existing users with this normalized username
+    // Exclude the current document if we're updating
+    for (doc_key, _) in existing_users.items {
+        if doc_key != context.data.key {
+            return Err(format!(
+                "Username '{}' is already taken (case-insensitive comparison)",
+                user_data.handle
+            ));
         }
-        log_error(&format!("[assert_set_doc] Username conflict: {} already exists (key: {})", normalized_handle, context.data.key));
-        return Err("Username already exists".to_string());
     }
 
-    // Step 3: One-Document-Per-Owner Check (Temporarily Disabled)
-    // --------------------------------------------------------
-    // Only check on CREATE operations (when version is not provided)
-    /*
-    if context.data.data.proposed.version.is_none() {
-        let user_docs_params = ListParams {
-            owner: Some(context.caller),
+    // Step 5: In production mode, enforce one-document-per-identity rule
+    if !IS_PLAYGROUND {
+        // In production mode, we search by Principal ID in the description
+        let mut desc = DocumentDescription::new();
+        desc.add_owner(&context.caller.to_string());
+        
+        let owner_params = ListParams {
+            matcher: Some(ListMatcher {
+                description: Some(desc.build()),
+                ..Default::default()
+            }),
             ..Default::default()
         };
 
-        let existing_user_docs = list_docs(String::from("users"), user_docs_params);
-        for doc in existing_user_docs.items {
-            if doc.0 != context.data.key {
-                log_info(&format!("User already has an account (caller: {}, attempted key: {})", 
-                    context.caller, context.data.key));
-                return Err("User already has an account in the system".to_string());
+        let existing_docs = list_docs(String::from("users"), owner_params)
+            .map_err(|e| {
+                log_error(&format!("[assert_set_doc] Failed to check one-doc-per-identity: key={}, error={}", 
+                    context.data.key, e));
+                format!("Failed to check one-document-per-identity rule: {}", e)
+            })?;
+
+        // Check if we found any existing documents owned by this user
+        // Exclude the current document if we're updating
+        for (doc_key, _) in existing_docs.items {
+            if doc_key != context.data.key {
+                return Err("Users can only have one document in production mode".to_string());
             }
         }
     }
-    */
 
-    // Log successful validation
-    log_info(&format!("[assert_set_doc] Successfully validated user data: key={}, handle={}", context.data.key, normalized_handle));
+    Ok(())
+}
+
+/// Validates a vote document before creation or update
+/// 
+/// This function performs comprehensive validation of vote documents:
+/// 1. Decodes and validates the basic vote data structure
+/// 2. Validates description format using DocumentDescription helper
+/// 3. Validates vote value constraints (+1 or -1)
+/// 4. Validates vote weight constraints (0.0 to 1.0)
+/// 5. Prevents self-voting
+/// 6. Verifies tag exists
+/// 
+/// # Arguments
+/// * `context` - The validation context containing the document data
+/// 
+/// # Returns
+/// * `Result<(), String>` - Ok if validation passes, Err with detailed message if it fails
+fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
+    log_debug(&format!(
+        "[validate_vote_document] Validating vote document: key={}",
+        context.data.key
+    ));
+
+    // Step 1: Decode and validate the basic vote data structure
+    // This ensures the document contains all required fields in the correct format
+    let vote: Vote = decode_doc_data(&context.data.data)
+        .map_err(|e| {
+            log_error(&format!(
+                "[validate_vote_document] Failed to decode vote data: {}",
+                e
+            ));
+            format!("Failed to decode vote data: {}", e)
+        })?;
+
+    // Step 2: Create and validate description using DocumentDescription helper
+    // This ensures the description follows our standardized format for both playground and production modes
+    let mut desc = DocumentDescription::new();
+    desc.add_owner(if IS_PLAYGROUND {
+        &vote.data.author_key
+    } else {
+        &context.caller.to_string()
+    })
+    .add_field("target", &vote.data.target_key)
+    .add_field("tag", &vote.data.tag_key);
+
+    let expected_description = desc.build();
+
+    // Verify the description matches our expected format
+    if let Some(actual_description) = &context.data.description {
+        if actual_description != &expected_description {
+            let err_msg = format!(
+                "Invalid description format. Expected: {}, Got: {}",
+                expected_description, actual_description
+            );
+            log_error(&format!("[validate_vote_document] {}", err_msg));
+            return Err(err_msg);
+        }
+    } else {
+        let err_msg = "Description field is required for vote documents";
+        log_error(&format!("[validate_vote_document] {}", err_msg));
+        return Err(err_msg.to_string());
+    }
+
+    // Step 3: Validate vote value constraints
+    // Vote value must be either +1 (upvote) or -1 (downvote)
+    // This ensures votes have clear, binary meaning in the system
+    if vote.data.value != 1.0 && vote.data.value != -1.0 {
+        let err_msg = format!("Vote value must be either +1 or -1, got: {}", vote.data.value);
+        log_error(&format!("[validate_vote_document] {}", err_msg));
+        return Err(err_msg);
+    }
+
+    // Step 4: Validate vote weight constraints
+    // Vote weight represents the voter's influence, scaled from 0.0 to 1.0
+    // This is calculated based on the voter's reputation in the tag
+    if vote.data.weight < 0.0 || vote.data.weight > 1.0 {
+        let err_msg = format!("Vote weight must be between 0.0 and 1.0, got: {}", vote.data.weight);
+        log_error(&format!("[validate_vote_document] {}", err_msg));
+        return Err(err_msg);
+    }
+
+    // Step 5: Prevent self-voting
+    // Users cannot vote on their own content to prevent reputation manipulation
+    if vote.data.author_key == vote.data.target_key {
+        let err_msg = format!("Cannot vote on yourself (author_key: {})", vote.data.author_key);
+        log_error(&format!("[validate_vote_document] {}", err_msg));
+        return Err(err_msg);
+    }
+
+    // Step 6: Verify the tag exists
+    // This ensures votes are only cast on valid tags
+    let tag_doc = get_doc(&vote.data.tag_key, String::from("tags"))
+        .map_err(|e| {
+            let err_msg = format!("Failed to get tag data: {}", e);
+            log_error(&format!("[validate_vote_document] {}", err_msg));
+            err_msg
+        })?
+        .ok_or_else(|| {
+            let err_msg = format!("Tag not found: {}", vote.data.tag_key);
+            log_error(&format!("[validate_vote_document] {}", err_msg));
+            err_msg
+        })?;
+
+    log_info(&format!(
+        "[validate_vote_document] Successfully validated vote document: key={}",
+        context.data.key
+    ));
+
+    Ok(())
+}
+
+/// Validates a tag document before creation or update
+/// 
+/// This function performs comprehensive validation of tag documents:
+/// 1. Decodes and validates the basic tag data structure
+/// 2. Validates tag name format and restrictions
+/// 3. Validates description length constraints
+/// 4. Validates time period configuration
+/// 5. Validates reputation and voting settings
+/// 
+/// # Arguments
+/// * `context` - The validation context containing:
+///   - caller: The Principal ID of the user making the request
+///   - collection: Must be "tags"
+///   - key: The document key (nanoid-generated)
+///   - data: The proposed document data
+/// 
+/// # Returns
+/// * `Result<(), String>` - Ok if validation passes, Err with detailed message if it fails
+fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
+    // Step 1: Decode and validate the basic tag data structure
+    let tag_data: TagData = decode_doc_data(&context.data.data.proposed.data)
+        .map_err(|e| {
+            log_error(&format!("[assert_set_doc] Failed to decode tag data: key={}, error={}", 
+                context.data.key, e));
+            format!("Invalid tag data format: {}", e)
+        })?;
+    
+    // Step 2: Validate tag name format and uniqueness
+    validate_tag_name(&tag_data.name)?;
+
+    // Check for tag name uniqueness (case-insensitive)
+    let normalized_name = tag_data.name.to_lowercase();
+    let matcher = ListMatcher {
+        description: Some(format!("[name:{}]", normalized_name)),
+        ..Default::default()
+    };
+
+    let params = ListParams {
+        matcher: Some(matcher),
+        ..Default::default()
+    };
+
+    let existing_tags = list_docs(String::from("tags"), params)
+        .map_err(|e| {
+            log_error(&format!("[assert_set_doc] Failed to check tag name uniqueness: key={}, error={}", 
+                context.data.key, e));
+            format!("Failed to check tag name uniqueness: {}", e)
+        })?;
+
+    // Check if we found any existing tags with this normalized name
+    // Exclude the current document if we're updating
+    for (doc_key, _) in existing_tags.items {
+        if doc_key != context.data.key {
+            return Err(format!(
+                "Tag name '{}' is already taken (case-insensitive comparison)",
+                tag_data.name
+            ));
+        }
+    }
+
+    // Step 3: Validate description length
+    if tag_data.description.len() > 1024 {
+        return Err(format!(
+            "Tag description cannot exceed 1024 characters (current length: {})",
+            tag_data.description.len()
+        ));
+    }
+
+    // Step 4: Validate time periods
+    validate_time_periods(&tag_data.time_periods)?;
+
+    // Step 5: Validate vote reward (0.0 to 1.0)
+    if tag_data.vote_reward < 0.0 || tag_data.vote_reward > 1.0 {
+        return Err(format!(
+            "Vote reward must be between 0.0 and 1.0 (got: {})",
+            tag_data.vote_reward
+        ));
+    }
+
+    // Step 6: Validate minimum users (must be whole number)
+    if !tag_data.min_users_for_threshold.is_integer() || tag_data.min_users_for_threshold < 1.0 {
+        return Err(format!(
+            "Minimum users must be a whole number greater than 0 (got: {})",
+            tag_data.min_users_for_threshold
+        ));
+    }
+
+    Ok(())
+}
+
+/// Validates a reputation document before creation or update
+/// 
+/// This function performs comprehensive validation of reputation documents:
+/// 1. Decodes and validates the basic reputation data structure
+/// 2. Validates description format using DocumentDescription helper
+/// 3. Validates total basis reputation (from received votes)
+/// 4. Validates voting rewards reputation (must be non-negative)
+/// 5. Validates effective reputation calculation consistency
+/// 6. Validates vote weight constraints (between 0.0 and 1.0)
+/// 
+/// # Arguments
+/// * `context` - The validation context containing:
+///   - caller: The Principal ID of the user making the request
+///   - collection: Must be "reputations"
+///   - key: The document key (nanoid-generated)
+///   - data: The proposed document data
+/// 
+/// # Returns
+/// * `Result<(), String>` - Ok if validation passes, Err with detailed message if it fails
+fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), String> {
+    log_debug(&format!(
+        "[validate_reputation_document] Validating reputation document: key={}",
+        context.data.key
+    ));
+
+    // Step 1: Decode and validate the basic reputation data structure
+    // This ensures the document contains all required fields in the correct format
+    // and that we can properly access the reputation data for further validation
+    let reputation: Reputation = decode_doc_data(&context.data.data)
+        .map_err(|e| {
+            log_error(&format!(
+                "[validate_reputation_document] Failed to decode reputation data: {}",
+                e
+            ));
+            format!("Failed to decode reputation data: {}", e)
+        })?;
+
+    // Step 2: Create and validate description using DocumentDescription helper
+    // This ensures the description follows our standardized format:
+    // - Playground mode: [owner:{user_key}][tag:{tag_key}]
+    // - Production mode: [owner:{principal_id}][tag:{tag_key}]
+    let mut desc = DocumentDescription::new();
+    desc.add_owner(if IS_PLAYGROUND {
+        &reputation.data.user_key
+    } else {
+        &context.caller.to_string()
+    })
+    .add_field("tag", &reputation.data.tag_key);
+
+    let expected_description = desc.build();
+
+    // Verify the description matches our expected format
+    if let Some(actual_description) = &context.data.description {
+        if actual_description != &expected_description {
+            let err_msg = format!(
+                "Invalid description format. Expected: {}, Got: {}",
+                expected_description, actual_description
+            );
+            log_error(&format!("[validate_reputation_document] {}", err_msg));
+            return Err(err_msg);
+        }
+    } else {
+        let err_msg = "Description field is required for reputation documents";
+        log_error(&format!("[validate_reputation_document] {}", err_msg));
+        return Err(err_msg.to_string());
+    }
+
+    // Step 3: Validate total basis reputation
+    // Basis reputation (from received votes) can be negative or positive:
+    // - Positive: User has received more upvotes or higher-weighted upvotes
+    // - Negative: User has received more downvotes or higher-weighted downvotes
+    // - This is the raw vote-based reputation before voting rewards
+    log_debug(&format!(
+        "[validate_reputation_document] Total basis reputation: {}",
+        reputation.data.total_basis_reputation
+    ));
+
+    // Step 4: Validate voting rewards constraints
+    // Voting rewards must be non-negative because:
+    // - They represent participation rewards
+    // - They help bootstrap new communities
+    // - They incentivize active participation
+    if reputation.data.total_voting_rewards_reputation < 0.0 {
+        let err_msg = format!(
+            "Total voting rewards reputation cannot be negative (got: {})",
+            reputation.data.total_voting_rewards_reputation
+        );
+        log_error(&format!("[validate_reputation_document] {}", err_msg));
+        return Err(err_msg);
+    }
+
+    // Step 5: Validate effective reputation calculation consistency
+    // The effective reputation:
+    // - Can be negative (when heavily downvoted)
+    // - Should match basis + rewards when above threshold
+    // - Should match only basis when below threshold
+    // - Is used to determine voting power and privileges
+    let expected_effective = if reputation.data.has_voting_power {
+        reputation.data.total_basis_reputation + reputation.data.total_voting_rewards_reputation
+    } else {
+        reputation.data.total_basis_reputation
+    };
+
+    if (reputation.data.last_known_effective_reputation - expected_effective).abs() > 0.000001 {
+        let err_msg = format!(
+            "Effective reputation calculation mismatch. Expected: {}, Got: {}",
+            expected_effective,
+            reputation.data.last_known_effective_reputation
+        );
+        log_error(&format!("[validate_reputation_document] {}", err_msg));
+        return Err(err_msg);
+    }
+
+    // Step 6: Validate vote weight constraints
+    // Vote weight must be between 0.0 and 1.0 to:
+    // - weight represents how much that vote is part of the user's total 100% votes
+    // - it is a percentage (0-1)
+    if reputation.data.vote_weight.value() < 0.0 || reputation.data.vote_weight.value() > 1.0 {
+        let err_msg = format!(
+            "Vote weight must be between 0.0 and 1.0 (got: {})",
+            reputation.data.vote_weight.value()
+        );
+        log_error(&format!("[validate_reputation_document] {}", err_msg));
+        return Err(err_msg);
+    }
+
+    log_info(&format!(
+        "[validate_reputation_document] Successfully validated reputation document: key={}",
+        context.data.key
+    ));
+
+    Ok(())
+}
+
+/// Validates time periods configuration for tags
+/// 
+/// Time periods define how reputation ages over time in a tag.
+/// The configuration must follow specific rules to ensure:
+/// - Proper coverage of different time spans
+/// - Reasonable reputation decay
+/// - System stability
+/// 
+/// Requirements:
+/// 1. At least 1 period must be defined
+/// 2. Maximum 10 periods allowed
+/// 3. Last period must have 999 months duration
+/// 4. Valid multiplier values and increments
+/// 
+/// # Arguments
+/// * `periods` - Array of TimePeriod structs to validate
+/// 
+/// # Returns
+/// * `Result<(), String>` - Ok if validation passes, Err with detailed message if it fails
+fn validate_time_periods(periods: &[TimePeriod]) -> Result<(), String> {
+    // Step 1: Validate array length
+    if periods.is_empty() {
+        return Err("Tag must have at least 1 time period".to_string());
+    }
+    if periods.len() > 10 {
+        return Err(format!(
+            "Tag cannot have more than 10 time periods (got: {})",
+            periods.len()
+        ));
+    }
+
+    // Step 2: Validate last period is "infinity" (999 months)
+    let last_period = periods.last().unwrap();
+    if last_period.months != 999 {
+        return Err(format!(
+            "Last period must be 999 months (got: {})",
+            last_period.months
+        ));
+    }
+
+    // Step 3: Validate each period's configuration
+    for (i, period) in periods.iter().enumerate() {
+        // Validate multiplier range (0.05 to 10.0)
+        if period.multiplier < 0.05 || period.multiplier > 10.0 {
+            return Err(format!(
+                "Multiplier for period {} must be between 0.05 and 10.0 (got: {})",
+                i + 1, period.multiplier
+            ));
+        }
+
+        // Validate multiplier step increments (0.05)
+        let remainder = (period.multiplier * 100.0) % 5.0;
+        if remainder != 0.0 {
+            return Err(format!(
+                "Multiplier for period {} must use 0.05 step increments (got: {})",
+                i + 1, period.multiplier
+            ));
+        }
+
+        // Validate month duration is a whole number
+        if !period.months.is_integer() || period.months < 1.0 {
+            return Err(format!(
+                "Months for period {} must be a whole number greater than 0 (got: {})",
+                i + 1, period.months
+            ));
+        }
+    }
+
     Ok(())
 }
 
@@ -436,12 +958,10 @@ fn assert_delete_asset(_context: AssertDeleteAssetContext) -> Result<(), String>
 // This macro must be included at the end of the file to properly register
 // all hooks and assertions with the Juno ecosystem.
 
-/// Gets a user's current effective reputation score in a specific tag
+/// Gets a user's last known reputation score in a specific tag
 /// 
 /// This function retrieves the user's cached reputation score from the reputations collection.
-/// The score is a combination of:
-/// - Basis reputation (from received votes)
-/// - Voting rewards (if user is trusted or community is in bootstrap phase)
+/// It does NOT recalculate the reputation - use recalculate_reputation() for that.
 /// 
 /// The reputation score is tag-specific and represents the user's standing in that tag's community.
 /// A higher score indicates more influence in voting and content moderation.
@@ -451,13 +971,12 @@ fn assert_delete_asset(_context: AssertDeleteAssetContext) -> Result<(), String>
 /// * `tag_key` - The unique identifier of the tag
 /// 
 /// # Returns
-/// * `Result<f64, String>` - The user's effective reputation score or a detailed error message
+/// * `Result<f64, String>` - The user's last known reputation score or a detailed error message
 /// 
 /// # Errors
 /// - Returns error if user_key or tag_key is empty
 /// - Returns error if tag doesn't exist
-/// - Returns error if reputation calculation fails
-/// - Returns error with context about what specifically failed
+/// - Returns error if user has no reputation in this tag
 #[query]
 async fn get_user_reputation(user_key: String, tag_key: String) -> Result<f64, String> {
     log_debug(&format!("[get_user_reputation] Fetching reputation for user={}, tag={}", user_key, tag_key));
@@ -474,18 +993,31 @@ async fn get_user_reputation(user_key: String, tag_key: String) -> Result<f64, S
         return Err(err_msg.to_string());
     }
 
-    // Attempt to calculate reputation
-    let reputation_data = calculate_user_reputation(&user_key, &tag_key).await
+    // Check if user has reputation in this tag
+    let reputation_key = format!("{}_{}", user_key, tag_key);
+    let reputation_doc = get_doc(&reputation_key, String::from("reputations"))
         .map_err(|e| {
-            let err_msg = format!("Failed to calculate reputation: {}", e);
+            let err_msg = format!("Failed to fetch reputation: {}", e);
             log_error(&format!("[get_user_reputation] {}: user={}, tag={}", err_msg, user_key, tag_key));
             err_msg
         })?;
+
+    match reputation_doc {
+        Some(doc) => {
+            let reputation_data: ReputationData = decode_doc_data(&doc.data)
+                .map_err(|e| format!("Failed to decode reputation data: {}", e))?;
     
     log_info(&format!("[get_user_reputation] Successfully retrieved reputation: user={}, tag={}, value={}", 
         user_key, tag_key, reputation_data.last_known_effective_reputation));
     
     Ok(reputation_data.last_known_effective_reputation)
+        },
+        None => {
+            let err_msg = format!("User {} has no reputation in tag {}", user_key, tag_key);
+            log_error(&format!("[get_user_reputation] {}", err_msg));
+            Err(err_msg)
+        }
+    }
 }
 
 /// Forces a recalculation of a user's reputation in a specific tag
@@ -510,11 +1042,10 @@ async fn get_user_reputation(user_key: String, tag_key: String) -> Result<f64, S
 /// * `tag_key` - The unique identifier of the tag
 /// 
 /// # Returns
-/// * `Result<f64, String>` - The newly calculated effective reputation score or a detailed error message
+/// * `Result<f64, String>` - The updated effective reputation score or a detailed error message
 /// 
 /// # Errors
 /// - Returns error if user_key or tag_key is empty
-/// - Returns error if user doesn't exist in the tag
 /// - Returns error if tag doesn't exist
 /// - Returns error if reputation calculation fails
 /// - Returns error with context about what specifically failed
@@ -534,35 +1065,18 @@ async fn recalculate_reputation(user_key: String, tag_key: String) -> Result<f64
         return Err(err_msg.to_string());
     }
 
-    // Check if user exists in this tag
-    match get_user_reputation_data(&user_key, &tag_key).await {
-        Ok(None) => {
-            let err_msg = format!("No reputation data found for user {} in tag {}", user_key, tag_key);
-            log_error(&format!("[recalculate_reputation] {}", err_msg));
-            return Err(err_msg);
-        }
-        Err(e) => {
-            let err_msg = format!("Error checking user reputation data: {}", e);
-            log_error(&format!("[recalculate_reputation] {}: user={}, tag={}", err_msg, user_key, tag_key));
-            return Err(err_msg);
-        }
-        Ok(Some(_)) => {
-            log_debug(&format!("[recalculate_reputation] User found, proceeding with recalculation"));
-        }
-    }
-    
-    // Trigger complete recalculation
-    let rep_data = calculate_user_reputation(&user_key, &tag_key).await
+    // Attempt to calculate reputation
+    let reputation_data = calculate_user_reputation(&user_key, &tag_key).await
         .map_err(|e| {
-            let err_msg = format!("Failed to recalculate reputation: {}", e);
+            let err_msg = format!("Failed to calculate reputation: {}", e);
             log_error(&format!("[recalculate_reputation] {}: user={}, tag={}", err_msg, user_key, tag_key));
             err_msg
         })?;
     
-    log_info(&format!("[recalculate_reputation] Successfully recalculated: user={}, tag={}, value={}", 
-        user_key, tag_key, rep_data.last_known_effective_reputation));
+    log_info(&format!("[recalculate_reputation] Successfully recalculated reputation: user={}, tag={}, value={}", 
+        user_key, tag_key, reputation_data.last_known_effective_reputation));
     
-    Ok(rep_data.last_known_effective_reputation)
+    Ok(reputation_data.last_known_effective_reputation)
 }
 
 include_satellite!();
