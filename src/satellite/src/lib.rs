@@ -343,26 +343,18 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
         ..Default::default()
     };
 
-    let existing_users = junobuild_satellite::list_docs(String::from("users"), params);
-    
-    // Match on the result instead of using map_err
-    let existing_users = match existing_users {
-        Ok(results) => results,
-        Err(e) => {
-            let err_msg = format!("Failed to check username uniqueness: {}", e);
-            log_error(&format!("[assert_set_doc] {} key={}", err_msg, context.data.key));
-            return Err(err_msg);
-        }
-    };
+    let existing_users = list_docs(String::from("users"), params);
 
     // Check if we found any existing users with this normalized username
     // Exclude the current document if we're updating
     for (doc_key, _) in existing_users.items {
         if doc_key != context.data.key {
-            return Err(format!(
+            let err_msg = format!(
                 "Username '{}' is already taken (case-insensitive comparison)",
                 user_data.handle
-            ));
+            );
+            log_error(&format!("[assert_set_doc] {} key={}", err_msg, context.data.key));
+            return Err(err_msg);
         }
     }
 
@@ -380,23 +372,15 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
             ..Default::default()
         };
 
-        let existing_docs = junobuild_satellite::list_docs(String::from("users"), owner_params);
-        
-        // Match on the result instead of using map_err
-        let existing_docs = match existing_docs {
-            Ok(results) => results,
-            Err(e) => {
-                let err_msg = format!("Failed to check one-document-per-identity rule: {}", e);
-                log_error(&format!("[assert_set_doc] {} key={}", err_msg, context.data.key));
-                return Err(err_msg);
-            }
-        };
+        let existing_docs = list_docs(String::from("users"), owner_params);
 
         // Check if we found any existing documents owned by this user
         // Exclude the current document if we're updating
         for (doc_key, _) in existing_docs.items {
             if doc_key != context.data.key {
-                return Err("Users can only have one document in production mode".to_string());
+                let err_msg = "Users can only have one account in production mode";
+                log_error(&format!("[assert_set_doc] {} key={}", err_msg, context.data.key));
+                return Err(err_msg.to_string());
             }
         }
     }
@@ -556,26 +540,18 @@ fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
         ..Default::default()
     };
 
-    let existing_tags = junobuild_satellite::list_docs(String::from("tags"), params);
-    
-    // Match on the result instead of using map_err
-    let existing_tags = match existing_tags {
-        Ok(results) => results,
-        Err(e) => {
-            let err_msg = format!("Failed to check tag name uniqueness: {}", e);
-            log_error(&format!("[assert_set_doc] {} key={}", err_msg, context.data.key));
-            return Err(err_msg);
-        }
-    };
+    let existing_tags = list_docs(String::from("tags"), params);
 
     // Check if we found any existing tags with this normalized name
     // Exclude the current document if we're updating
     for (doc_key, _) in existing_tags.items {
         if doc_key != context.data.key {
-            return Err(format!(
+            let err_msg = format!(
                 "Tag name '{}' is already taken (case-insensitive comparison)",
                 tag_data.name
-            ));
+            );
+            log_error(&format!("[assert_set_doc] {} key={}", err_msg, context.data.key));
+            return Err(err_msg);
         }
     }
 
@@ -598,12 +574,14 @@ fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
         ));
     }
 
-    // Step 6: Validate minimum users (must be whole number)
-    if !tag_data.min_users_for_threshold.is_integer() || tag_data.min_users_for_threshold < 1.0 {
-        return Err(format!(
-            "Minimum users must be a whole number greater than 0 (got: {})",
+    // Step 6: Validate minimum users (must be greater than 0)
+    if tag_data.min_users_for_threshold == 0 {
+        let err_msg = format!(
+            "Minimum users must be greater than 0 (got: {})",
             tag_data.min_users_for_threshold
-        ));
+        );
+        log_error(&format!("[assert_set_doc] {} key={}", err_msg, context.data.key));
+        return Err(err_msg);
     }
 
     Ok(())
@@ -788,27 +766,33 @@ fn validate_time_periods(periods: &[TimePeriod]) -> Result<(), String> {
     for (i, period) in periods.iter().enumerate() {
         // Validate multiplier range (0.05 to 10.0)
         if period.multiplier < 0.05 || period.multiplier > 10.0 {
-            return Err(format!(
+            let err_msg = format!(
                 "Multiplier for period {} must be between 0.05 and 10.0 (got: {})",
                 i + 1, period.multiplier
-            ));
+            );
+            log_error(&format!("[validate_time_periods] {}", err_msg));
+            return Err(err_msg);
         }
 
         // Validate multiplier step increments (0.05)
         let remainder = (period.multiplier * 100.0) % 5.0;
         if remainder != 0.0 {
-            return Err(format!(
+            let err_msg = format!(
                 "Multiplier for period {} must use 0.05 step increments (got: {})",
                 i + 1, period.multiplier
-            ));
+            );
+            log_error(&format!("[validate_time_periods] {}", err_msg));
+            return Err(err_msg);
         }
 
-        // Validate month duration is a whole number
-        if !period.months.is_integer() || period.months < 1.0 {
-            return Err(format!(
-                "Months for period {} must be a whole number greater than 0 (got: {})",
+        // Validate month duration is greater than 0
+        if period.months == 0 {
+            let err_msg = format!(
+                "Months for period {} must be greater than 0 (got: {})",
                 i + 1, period.months
-            ));
+            );
+            log_error(&format!("[validate_time_periods] {}", err_msg));
+            return Err(err_msg);
         }
     }
 

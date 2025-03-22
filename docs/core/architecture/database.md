@@ -26,6 +26,12 @@ During the initial test phase, all documents will be created by the same user (s
 
 Collection name: `users`
 
+#### Permissions
+- Read: public
+- Write: private
+- Memory: stable
+- Mutable Permissions: true
+
 #### Document Structure
 ```typescript
 interface UserDocument {
@@ -46,12 +52,6 @@ interface UserDocument {
 }
 ```
 
-#### Permissions
-- Read: public
-- Write: private
-- Memory: stable
-- Mutable Permissions: true
-
 #### Notes
 - `handle` must be unique across all users
 - `display_name` is not required to be unique
@@ -59,9 +59,17 @@ interface UserDocument {
 - All timestamps are in nanoseconds
 - `version` is required for updates to prevent concurrent modifications
 
+
+
 ### Tags Collection
 
 Collection name: `tags`
+
+#### Permissions
+- Read: public
+- Write: managed
+- Memory: stable
+- Mutable Permissions: true
 
 #### Document Structure
 ```typescript
@@ -121,15 +129,15 @@ Example Tag Document:
 }
 ```
 
-#### Permissions
-- Read: public
-- Write: managed
-- Memory: stable
-- Mutable Permissions: true
-
 ### Votes Collection
 
 Collection name: `votes`
+
+#### Permissions
+- Read: public
+- Write: private
+- Memory: stable
+- Mutable Permissions: false
 
 #### Document Structure
 ```typescript
@@ -154,15 +162,15 @@ interface VoteDocument {
 }
 ```
 
-#### Permissions
-- Read: public
-- Write: private
-- Memory: stable
-- Mutable Permissions: false
-
 ### Reputations Collection
 
 Collection name: `reputations`
+
+#### Permissions
+- Read: public
+- Write: controllers
+- Memory: stable
+- Mutable Permissions: false
 
 #### Document Structure
 ```typescript
@@ -188,12 +196,6 @@ interface ReputationDocument {
     }
 }
 ```
-
-#### Permissions
-- Read: public
-- Write: managed
-- Memory: stable
-- Mutable Permissions: false
 
 #### Notes
 - Each document represents one user's reputation in one tag

@@ -17,6 +17,10 @@
  * This approach will change in production to use proper multi-user authentication
  * where document ownership and relationships will be managed through the `owner` field
  * (Principal IDs) instead of the description field.
+ * 
+ * The owner field format depends on the mode:
+ * - Playground mode: Uses document key (e.g., [owner:user_123])
+ * - Production mode: Uses Principal ID (e.g., [owner:2vxsx-fae])
  */
 
 use junobuild_satellite::{get_doc, list_docs};

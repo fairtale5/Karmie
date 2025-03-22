@@ -4,7 +4,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use junobuild_utils::{encode_doc_data, decode_doc_data};
 use junobuild_satellite::SetDoc;
-use crate::utils::logging::{log_error, log_warn};
+use crate::utils::logging::{log_error, log_warn, log_info};
 use crate::utils::time::{calculate_months_between, get_period_for_timestamp};
 
 // Import our data structures
@@ -292,7 +292,7 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
     let reputation = Reputation {
         key: format!("rep_{}_{}", user_key, tag_key),
         description: format!("user:{},tag:{}", user_key, tag_key),
-        owner: ic_cdk::caller(),
+        owner: ic_cdk::id(),  // Use canister's Principal ID as owner
         created_at: ic_cdk::api::time(),
         updated_at: ic_cdk::api::time(),
         version: 1,
@@ -313,7 +313,7 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
             };
 
             match set_doc_store(
-                ic_cdk::id(),  // Use satellite's Principal ID instead of caller's
+                ic_cdk::id(),  // Use canister's Principal ID as caller
                 String::from("reputations"),
                 reputation.key.clone(),
                 doc,
@@ -629,7 +629,7 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
     let reputation = Reputation {
         key: format!("rep_{}_{}", user_key, tag_key),
         description: format!("user:{},tag:{}", user_key, tag_key),
-        owner: ic_cdk::caller(),
+        owner: ic_cdk::id(),  // Use canister's Principal ID as owner
         created_at: ic_cdk::api::time(),
         updated_at: ic_cdk::api::time(),
         version: 1,
@@ -638,13 +638,17 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
 
     // Attempt to set the document
     match junobuild_satellite::set_doc_store(
-        ic_cdk::id(),  // Use satellite's Principal ID instead of caller's
+        ic_cdk::id(),  // Use canister's Principal ID as caller
         String::from("reputations"),  // Collection
         reputation.key.clone(),  // Key
-        encode_doc_data(&reputation).map_err(|e| {
-            log_error(&format!("[calculate_user_reputation] Failed to encode reputation data: {}", e));
-            e.to_string()
-        })?  // Document
+        SetDoc {
+            data: encode_doc_data(&reputation.data).map_err(|e| {
+                log_error(&format!("[calculate_user_reputation] Failed to encode reputation data: {}", e));
+                e.to_string()
+            })?,
+            description: Some(format!("user:{},tag:{}", reputation.data.user_key, reputation.data.tag_key)),
+            version: Some(1),  // For new documents
+        }
     ) {
         Ok(_) => {
             log_info(&format!(
