@@ -9,7 +9,7 @@
 /// Validates a username according to the system's requirements.
 /// 
 /// Performs the following checks:
-/// - Length (3-50 characters)
+/// - Length (3-30 characters)
 /// - Character set (alphanumeric, underscore, hyphen only)
 /// - Non-empty after trimming
 /// 
@@ -28,22 +28,21 @@
 /// }
 /// ```
 pub fn validate_username(username: &str) -> Result<(), String> {
-    // Check for empty username after trimming
+    // Step 1: Check if empty
     if username.trim().is_empty() {
         return Err("Username cannot be empty".to_string());
     }
 
-    // Check minimum length
-    if username.len() < 3 {
-        return Err("Username must be at least 3 characters long".to_string());
+    // Step 2: Check length
+    let len = username.len();
+    if len < 3 || len > 30 {
+        return Err(format!(
+            "Username must be between 3 and 30 characters (current length: {})",
+            len
+        ));
     }
 
-    // Check maximum length
-    if username.len() > 50 {
-        return Err("Username cannot be longer than 50 characters".to_string());
-    }
-
-    // Check character set
+    // Step 3: Check allowed characters
     if !username.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
         return Err("Username can only contain letters, numbers, underscores, and hyphens".to_string());
     }
@@ -77,6 +76,43 @@ pub fn validate_display_name(display_name: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Validates a tag name string
+/// 
+/// Requirements:
+/// 1. Not empty
+/// 2. Length between 3-30 characters
+/// 3. Only alphanumeric, underscore, and hyphen allowed
+/// 4. Must be unique (case-insensitive comparison)
+/// 5. Can contain uppercase letters (preserved as entered)
+/// 
+/// # Arguments
+/// * `tag_name` - The tag name to validate
+/// 
+/// # Returns
+/// * `Result<(), String>` - Ok if validation passes, Err with message if it fails
+pub fn validate_tag_name(tag_name: &str) -> Result<(), String> {
+    // Step 1: Check if empty
+    if tag_name.trim().is_empty() {
+        return Err("Tag name cannot be empty".to_string());
+    }
+
+    // Step 2: Check length
+    let len = tag_name.len();
+    if len < 3 || len > 30 {
+        return Err(format!(
+            "Tag name must be between 3 and 30 characters (current length: {})",
+            len
+        ));
+    }
+
+    // Step 3: Check allowed characters
+    if !tag_name.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
+        return Err("Tag name can only contain letters, numbers, underscores, and hyphens".to_string());
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -91,7 +127,7 @@ mod tests {
         // Test invalid usernames
         assert!(validate_username("").is_err());
         assert!(validate_username("ab").is_err());
-        assert!(validate_username("a".repeat(51).as_str()).is_err());
+        assert!(validate_username("a".repeat(31).as_str()).is_err());
         assert!(validate_username("user@name").is_err());
     }
 
@@ -104,5 +140,19 @@ mod tests {
         // Test invalid display names
         assert!(validate_display_name("").is_err());
         assert!(validate_display_name(" ".repeat(101).as_str()).is_err());
+    }
+    
+    #[test]
+    fn test_validate_tag_name() {
+        // Test valid tag names
+        assert!(validate_tag_name("tech").is_ok());
+        assert!(validate_tag_name("coding_skills").is_ok());
+        assert!(validate_tag_name("soft-skills").is_ok());
+        
+        // Test invalid tag names
+        assert!(validate_tag_name("").is_err());
+        assert!(validate_tag_name("ab").is_err());
+        assert!(validate_tag_name("a".repeat(31).as_str()).is_err());
+        assert!(validate_tag_name("tag@name").is_err());
     }
 } 

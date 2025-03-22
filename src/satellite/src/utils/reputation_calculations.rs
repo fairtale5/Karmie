@@ -313,7 +313,7 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
             };
 
             match set_doc_store(
-                ic_cdk::caller(),
+                ic_cdk::id(),  // Use satellite's Principal ID instead of caller's
                 String::from("reputations"),
                 reputation.key.clone(),
                 doc,
@@ -636,25 +636,31 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
         data: reputation_data.clone(),
     };
 
-    // Store the document
-    let encoded_data = encode_doc_data(&reputation.data)
-        .map_err(|e| format!("Failed to serialize reputation data: {}", e))?;
-    
-    let doc = SetDoc {
-        data: encoded_data,
-        description: Some(format!("user:{},tag:{}", user_key, tag_key)),
-        version: Some(1),  // For new documents
-    };
-
-    set_doc_store(
-        ic_cdk::caller(),
-        String::from("reputations"),
-        reputation.key.clone(),
-        doc,
-    ).map_err(|e| format!("Failed to store reputation: {}", e))?;
-
-    // Return the complete reputation data
-    Ok(reputation_data)
+    // Attempt to set the document
+    match junobuild_satellite::set_doc_store(
+        ic_cdk::id(),  // Use satellite's Principal ID instead of caller's
+        String::from("reputations"),  // Collection
+        reputation.key.clone(),  // Key
+        encode_doc_data(&reputation).map_err(|e| {
+            log_error(&format!("[calculate_user_reputation] Failed to encode reputation data: {}", e));
+            e.to_string()
+        })?  // Document
+    ) {
+        Ok(_) => {
+            log_info(&format!(
+                "[calculate_user_reputation] Updated reputation document: user={}, tag={}, score={}",
+                user_key, tag_key, reputation.data.last_known_effective_reputation
+            ));
+            Ok(reputation.data)
+        },
+        Err(e) => {
+            log_error(&format!(
+                "[calculate_user_reputation] Failed to store reputation: {}",
+                e
+            ));
+            Err(format!("Failed to store reputation: {}", e))
+        }
+    }
 }
 
 /// Gets the multiplier for a vote based on its age and the tag's configuration

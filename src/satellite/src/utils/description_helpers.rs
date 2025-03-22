@@ -82,7 +82,12 @@ impl DocumentDescription {
 /// Helper functions for user document descriptions
 pub fn create_user_description(user: &UserData, owner: &Principal, is_playground: bool) -> String {
     let mut desc = DocumentDescription::new();
-    desc.add_owner(if is_playground { &user.key } else { &owner.to_string() })
+    let owner_str = if is_playground { 
+        user.key.clone() 
+    } else { 
+        owner.to_string() 
+    };
+    desc.add_owner(&owner_str)
         .add_field("username", &user.handle);
     desc.build()
 }
@@ -90,7 +95,12 @@ pub fn create_user_description(user: &UserData, owner: &Principal, is_playground
 /// Helper functions for tag document descriptions
 pub fn create_tag_description(tag: &TagData, owner: &Principal, is_playground: bool) -> String {
     let mut desc = DocumentDescription::new();
-    desc.add_owner(if is_playground { &tag.key } else { &owner.to_string() })
+    let owner_str = if is_playground { 
+        tag.key.clone() 
+    } else { 
+        owner.to_string() 
+    };
+    desc.add_owner(&owner_str)
         .add_field("name", &tag.name);
     desc.build()
 }
@@ -98,7 +108,12 @@ pub fn create_tag_description(tag: &TagData, owner: &Principal, is_playground: b
 /// Helper functions for vote document descriptions
 pub fn create_vote_description(vote: &VoteData, owner: &Principal, is_playground: bool) -> String {
     let mut desc = DocumentDescription::new();
-    desc.add_owner(if is_playground { &vote.author_key } else { &owner.to_string() })
+    let owner_str = if is_playground { 
+        vote.author_key.clone() 
+    } else { 
+        owner.to_string() 
+    };
+    desc.add_owner(&owner_str)
         .add_field("target", &vote.target_key)
         .add_field("tag", &vote.tag_key);
     desc.build()
@@ -107,7 +122,12 @@ pub fn create_vote_description(vote: &VoteData, owner: &Principal, is_playground
 /// Helper functions for reputation document descriptions
 pub fn create_reputation_description(reputation: &ReputationData, owner: &Principal, is_playground: bool) -> String {
     let mut desc = DocumentDescription::new();
-    desc.add_owner(if is_playground { &reputation.user_key } else { &owner.to_string() })
+    let owner_str = if is_playground { 
+        reputation.user_key.clone() 
+    } else { 
+        owner.to_string() 
+    };
+    desc.add_owner(&owner_str)
         .add_field("tag", &reputation.tag_key);
     desc.build()
 }

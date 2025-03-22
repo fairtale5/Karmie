@@ -141,10 +141,6 @@ use junobuild_satellite::{
     OnSetDocContext,                // Context for document creation/update
     OnSetManyDocsContext,           // Context for batch document creation/update
     OnUploadAssetContext,           // Context for asset upload handler
-    // Core functionality
-    set_doc_store,              // For storing documents
-    get_doc,                    // For retrieving documents
-    list_docs,                  // For querying documents
 };
 
 // =============================================================================
@@ -193,8 +189,8 @@ use serde::{Deserialize, Serialize};
 // Import our utility modules
 use crate::utils::{
     normalize::normalize_username,
-    validation::{validate_username, validate_display_name},
-    structs::{Vote, Tag, Reputation, UserData},
+    validation::{validate_username, validate_display_name, validate_tag_name},
+    structs::{Vote, Tag, Reputation, UserData, TagData, TimePeriod, ReputationData},
     reputation_calculations::{
         calculate_user_reputation, get_user_reputation_data,
         calculate_and_store_vote_weight
@@ -298,79 +294,6 @@ fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
     }
 }
 
-/// Validates a username string
-/// 
-/// Requirements:
-/// 1. Not empty
-/// 2. Length between 3-30 characters
-/// 3. Only alphanumeric, underscore, and hyphen allowed
-/// 4. Must be unique (normalized to lowercase for comparison)
-/// 
-/// # Arguments
-/// * `username` - The username to validate
-/// 
-/// # Returns
-/// * `Result<(), String>` - Ok if validation passes, Err with message if it fails
-fn validate_username(username: &str) -> Result<(), String> {
-    // Step 1: Check if empty
-    if username.trim().is_empty() {
-        return Err("Username cannot be empty".to_string());
-    }
-
-    // Step 2: Check length
-    let len = username.len();
-    if len < 3 || len > 30 {
-        return Err(format!(
-            "Username must be between 3 and 30 characters (current length: {})",
-            len
-        ));
-    }
-
-    // Step 3: Check allowed characters
-    if !username.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
-        return Err("Username can only contain letters, numbers, underscores, and hyphens".to_string());
-    }
-
-    Ok(())
-}
-
-/// Validates a tag name string
-/// 
-/// Requirements:
-/// 1. Not empty
-/// 2. Length between 3-30 characters
-/// 3. Only alphanumeric, underscore, and hyphen allowed
-/// 4. Must be unique (case-insensitive comparison)
-/// 5. Can contain uppercase letters (preserved as entered)
-/// 
-/// # Arguments
-/// * `tag_name` - The tag name to validate
-/// 
-/// # Returns
-/// * `Result<(), String>` - Ok if validation passes, Err with message if it fails
-fn validate_tag_name(tag_name: &str) -> Result<(), String> {
-    // Step 1: Check if empty
-    if tag_name.trim().is_empty() {
-        return Err("Tag name cannot be empty".to_string());
-    }
-
-    // Step 2: Check length
-    let len = tag_name.len();
-    if len < 3 || len > 30 {
-        return Err(format!(
-            "Tag name must be between 3 and 30 characters (current length: {})",
-            len
-        ));
-    }
-
-    // Step 3: Check allowed characters
-    if !tag_name.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
-        return Err("Tag name can only contain letters, numbers, underscores, and hyphens".to_string());
-    }
-
-    Ok(())
-}
-
 /// Validates a user document before creation or update
 /// 
 /// This function performs comprehensive validation of user documents:
@@ -420,12 +343,17 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
         ..Default::default()
     };
 
-    let existing_users = list_docs(String::from("users"), params)
-        .map_err(|e| {
-            log_error(&format!("[assert_set_doc] Failed to check username uniqueness: key={}, error={}", 
-                context.data.key, e));
-            format!("Failed to check username uniqueness: {}", e)
-        })?;
+    let existing_users = junobuild_satellite::list_docs(String::from("users"), params);
+    
+    // Match on the result instead of using map_err
+    let existing_users = match existing_users {
+        Ok(results) => results,
+        Err(e) => {
+            let err_msg = format!("Failed to check username uniqueness: {}", e);
+            log_error(&format!("[assert_set_doc] {} key={}", err_msg, context.data.key));
+            return Err(err_msg);
+        }
+    };
 
     // Check if we found any existing users with this normalized username
     // Exclude the current document if we're updating
@@ -452,12 +380,17 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
             ..Default::default()
         };
 
-        let existing_docs = list_docs(String::from("users"), owner_params)
-            .map_err(|e| {
-                log_error(&format!("[assert_set_doc] Failed to check one-doc-per-identity: key={}, error={}", 
-                    context.data.key, e));
-                format!("Failed to check one-document-per-identity rule: {}", e)
-            })?;
+        let existing_docs = junobuild_satellite::list_docs(String::from("users"), owner_params);
+        
+        // Match on the result instead of using map_err
+        let existing_docs = match existing_docs {
+            Ok(results) => results,
+            Err(e) => {
+                let err_msg = format!("Failed to check one-document-per-identity rule: {}", e);
+                log_error(&format!("[assert_set_doc] {} key={}", err_msg, context.data.key));
+                return Err(err_msg);
+            }
+        };
 
         // Check if we found any existing documents owned by this user
         // Exclude the current document if we're updating
@@ -494,7 +427,7 @@ fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
 
     // Step 1: Decode and validate the basic vote data structure
     // This ensures the document contains all required fields in the correct format
-    let vote: Vote = decode_doc_data(&context.data.data)
+    let vote: Vote = decode_doc_data(&context.data.data.proposed.data)
         .map_err(|e| {
             log_error(&format!(
                 "[validate_vote_document] Failed to decode vote data: {}",
@@ -506,10 +439,11 @@ fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
     // Step 2: Create and validate description using DocumentDescription helper
     // This ensures the description follows our standardized format for both playground and production modes
     let mut desc = DocumentDescription::new();
+    let caller_string = context.caller.to_string(); // Create a string that lives for the duration of the function
     desc.add_owner(if IS_PLAYGROUND {
         &vote.data.author_key
     } else {
-        &context.caller.to_string()
+        &caller_string
     })
     .add_field("target", &vote.data.target_key)
     .add_field("tag", &vote.data.tag_key);
@@ -517,7 +451,7 @@ fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
     let expected_description = desc.build();
 
     // Verify the description matches our expected format
-    if let Some(actual_description) = &context.data.description {
+    if let Some(actual_description) = &context.data.data.proposed.description {
         if actual_description != &expected_description {
             let err_msg = format!(
                 "Invalid description format. Expected: {}, Got: {}",
@@ -560,17 +494,17 @@ fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
 
     // Step 6: Verify the tag exists
     // This ensures votes are only cast on valid tags
-    let tag_doc = get_doc(&vote.data.tag_key, String::from("tags"))
-        .map_err(|e| {
-            let err_msg = format!("Failed to get tag data: {}", e);
-            log_error(&format!("[validate_vote_document] {}", err_msg));
-            err_msg
-        })?
-        .ok_or_else(|| {
+    let tag_doc = junobuild_satellite::get_doc(vote.data.tag_key.clone(), String::from("tags"));
+    
+    // Match on the result instead of using map_err
+    let tag_doc = match tag_doc {
+        Some(doc) => doc,
+        None => {
             let err_msg = format!("Tag not found: {}", vote.data.tag_key);
             log_error(&format!("[validate_vote_document] {}", err_msg));
-            err_msg
-        })?;
+            return Err(err_msg);
+        }
+    };
 
     log_info(&format!(
         "[validate_vote_document] Successfully validated vote document: key={}",
@@ -622,12 +556,17 @@ fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
         ..Default::default()
     };
 
-    let existing_tags = list_docs(String::from("tags"), params)
-        .map_err(|e| {
-            log_error(&format!("[assert_set_doc] Failed to check tag name uniqueness: key={}, error={}", 
-                context.data.key, e));
-            format!("Failed to check tag name uniqueness: {}", e)
-        })?;
+    let existing_tags = junobuild_satellite::list_docs(String::from("tags"), params);
+    
+    // Match on the result instead of using map_err
+    let existing_tags = match existing_tags {
+        Ok(results) => results,
+        Err(e) => {
+            let err_msg = format!("Failed to check tag name uniqueness: {}", e);
+            log_error(&format!("[assert_set_doc] {} key={}", err_msg, context.data.key));
+            return Err(err_msg);
+        }
+    };
 
     // Check if we found any existing tags with this normalized name
     // Exclude the current document if we're updating
@@ -698,7 +637,7 @@ fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), Str
     // Step 1: Decode and validate the basic reputation data structure
     // This ensures the document contains all required fields in the correct format
     // and that we can properly access the reputation data for further validation
-    let reputation: Reputation = decode_doc_data(&context.data.data)
+    let reputation: Reputation = decode_doc_data(&context.data.data.proposed.data)
         .map_err(|e| {
             log_error(&format!(
                 "[validate_reputation_document] Failed to decode reputation data: {}",
@@ -712,17 +651,18 @@ fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), Str
     // - Playground mode: [owner:{user_key}][tag:{tag_key}]
     // - Production mode: [owner:{principal_id}][tag:{tag_key}]
     let mut desc = DocumentDescription::new();
+    let caller_string = context.caller.to_string(); // Create a string that lives for the duration of the function
     desc.add_owner(if IS_PLAYGROUND {
         &reputation.data.user_key
     } else {
-        &context.caller.to_string()
+        &caller_string
     })
     .add_field("tag", &reputation.data.tag_key);
 
     let expected_description = desc.build();
 
     // Verify the description matches our expected format
-    if let Some(actual_description) = &context.data.description {
+    if let Some(actual_description) = &context.data.data.proposed.description {
         if actual_description != &expected_description {
             let err_msg = format!(
                 "Invalid description format. Expected: {}, Got: {}",
@@ -990,22 +930,18 @@ async fn get_user_reputation(user_key: String, tag_key: String) -> Result<f64, S
 
     // Check if user has reputation in this tag
     let reputation_key = format!("{}_{}", user_key, tag_key);
-    let reputation_doc = get_doc(&reputation_key, String::from("reputations"))
-        .map_err(|e| {
-            let err_msg = format!("Failed to fetch reputation: {}", e);
-            log_error(&format!("[get_user_reputation] {}: user={}, tag={}", err_msg, user_key, tag_key));
-            err_msg
-        })?;
-
+    let reputation_doc = junobuild_satellite::get_doc(reputation_key, String::from("reputations"));
+    
+    // Match on the result instead of using map_err
     match reputation_doc {
         Some(doc) => {
             let reputation_data: ReputationData = decode_doc_data(&doc.data)
                 .map_err(|e| format!("Failed to decode reputation data: {}", e))?;
     
-    log_info(&format!("[get_user_reputation] Successfully retrieved reputation: user={}, tag={}, value={}", 
-        user_key, tag_key, reputation_data.last_known_effective_reputation));
+            log_info(&format!("[get_user_reputation] Successfully retrieved reputation: user={}, tag={}, value={}", 
+                user_key, tag_key, reputation_data.last_known_effective_reputation));
     
-    Ok(reputation_data.last_known_effective_reputation)
+            Ok(reputation_data.last_known_effective_reputation)
         },
         None => {
             let err_msg = format!("User {} has no reputation in tag {}", user_key, tag_key);
