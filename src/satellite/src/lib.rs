@@ -95,61 +95,56 @@
  */
 
 // =============================================================================
-// Available Macro Imports
+// AVAILABLE IMPORTS FROM junobuild_macros:
+// These are the only macro decorators available:
 // =============================================================================
 // These imports are kept as reference for all available macro decorators.
 // Currently we only use on_set_doc and assert_set_doc, but others are
 // documented for future use.
 
+// Import all available macro decorators from junobuild_macros
 use junobuild_macros::{
-    // Currently Active Macros
-    // ----------------------
-    assert_set_doc,                 // For asserting document creation/update
-    on_set_doc,                     // For handling document creation/update
-
-    // Available but Currently Unused Macros (kept as reference)
-    // ------------------------------------------------------
-    // assert_delete_asset,         // For asserting asset deletion
-    // assert_delete_doc,           // For asserting document deletion
-    // assert_upload_asset,         // For asserting asset upload
-    // on_delete_asset,             // For handling asset deletion
-    // on_delete_doc,               // For handling document deletion
-    // on_delete_filtered_assets,   // For handling filtered asset deletion
-    // on_delete_filtered_docs,     // For handling filtered document deletion
-    // on_delete_many_assets,       // For handling batch asset deletion
-    // on_delete_many_docs,         // For handling batch document deletion
-    // on_set_many_docs,            // For handling batch document creation/update
-    // on_upload_asset,             // For handling asset upload
+    assert_delete_asset,   // For asserting asset deletion
+    assert_delete_doc,     // For asserting document deletion
+    assert_set_doc,        // For asserting document creation/update
+    assert_upload_asset,   // For asserting asset upload
+    on_delete_asset,       // For handling asset deletion
+    on_delete_doc,         // For handling document deletion
+    on_delete_filtered_assets,  // For handling filtered asset deletion
+    on_delete_filtered_docs,    // For handling filtered document deletion
+    on_delete_many_assets,      // For handling batch asset deletion
+    on_delete_many_docs,        // For handling batch document deletion
+    on_set_doc,                 // For handling document creation/update
+    on_set_many_docs,           // For handling batch document creation/update
+    on_upload_asset,            // For handling asset upload
 };
 
 // =============================================================================
-// Available Context Types and Utilities
+// AVAILABLE IMPORTS FROM junobuild_satellite:
+// These are the only context types and utilities available:
 // =============================================================================
 // These imports provide the necessary types and utilities for working with
 // Juno's satellite features.
 
 use junobuild_satellite::{
-    // Currently Active Types
-    // --------------------
-    include_satellite,              // Required macro for Juno integration
-    AssertSetDocContext,            // Context for document creation/update assertion
+    include_satellite,           // Required macro for Juno integration
+    AssertDeleteAssetContext,    // Context for asset deletion assertion
+    AssertDeleteDocContext,      // Context for document deletion assertion
+    AssertSetDocContext,         // Context for document creation/update assertion
+    AssertUploadAssetContext,    // Context for asset upload assertion
+    OnDeleteAssetContext,        // Context for asset deletion handler
+    OnDeleteDocContext,          // Context for document deletion handler
+    OnDeleteFilteredAssetsContext,  // Context for filtered asset deletion
+    OnDeleteFilteredDocsContext,    // Context for filtered document deletion
+    OnDeleteManyAssetsContext,      // Context for batch asset deletion
+    OnDeleteManyDocsContext,        // Context for batch document deletion
     OnSetDocContext,                // Context for document creation/update
-    set_doc_store,                  // Function to store documents
-    SetDoc,                         // Document type for setting data
-
-    // Available but Currently Unused Types (kept as reference)
-    // ---------------------------------------------------
-    // AssertDeleteAssetContext,    // Context for asset deletion assertion
-    // AssertDeleteDocContext,      // Context for document deletion assertion
-    // AssertUploadAssetContext,    // Context for asset upload assertion
-    // OnDeleteAssetContext,        // Context for asset deletion handler
-    // OnDeleteDocContext,          // Context for document deletion handler
-    // OnDeleteFilteredAssetsContext,  // Context for filtered asset deletion
-    // OnDeleteFilteredDocsContext, // Context for filtered document deletion
-    // OnDeleteManyAssetsContext,   // Context for batch asset deletion
-    // OnDeleteManyDocsContext,     // Context for batch document deletion
-    // OnSetManyDocsContext,        // Context for batch document creation/update
-    // OnUploadAssetContext,        // Context for asset upload handler
+    OnSetManyDocsContext,           // Context for batch document creation/update
+    OnUploadAssetContext,           // Context for asset upload handler
+    // Core functionality
+    set_doc_store,              // For storing documents
+    get_doc,                    // For retrieving documents
+    list_docs,                  // For querying documents
 };
 
 // =============================================================================

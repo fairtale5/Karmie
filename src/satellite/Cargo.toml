@@ -13,8 +13,8 @@ ic-cdk-macros = "0.17.1"
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.114"
 junobuild-shared = "0.0.24"
-junobuild-satellite = { version = "0.0.22", default-features = false, features = ["on_set_doc", "assert_set_doc"] }
-junobuild-macros = { version = "0.0.4" }
+junobuild-satellite = "0.0.22"
+junobuild-macros = "0.0.4"
 junobuild-utils = "0.0.4"
 getrandom = { version = "0.2.3", features = ["js"] }
 chrono = "0.4"
