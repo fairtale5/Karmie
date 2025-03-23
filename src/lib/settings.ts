@@ -4,6 +4,22 @@
  * to tune the reputation system's behavior
  */
 
+// System Mode Configuration
+/**
+ * Controls whether the system operates in playground or production mode
+ * 
+ * Playground Mode (true):
+ * - Single user creates all documents
+ * - Uses document key in description for ownership
+ * - Relaxed validation for testing
+ * 
+ * Production Mode (false):
+ * - Each user creates their own documents
+ * - Uses Juno's Principal ID for ownership
+ * - Strict validation rules
+ */
+export const IS_PLAYGROUND = true;  // Set to false for production
+
 export interface TimePeriod {
     months: number;
     multiplier: number;

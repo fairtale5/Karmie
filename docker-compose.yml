@@ -6,7 +6,10 @@ services:
       - 5999:5999
     volumes:
       - juno_satellite:/juno/.juno
-      - ./juno.dev.config.ts:/juno/juno.dev.config.ts
+      # TypeScript config (commented out)
+      # - ./juno.dev.config.ts:/juno/juno.dev.config.ts
+      # JSON config (active)
+      - ./juno.dev.config.json:/juno/juno.dev.config.json
       - ./target/deploy:/juno/target/deploy/
 
 volumes:

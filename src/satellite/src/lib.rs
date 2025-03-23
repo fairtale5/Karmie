@@ -896,6 +896,7 @@ fn assert_delete_asset(_context: AssertDeleteAssetContext) -> Result<(), String>
 /// - Returns error if user_key or tag_key is empty
 /// - Returns error if tag doesn't exist
 /// - Returns error if user has no reputation in this tag
+
 #[query]
 async fn get_user_reputation(user_key: String, tag_key: String) -> Result<f64, String> {
     log_debug(&format!("[get_user_reputation] Fetching reputation for user={}, tag={}", user_key, tag_key));

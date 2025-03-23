@@ -260,24 +260,39 @@ const { items } = await listDocs({
    - Used for access control
    - Not used for document references
 
-4. **Timestamps**
+4. **Owner Field Management**
+   - Use `ic_cdk::id()` (canister's Principal ID) ONLY for:
+     - Writing to the "reputations" collection (controller-only access)
+     - Any other collections marked as "controller" access
+     - When backend needs to write documents users can't access
+   - Use `ic_cdk::caller()` (user's Principal ID) for:
+     - All other collections where users should own their documents
+     - When users need to manage their own data
+     - To maintain proper ownership attribution
+   - This ensures:
+     - Proper access control for restricted collections
+     - Correct document ownership tracking
+     - Users can manage their own documents
+     - Clear audit trail of who created/modified documents
+
+5. **Timestamps**
    - All timestamps are in nanoseconds
    - Use `Date.now() * 1_000_000` to convert from JavaScript
 
-5. **Version Control**
+6. **Version Control**
    - Required for updates to prevent concurrent modifications
    - Must match the current document version
    - Automatically incremented after successful updates
    - Only need to provide version when updating documents
 
-6. **Automatically Managed Fields**
+7. **Automatically Managed Fields**
    - `owner`: Set to document creator's Principal
    - `created_at`: Set on document creation
    - `updated_at`: Updated on document changes
    - `version`: Managed for concurrency control
    - Only need to provide `version` when updating documents
 
-7. **Test Phase Considerations**
+8. **Test Phase Considerations**
    - All documents created by same user during testing
    - Author stored in description field
    - Will change to proper multi-user system later 

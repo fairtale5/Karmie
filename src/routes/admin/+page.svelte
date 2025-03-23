@@ -6,6 +6,7 @@
 	import { REPUTATION_SETTINGS } from '$lib/settings';
 	import { idlFactory } from '../../declarations/satellite/satellite.factory.did.js';
 	import type { _SERVICE as SatelliteActor } from '../../declarations/satellite/satellite.did';
+	import { createUserDescription, createTagDescription, createVoteDescription, createSearchPattern } from '$lib/description';
 
 	// Configuration Constants
 	const COLLECTIONS = {
@@ -93,8 +94,10 @@
 	// Function to load user reputations for selected tag
 	async function loadUserReputations(tagKey: string) {
 		try {
+			console.log('[Admin] Loading reputations for tag:', tagKey);
+			
 			const matcher = {
-				description: `tag:${tagKey}`  // This matches the pattern used in the Rust code
+				description: createSearchPattern('tag', tagKey)
 			};
 			const params = {
 				matcher
@@ -113,9 +116,9 @@
 			for (const doc of reputations.items) {
 				userReputations[doc.data.user_key] = doc.data.total_reputation;
 			}
-			console.log('Loaded reputations:', userReputations); // Add logging to debug
+			console.log('[Admin] Loaded reputations:', userReputations);
 		} catch (error) {
-			console.error('Error loading reputations:', error);
+			console.error('[Admin] Error loading reputations:', error);
 		}
 	}
 
@@ -192,11 +195,81 @@
 	}
 
 	/**
+	 * Creates or updates a user in the Juno collection
+	 * @throws {Error} If saving fails
+	 */
+	async function saveUser() {
+		try {
+			console.log('[Admin] Saving user:', newUser);
+			
+			// Validate inputs
+			if (!newUser.handle || !newUser.display_name) {
+				error = 'Please fill in all required fields';
+				return;
+			}
+
+			// If we're updating an existing user, we need to get its current version
+			let version;
+			if (newUser.key) {
+				try {
+					const existingDoc = await getDoc({
+						collection: COLLECTIONS.USERS,
+						key: newUser.key
+					});
+					if (!existingDoc) {
+						error = 'User not found';
+						return;
+					}
+					version = existingDoc.version;
+				} catch (e) {
+					console.error('[Admin] Error fetching existing user:', e);
+					error = 'Failed to fetch existing user version';
+					return;
+				}
+			}
+
+			// Generate document key if not updating
+			const documentKey = newUser.key || nanoid();
+
+			// Create or update user document
+			await setDoc({
+				collection: COLLECTIONS.USERS,
+				doc: {
+					key: documentKey,
+					data: {
+						handle: newUser.handle,
+						display_name: newUser.display_name
+					},
+					description: createUserDescription(user, documentKey, newUser.handle),
+					...(version && { version })
+				}
+			});
+
+			// Clear form and show success message
+			newUser = {
+				key: '',
+				handle: '',
+				display_name: ''
+			};
+			success = 'User saved successfully';
+			error = '';
+
+			// Reload users list
+			await loadUsers();
+		} catch (e) {
+			console.error('[Admin] Error saving user:', e);
+			error = e instanceof Error ? e.message : 'Failed to save user';
+		}
+	}
+
+	/**
 	 * Creates or updates a tag in the Juno collection
 	 * @throws {Error} If saving fails
 	 */
 	async function saveTag() {
 		try {
+			console.log('[Admin] Saving tag:', newTag);
+			
 			// Validate inputs
 			if (!newTag.name || !newTag.description) {
 				error = 'Please fill in all required fields';
@@ -217,17 +290,20 @@
 					}
 					version = existingDoc.version;
 				} catch (e) {
-					console.error('Error fetching existing tag:', e);
+					console.error('[Admin] Error fetching existing tag:', e);
 					error = 'Failed to fetch existing tag version';
 					return;
 				}
 			}
 
+			// Generate document key if not updating
+			const documentKey = newTag.key || nanoid();
+
 			// Create or update tag document
 			await setDoc({
 				collection: COLLECTIONS.TAGS,
 				doc: {
-					key: newTag.key || nanoid(),
+					key: documentKey,
 					data: {
 						name: newTag.name,
 						description: newTag.description,
@@ -236,6 +312,7 @@
 						vote_reward: newTag.vote_reward,
 						min_users_for_threshold: newTag.min_users_for_threshold
 					},
+					description: createTagDescription(user, documentKey, newTag.name),
 					...(version && { version })
 				}
 			});
@@ -250,14 +327,14 @@
 				vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
 				min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
 			};
-			success = newTag.key ? 'Tag updated successfully!' : 'Tag created successfully!';
-
-			// Reload the tag list
-			await loadTags();
 			success = 'Tag saved successfully';
-		} catch (err) {
-			console.error('Error saving tag:', err);
-			error = 'Failed to save tag';
+			error = '';
+
+			// Reload tags list
+			await loadTags();
+		} catch (e) {
+			console.error('[Admin] Error saving tag:', e);
+			error = e instanceof Error ? e.message : 'Failed to save tag';
 		}
 	}
 
@@ -328,67 +405,6 @@
 		document.getElementById('tagForm')?.scrollIntoView({ behavior: 'smooth' });
 	}
 
-	// Function to create or update a user
-	async function saveUser() {
-		try {
-			error = '';
-			success = '';
-
-			// Basic client-side validation
-			if (!newUser.handle || !newUser.display_name) {
-				error = 'Both handle and display name are required';
-				return;
-			}
-
-			// If we're updating an existing user, we need to get their current version
-			let version;
-			if (newUser.key) {
-				try {
-					const existingDoc = await getDoc({
-						collection: COLLECTIONS.USERS,
-						key: newUser.key
-					});
-					if (!existingDoc) {
-						error = 'User not found';
-						return;
-					}
-					version = existingDoc.version;
-				} catch (e) {
-					console.error('Error fetching existing user:', e);
-					error = 'Failed to fetch existing user version';
-					return;
-				}
-			}
-
-			// Create or update user document
-			await setDoc({
-				collection: COLLECTIONS.USERS,
-				doc: {
-					key: newUser.key || nanoid(), // Use existing key or generate new one
-					data: {
-						handle: newUser.handle,
-						display_name: newUser.display_name
-					},
-					...(version && { version }) // Only include version if we're updating
-				}
-			});
-
-			// Clear form and show success message
-			newUser = {
-				key: '',
-				handle: '',
-				display_name: ''
-			};
-			success = newUser.key ? 'User updated successfully!' : 'User created successfully!';
-
-			// Reload the user list
-			await loadUsers();
-		} catch (e) {
-			console.error('Error saving user:', e);
-			error = e instanceof Error ? e.message : 'Failed to save user';
-		}
-	}
-
 	// Function to delete a user
 	async function deleteUser(key: string) {
 		if (!confirm('Are you sure you want to delete this user?')) {
@@ -438,40 +454,46 @@
 		document.getElementById('userForm')?.scrollIntoView({ behavior: 'smooth' });
 	}
 
-	// Function to save a vote
+	/**
+	 * Creates a new vote in the Juno collection
+	 * @throws {Error} If saving fails
+	 */
 	async function saveVote() {
 		try {
+			console.log('[Admin] Saving vote:', newVote);
+			
 			// Validate inputs
 			if (!newVote.author_key || !newVote.target_key || !newVote.tag_key) {
-				error = 'Please fill in all fields';
+				error = 'Please fill in all required fields';
 				return;
 			}
 
-			console.log('Creating vote:', newVote); // Debug log
+			// Generate document key
+			const documentKey = nanoid();
 
 			// Create vote document
-			const voteDoc = {
-				key: newVote.key || nanoid(),
-				data: {
-					author_key: newVote.author_key,
-					target_key: newVote.target_key,
-					tag_key: newVote.tag_key,
-					value: newVote.value
-				},
-				description: `author:${newVote.author_key},target:${newVote.target_key},tag:${newVote.tag_key}`
-			};
-
-			console.log('Vote document to save:', voteDoc); // Debug log
-
-			// Save vote
 			await setDoc({
 				collection: COLLECTIONS.VOTES,
-				doc: voteDoc
+				doc: {
+					key: documentKey,
+					data: {
+						author_key: newVote.author_key,
+						target_key: newVote.target_key,
+						tag_key: newVote.tag_key,
+						value: newVote.value,
+						weight: DEFAULT_VOTE_WEIGHT,
+						created_at: Date.now() * 1_000_000  // Convert to nanoseconds
+					},
+					description: createVoteDescription(
+						user,
+						documentKey,
+						newVote.target_key,
+						newVote.tag_key
+					)
+				}
 			});
 
-			console.log('Vote saved successfully'); // Debug log
-
-			// Clear form
+			// Clear form and show success message
 			newVote = {
 				key: '',
 				author_key: '',
@@ -479,19 +501,17 @@
 				value: 1,
 				tag_key: ''
 			};
+			success = 'Vote saved successfully';
+			error = '';
 
-			// Reload votes
+			// Reload votes list and update reputations
 			await loadVotes();
-			
-			// Reload reputations if a tag is selected
 			if (selectedTag) {
 				await loadUserReputations(selectedTag);
 			}
-
-			success = 'Vote saved successfully';
-		} catch (err) {
-			console.error('Error saving vote:', err);
-			error = 'Failed to save vote';
+		} catch (e) {
+			console.error('[Admin] Error saving vote:', e);
+			error = e instanceof Error ? e.message : 'Failed to save vote';
 		}
 	}
 

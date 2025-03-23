@@ -69,6 +69,24 @@ api::set_certified_data(data: &[u8])
 api::data_certificate() -> Option<Vec<u8>>
 ```
 
+**Important Identity Functions**:
+- `ic_cdk::id()`: Returns the canister's Principal ID
+  - Use ONLY for controller-restricted collections
+  - Required when backend needs admin-level access
+  - Example: Writing to "reputations" collection
+  - Do not use for regular user operations
+- `ic_cdk::caller()`: Returns the caller's Principal ID
+  - Use for most document operations
+  - Maintains proper user ownership
+  - Required for user-specific actions
+  - Ensures correct attribution
+
+**Best Practices**:
+- Use `ic_cdk::id()` only when backend needs controller/admin access
+- Use `ic_cdk::caller()` as the default for document ownership
+- Never use `ic_cdk::id()` for regular user operations
+- Always validate collection access requirements
+
 ### Storage Module (`ic_cdk::storage`)
 
 ```rust
