@@ -36,30 +36,33 @@ Collection name: `users`
 ```typescript
 interface UserDocument {
     // Standard Juno fields (automatically managed)
-    key: string;              // Generated with nanoid() by Juno
-    description: string;      // Format: [owner:{principal}],[username:{name}]
+    key: string;              // Unique identifier generated with nanoid() by Juno
+    
+    // Description format: [owner:documentKey],[username:username]
+    // - owner: The key of this user document being created/edited
+    // - username: The username field from the document data (not a key)
+    // Example: [owner:user_123],[username:john_doe]
+    description: string;      
+    
     owner: Principal;         // Automatically set to user's Internet Identity Principal
-    created_at: bigint;      // Automatically set on creation (nanoseconds)
-    updated_at: bigint;      // Automatically updated on changes (nanoseconds)
-    version: bigint;         // Automatically managed for concurrency control
-
+    created_at: bigint;      // Creation timestamp in nanoseconds
+    updated_at: bigint;      // Last update timestamp in nanoseconds
+    version: bigint;         // Document version for concurrency control
+    
     // User-specific data
     data: {
-        handle: string;       // Unique username
-        display_name: string; // Display name (not unique)
-        principal: Principal; // User's Internet Identity Principal
+        username: string;     // Unique username (must be unique across all users)
+        display_name: string; // Display name (not required to be unique)
     }
 }
 ```
 
 #### Notes
-- `handle` must be unique across all users
+- `username` must be unique across all users
 - `display_name` is not required to be unique
-- The `description` field is managed automatically by the backend
+- The `description` field is managed automatically by the backend using standard Juno hooks
 - All timestamps are in nanoseconds
 - `version` is required for updates to prevent concurrent modifications
-
-
 
 ### Tags Collection
 
@@ -75,26 +78,34 @@ Collection name: `tags`
 ```typescript
 interface TagDocument {
     // Standard Juno fields (automatically managed)
-    key: string;              // Generated with nanoid()
-    description: string;      // Optional field for filtering/search
+    key: string;              // Unique identifier generated with nanoid()
+    
+    // Description format: [owner:creatorUserKey],[name:tagName]
+    // - owner: The document key of the user who is creating the tag
+    // - name: The name field provided in the frontend (not a key)
+    // Example: [owner:user_123],[name:technical_skills]
+    description: string;      
+    
     owner: Principal;         // Automatically set to document creator's Principal
-    created_at: bigint;      // Automatically set on creation (nanoseconds)
-    updated_at: bigint;      // Automatically updated on changes (nanoseconds)
-    version: bigint;         // Automatically managed for concurrency control
-
+    created_at: bigint;      // Creation timestamp in nanoseconds
+    updated_at: bigint;      // Last update timestamp in nanoseconds
+    version: bigint;         // Document version for concurrency control
+    
     // Tag-specific data
     data: {
-        name: string;     // Display name
-        description: string; // Description of the tag
+        author_key: string;   // User key of the creator (references Users collection)
+        name: string;         // Display name of the tag
+        description: string;  // Description of the tag's purpose
+        
+        // Time periods for vote decay multipliers
         time_periods: Array<{
-            months: number;    // Duration in months (1-999)
-            multiplier: number; // Weight multiplier (0.25-1.5)
+            months: number;     // Duration in months (1-999)
+            multiplier: number; // Weight multiplier (0.05-1.5)
         }>;
-        reputation_threshold: number;  // Minimum reputation needed for voting power (whole number)
-        vote_reward: number;          // Reputation points given for casting a vote (e.g., 0.1)
-        min_users_for_threshold: number; // Minimum number of users that need to reach threshold
-                                        // before vote rewards are restricted
-        vote_weight: number;          // Weight multiplier for votes (default: 1.0)
+        
+        reputation_threshold: number;     // Minimum reputation needed for voting power
+        vote_reward: number;              // Reputation points given for casting votes
+        min_users_for_threshold: number;  // Minimum users needed before vote rewards are restricted
     }
 }
 ```
@@ -103,12 +114,13 @@ Example Tag Document:
 ```typescript
 {
     key: "tag_123",
-    description: "Technical expertise and knowledge",
+    description: "[owner:user_123],[name:Technical Skills]",
     owner: Principal.fromText("..."),
     created_at: 1234567890n,
     updated_at: 1234567890n,
     version: 1n,
     data: {
+        author_key: "user_123",
         name: "Technical Skills",
         description: "Technical expertise and knowledge",
         time_periods: [
@@ -123,8 +135,7 @@ Example Tag Document:
         ],
         reputation_threshold: 10,     // Users need 10 reputation to get voting power
         vote_reward: 0.1,            // Users get 0.1 reputation for each vote they cast
-        min_users_for_threshold: 5,  // Need 5 users to reach threshold before restricting rewards
-        vote_weight: 1.0            // Default vote weight multiplier
+        min_users_for_threshold: 5   // Need 5 users to reach threshold before restricting rewards
     }
 }
 ```
@@ -143,18 +154,25 @@ Collection name: `votes`
 ```typescript
 interface VoteDocument {
     // Standard Juno fields (automatically managed)
-    key: string;              // Generated with nanoid()
-    description: string;      // Format: "author:{author_key},target:{target_key},tag:{tag_key}"
+    key: string;              // Unique identifier generated with nanoid()
+    
+    // Description format: [owner:voterUserKey],[target:targetUserKey],[tag:tagKey]
+    // - owner: The document key of the user casting the vote
+    // - target: The document key of the user being voted on
+    // - tag: The document key of the tag this vote belongs to
+    // Example: [owner:user_123],[target:user_456],[tag:tag_789]
+    description: string;      
+    
     owner: Principal;         // Automatically set to document creator's Principal
-    created_at: bigint;      // Automatically set on creation (nanoseconds)
-    updated_at: bigint;      // Automatically updated on changes (nanoseconds)
-    version: bigint;         // Automatically managed for concurrency control
-
+    created_at: bigint;      // Creation timestamp in nanoseconds
+    updated_at: bigint;      // Last update timestamp in nanoseconds
+    version: bigint;         // Document version for concurrency control
+    
     // Vote-specific data
     data: {
-        author_key: string;   // User key who cast the vote
-        target_key: string;   // User key being voted on
-        tag_key: string;      // Tag this vote is for
+        author_key: string;   // User key who cast the vote (references Users collection)
+        target_key: string;   // User key being voted on (references Users collection)
+        tag_key: string;      // Tag key this vote is for (references Tags collection)
         value: number;        // Vote value (+1 for upvote, -1 for downvote)
         weight: number;       // Vote weight (default: 1.0)
         created_at: bigint;   // Creation timestamp in nanoseconds
@@ -176,23 +194,31 @@ Collection name: `reputations`
 ```typescript
 interface ReputationDocument {
     // Standard Juno fields (automatically managed)
-    key: string;              // Generated with nanoid()
-    description: string;      // Format: "user:{user_key},tag:{tag_key},author:{author_key}"
+    key: string;              // Unique identifier generated with nanoid()
+    
+    // Description format: [owner:userKey],[tag:tagKey]
+    // - owner: The document key of the user this reputation belongs to
+    // - tag: The document key of the tag this reputation is for
+    // Example: [owner:user_123],[tag:tag_789]
+    description: string;      
+    
     owner: Principal;         // Automatically set to document creator's Principal
-    created_at: bigint;      // Automatically set on creation (nanoseconds)
-    updated_at: bigint;      // Automatically updated on changes (nanoseconds)
-    version: bigint;         // Automatically managed for concurrency control
-
+    created_at: bigint;      // Creation timestamp in nanoseconds
+    updated_at: bigint;      // Last update timestamp in nanoseconds
+    version: bigint;         // Document version for concurrency control
+    
     // Reputation-specific data
     data: {
-        user_key: string;     // The user this reputation is for
-        tag_key: string;      // The tag this reputation is for
-        total_basis_reputation: number;  // Reputation from received votes
-        total_voting_rewards_reputation: number;  // Reputation from casting votes
-        last_known_effective_reputation: number;  // Final reputation score (cached value)
-        last_calculation: number;  // When we last calculated (timestamp in nanoseconds)
-        vote_weight: number;      // The user's vote weight (0.0 to 1.0, where 1.0 = 100%)
-        has_voting_power: boolean; // Whether the user has sufficient reputation to have voting power (above threshold)
+        user_key: string;     // User this reputation is for (references Users collection)
+        tag_key: string;      // Tag this reputation is for (references Tags collection)
+        
+        total_basis_reputation: number;          // Reputation from received votes
+        total_voting_rewards_reputation: number; // Reputation from casting votes
+        last_known_effective_reputation: number; // Final reputation score (cached value)
+        
+        last_calculation: bigint;  // When the reputation was last calculated (timestamp in nanoseconds)
+        vote_weight: number;       // The user's vote weight (0.0 to 1.0, where 1.0 = 100%)
+        has_voting_power: boolean; // Whether the user has sufficient reputation to have voting power
     }
 }
 ```
@@ -202,40 +228,55 @@ interface ReputationDocument {
 - Reputation calculations are tag-specific
 - Cached scores are updated only when needed
 - Other tags' reputations remain untouched during updates
+- The `vote_weight` field has special handling:
+  - In the Rust code: Implemented as a custom `VoteWeight` struct with validation to ensure values are between 0.0 and 1.0
+  - In the database: Stored directly as a number between 0.0 and 1.0
 
-## Query Examples
+## Description Field Queries
 
-### Get User's Reputation in a Tag
+The description field uses a consistent bracket format that enables powerful querying capabilities. Here are some common query patterns:
+
+### Exact Match Query
 ```typescript
+// Find a specific user's reputation in a specific tag
 const { items } = await listDocs({
     collection: "reputations",
     filter: {
         matcher: {
-            description: `user:${userKey},tag:${tagKey}`
+            description: `[owner:${userKey}],[tag:${tagKey}]`
         }
     }
 });
 ```
 
-### Get All Votes by a User
+### Partial Match Query
 ```typescript
+// Find all votes for a specific tag, regardless of author or target
 const { items } = await listDocs({
     collection: "votes",
     filter: {
         matcher: {
-            description: `author:${userKey}`
+            description: `[tag:${tagKey}]`
         }
     }
 });
-```
 
-### Get All Votes for a User in a Tag
-```typescript
+// Find all votes by a specific user
 const { items } = await listDocs({
     collection: "votes",
     filter: {
         matcher: {
-            description: `target:${userKey},tag:${tagKey}`
+            description: `[owner:${userKey}]`
+        }
+    }
+});
+
+// Find a user by username
+const { items } = await listDocs({
+    collection: "users",
+    filter: {
+        matcher: {
+            description: `[username:${username}]`
         }
     }
 });
@@ -300,61 +341,106 @@ const { items } = await listDocs({
 # Document Description Field Standards
 
 ## Format Standard
-All document descriptions follow this format:
-`[field1:{value1}][field2:{value2}][field3:{value3}]`
+All document descriptions follow a consistent bracket format:
+`[field1:value1],[field2:value2],[field3:value3]`
 
 Rules:
-- Use brackets to wrap each field-value pair
-- No spaces
-- Consistent field order per collection
-- Use 'owner' consistently for document ownership
+- Use brackets `[]` to wrap each field-value pair
+- Separate pairs with commas `,`
+- Use consistent field order per collection
+- All values are document keys unless specified otherwise
 
 ## Collection-Specific Formats
 
 ### Users Collection
-Format: `,username:{name},owner:{key},`
-Example: `,username:john_doe,owner:user_123,`
+Format: `[owner:documentKey],[username:username]`
+- `owner`: The key of this user document being created/edited
+- `username`: The username field from the document data (not a key)
+
+Example: `[owner:user_123],[username:john_doe]`
 
 ### Tags Collection
-Format: `[name:{name}][owner:{key}]`
-Example: `[name:technical_skills][owner:user_123]`
+Format: `[owner:creatorUserKey],[name:tagName]`
+- `owner`: The document key of the user who is creating the tag
+- `name`: The name field provided in the frontend (not a key)
+
+Example: `[owner:user_123],[name:technical_skills]`
 
 ### Votes Collection
-Format: `[owner:{key}][target:{key}][tag:{key}]`
-Example: `[owner:user_123][target:user_456][tag:tag_789]`
+Format: `[owner:voterUserKey],[target:targetUserKey],[tag:tagKey]`
+- `owner`: The document key of the user casting the vote
+- `target`: The document key of the user being voted on
+- `tag`: The document key of the tag this vote belongs to
+
+Example: `[owner:user_123],[target:user_456],[tag:tag_789]`
 
 ### Reputations Collection
-Format: `[owner:{key}][tag:{key}]`
-Example: `[owner:user_123][tag:tag_789]`
+Format: `[owner:userKey],[tag:tagKey]`
+- `owner`: The document key of the user this reputation belongs to
+- `tag`: The document key of the tag this reputation is for
 
-## Playground vs Production Mode
+Example: `[owner:user_123],[tag:tag_789]`
 
-### Playground Mode
-- Uses description field for ownership lookup
-- Single Juno user creates all documents
-- Ownership tracked via description field
-- Format allows for simulated multi-user testing
+## Important Implementation Notes
 
-### Production Mode
-- Uses Juno's native owner field
-- Each user creates their own documents
-- Ownership tracked via Juno's Principal ID
-- Description field still maintained for compatibility
+1. **Description Field Generation**:
+   ```rust
+   // Example: Creating a vote description in Rust
+   let description = format!(
+       "[owner:{}],[target:{}],[tag:{}]",
+       vote.data.author_key,
+       vote.data.target_key,
+       vote.data.tag_key
+   );
+   ```
 
-## Important Notes
-1. The bracket format ensures:
-   - Clear field boundaries
-   - No issues with special characters in values
-   - Reliable pattern matching for queries
-   - Easy visual debugging
+2. **Handling in Collection Hooks**:
+   ```rust
+   // Example: In on_set_doc hook for votes collection
+   fn on_set_doc_votes(doc: &mut Document) -> Result<(), String> {
+       // Access the data fields directly
+       if let Some(data) = doc.data.as_object_mut() {
+           // Get fields from the document data
+           let author_key = data.get("author_key").and_then(|v| v.as_str()).unwrap_or("");
+           let target_key = data.get("target_key").and_then(|v| v.as_str()).unwrap_or("");
+           let tag_key = data.get("tag_key").and_then(|v| v.as_str()).unwrap_or("");
+           
+           // Set the description using the fields
+           doc.description = format!("[owner:{}],[target:{}],[tag:{}]", author_key, target_key, tag_key);
+       }
+       Ok(())
+   }
+   ```
 
-2. Query Examples:
-   - Find by tag: `[tag:tag_123]`
-   - Find by owner: `[owner:user_123]`
-   - Find by multiple fields: Pattern match on `[owner:user_123][tag:tag_456]`
+3. **Querying with Partial Matches**:
+   ```typescript
+   // Example: Find all votes for a specific tag, regardless of author or target
+   const { items } = await listDocs({
+       collection: "votes",
+       filter: {
+           matcher: {
+               description: `[tag:${tagKey}]`
+           }
+       }
+   });
+   ```
 
-3. Format Benefits:
-   - Values can contain any character (except `]`)
-   - No need for escaping special characters
-   - Exact field matching without false positives
-   - Future-proof for nested structures if needed
+## Benefits of Bracket Format
+
+1. **Clear Field Boundaries**: 
+   - Brackets clearly delimit each field-value pair
+   - Prevents issues with values containing delimiters
+
+2. **Partial Matching**: 
+   - Can match on any subset of fields
+   - Order-independent matching
+
+3. **Consistent Pattern**:
+   - Same pattern across all collections
+   - Easier to generate programmatically
+   - Easier to parse in queries
+
+4. **Developer-Friendly**:
+   - Intuitive mapping to underlying data structures
+   - Self-documenting format
+   - Easy to debug and understand

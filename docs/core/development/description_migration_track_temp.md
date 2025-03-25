@@ -16,7 +16,7 @@ All document keys are generated using [nanoid](https://github.com/ai/nanoid) whe
 
 ### Current Format (Pre-Migration)
 ```
-username:{normalized_handle},author:{author_key}
+username:{normalized_username},author:{author_key}
 ```
 
 ### New Format (Post-Migration)

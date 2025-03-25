@@ -34,7 +34,7 @@ pub fn log_with_prefix(prefix: &str, message: &str) {
 /// log_error("Invalid input data");
 /// ```
 pub fn log_error(message: &str) {
-    ic_cdk::trap(message);
+    log_with_prefix("ERROR", message);
 }
 
 /// Log a warning message.

@@ -7,12 +7,14 @@
 	import { idlFactory } from '../../declarations/satellite/satellite.factory.did.js';
 	import type { _SERVICE as SatelliteActor } from '../../declarations/satellite/satellite.did';
 	import { createUserDescription, createTagDescription, createVoteDescription, createSearchPattern } from '$lib/description';
+	import { getUserReputationFull } from '../../declarations/satellite/satellite.api';
 
 	// Configuration Constants
 	const COLLECTIONS = {
 		USERS: 'users',
 		VOTES: 'votes',
-		TAGS: 'tags'
+		TAGS: 'tags',
+		REPUTATIONS: 'reputations'
 	} as const;
 
 	const DEFAULT_VOTE_WEIGHT = 1;
@@ -27,16 +29,22 @@
 		{ months: 999, multiplier: 0.25 }  // Period 8: Months 49+ (treated as infinity)
 	];
 
-	// Form data for creating/updating users
+	// User form data
 	let newUser = {
-		key: '',  // Optional - if provided, will update existing user
-		handle: '',
+		key: '',
+		username: '',
 		display_name: ''
 	};
 
+	// User type definition
+	interface UserData {
+		username: string;
+		display_name: string;
+	}
+
 	// List of all users
 	let users: Doc<{
-		handle: string;
+		username: string;
 		display_name: string;
 	}>[] = [];
 
@@ -55,6 +63,7 @@
 	let tags: Doc<{
 		name: string;
 		description: string;
+		author_key: string;
 		time_periods: Array<{ months: number; multiplier: number }>;
 		reputation_threshold: number;
 		vote_reward: number;
@@ -76,6 +85,8 @@
 		target_key: string;
 		tag_key: string;
 		value: number;
+		weight: number;
+		created_at: bigint;
 	}>[] = [];
 
 	// Error message if something goes wrong
@@ -88,34 +99,113 @@
 	// Add selected tag state
 	let selectedTag = '';
 
-	// Add reputation map
-	let userReputations: Record<string, number> = {};
+	// Add this type definition at the top of the script section
+	type ReputationData = {
+		user_key: string;
+		tag_key: string;
+		total_basis_reputation: number;
+		total_voting_rewards_reputation: number;
+		last_known_effective_reputation: number;
+		last_calculation: bigint;
+		vote_weight: number;
+		has_voting_power: boolean;
+	};
+
+	// Update the userReputations type
+	let userReputations: Record<string, ReputationData> = {};
 
 	// Function to load user reputations for selected tag
 	async function loadUserReputations(tagKey: string) {
 		try {
 			console.log('[Admin] Loading reputations for tag:', tagKey);
 			
-			const matcher = {
-				description: createSearchPattern('tag', tagKey)
-			};
-			const params = {
-				matcher
-			};
-			const reputations = await listDocs<{
-				user_key: string;
-				total_reputation: number;
-				reputation_from_votes: number;
-				reputation_from_voting: number;
-			}>({
-				collection: 'reputations',
-				...params
+			// Get all users first
+			const usersList = await listDocs<{ username: string; display_name: string }>({
+				collection: COLLECTIONS.USERS
 			});
 			
+			// There are two approaches to fetching reputation data:
+			// 1. Bulk approach (current): Get all reputations for the tag at once with listDocs
+			//    - Pros: Fewer network requests, better for many users
+			//    - Cons: Returns more data than needed if we only want specific users
+			// 2. Individual approach: Use getUserReputationFull for each user
+			//    - Pros: More precise, only gets data for users we care about
+			//    - Cons: More network requests, worse for many users
+			//
+			// The bulk approach is more efficient for admin views where we need all user data
+			
+			// Get the satellite actor
+			const actor = await getSatelliteExtendedActor<SatelliteActor>({
+				idlFactory
+			});
+			
+			// Get all reputations for this tag
+			const reputationsList = await listDocs<ReputationData>({
+				collection: COLLECTIONS.REPUTATIONS,
+				filter: {
+					matcher: {
+						description: `tag:${tagKey}`
+					}
+				}
+			});
+			
+			// Create a map of user_key to reputation data
+			const reputationMap = new Map(
+				reputationsList.items.map(item => [item.data.user_key, item.data])
+			);
+			
+			// Get reputation data for each user
 			userReputations = {};
-			for (const doc of reputations.items) {
-				userReputations[doc.data.user_key] = doc.data.total_reputation;
+			for (const user of usersList.items) {
+				const reputation = reputationMap.get(user.key) || {
+					user_key: user.key,
+					tag_key: tagKey,
+					total_basis_reputation: 0,
+					total_voting_rewards_reputation: 0,
+					last_known_effective_reputation: 0,
+					last_calculation: BigInt(0),
+					vote_weight: 0,
+					has_voting_power: false
+				};
+				userReputations[user.key] = reputation;
 			}
+			
+			// Example of individual approach (not used but shown for reference):
+			// userReputations = {};
+			// for (const user of usersList.items) {
+			//     try {
+			//         const result = await getUserReputationFull(user.key, tagKey);
+			//         if ('Ok' in result) {
+			//             userReputations[user.key] = result.Ok;
+			//         } else {
+			//             // User has no reputation yet, use default values
+			//             userReputations[user.key] = {
+			//                 user_key: user.key,
+			//                 tag_key: tagKey,
+			//                 total_basis_reputation: 0,
+			//                 total_voting_rewards_reputation: 0,
+			//                 last_known_effective_reputation: 0,
+			//                 last_calculation: BigInt(0),
+			//                 vote_weight: 0,
+			//                 has_voting_power: false
+			//             };
+			//         }
+			//     } catch (error) {
+			//         console.error(`[Admin] Error loading reputation for user ${user.key}:`, error);
+			//         // Use default values on error
+			//         userReputations[user.key] = {
+			//             user_key: user.key,
+			//             tag_key: tagKey,
+			//             total_basis_reputation: 0,
+			//             total_voting_rewards_reputation: 0,
+			//             last_known_effective_reputation: 0,
+			//             last_calculation: BigInt(0),
+			//             vote_weight: 0,
+			//             has_voting_power: false
+			//         };
+			//     }
+			// }
+			
 			console.log('[Admin] Loaded reputations:', userReputations);
 		} catch (error) {
 			console.error('[Admin] Error loading reputations:', error);
@@ -153,7 +243,7 @@
 	// Load users
 	async function loadUsers() {
 		try {
-			const usersList = await listDocs<{ handle: string; display_name: string }>({
+			const usersList = await listDocs<{ username: string; display_name: string }>({
 				collection: COLLECTIONS.USERS
 			});
 			users = usersList.items;
@@ -165,7 +255,7 @@
 	// Load votes
 	async function loadVotes() {
 		try {
-			const votesList = await listDocs<{ author_key: string; target_key: string; tag_key: string; value: number }>({
+			const votesList = await listDocs<{ author_key: string; target_key: string; tag_key: string; value: number; weight: number; created_at: bigint }>({
 				collection: COLLECTIONS.VOTES
 			});
 			console.log('Loaded votes:', votesList.items); // Debug log
@@ -181,6 +271,7 @@
 			const tagsList = await listDocs<{ 
 				name: string; 
 				description: string; 
+				author_key: string;
 				time_periods: { months: number; multiplier: number; }[];
 				reputation_threshold: number;
 				vote_reward: number;
@@ -203,7 +294,7 @@
 			console.log('[Admin] Saving user:', newUser);
 			
 			// Validate inputs
-			if (!newUser.handle || !newUser.display_name) {
+			if (!newUser.username || !newUser.display_name) {
 				error = 'Please fill in all required fields';
 				return;
 			}
@@ -237,10 +328,10 @@
 				doc: {
 					key: documentKey,
 					data: {
-						handle: newUser.handle,
+						username: newUser.username,  // Changed from handle to username
 						display_name: newUser.display_name
 					},
-					description: createUserDescription(user, documentKey, newUser.handle),
+					description: createUserDescription(null, documentKey, newUser.username),  // Pass null for user since it's a new user
 					...(version && { version })
 				}
 			});
@@ -248,7 +339,7 @@
 			// Clear form and show success message
 			newUser = {
 				key: '',
-				handle: '',
+				username: '',
 				display_name: ''
 			};
 			success = 'User saved successfully';
@@ -258,7 +349,12 @@
 			await loadUsers();
 		} catch (e) {
 			console.error('[Admin] Error saving user:', e);
+			
+			// Simply use the error message from the canister
 			error = e instanceof Error ? e.message : 'Failed to save user';
+			
+			// Clear success message if there was one
+			success = '';
 		}
 	}
 
@@ -300,11 +396,16 @@
 			const documentKey = newTag.key || nanoid();
 
 			// Create or update tag document
+			if (!user?.key) {
+				throw new Error('User must be authenticated to create or update tags');
+			}
+
 			await setDoc({
 				collection: COLLECTIONS.TAGS,
 				doc: {
 					key: documentKey,
 					data: {
+						author_key: user.key,  // Admin creates tags
 						name: newTag.name,
 						description: newTag.description,
 						time_periods: newTag.time_periods,
@@ -312,7 +413,7 @@
 						vote_reward: newTag.vote_reward,
 						min_users_for_threshold: newTag.min_users_for_threshold
 					},
-					description: createTagDescription(user, documentKey, newTag.name),
+					description: createTagDescription(user, documentKey, newTag.name, user.key),  // Admin creates tags
 					...(version && { version })
 				}
 			});
@@ -444,10 +545,10 @@
 	}
 
 	// Function to load user data for editing
-	function editUser(userDoc: Doc<{ handle: string; display_name: string }>) {
+	function editUser(userDoc: Doc<{ username: string; display_name: string }>) {
 		newUser = {
 			key: userDoc.key,
-			handle: userDoc.data.handle,
+			username: userDoc.data.username,
 			display_name: userDoc.data.display_name
 		};
 		// Scroll to form
@@ -487,6 +588,7 @@
 					description: createVoteDescription(
 						user,
 						documentKey,
+						newVote.author_key,
 						newVote.target_key,
 						newVote.tag_key
 					)
@@ -560,26 +662,71 @@
 		}
 	}
 
-	// Add this to the script section
-	async function recalculateUserReputation(userKey: string, tagKey: string) {
+	// Update the recalculateUserReputation function
+	async function recalculateUserReputation(userKey: string) {
 		try {
-			error = '';
-			success = '';
+			console.log('[Admin] Recalculating reputation for user:', userKey);
 			
 			// Get the satellite actor
 			const actor = await getSatelliteExtendedActor<SatelliteActor>({
 				idlFactory
 			});
 			
-			// Call our custom endpoint
+			// Get the current tag key from the URL
+			const tagKey = window.location.pathname.split('/').pop();
+			if (!tagKey) {
+				throw new Error('No tag selected');
+			}
+			
+			// Call recalculate_reputation
 			const result = await actor.recalculate_reputation(userKey, tagKey);
 			
-			// Refresh the users list to show updated reputation
-			await loadUsers();
+			// Reload reputations to show updated values
+			await loadUserReputations(tagKey);
 			
-			success = `Reputation recalculated successfully. New score: ${result}`;
-		} catch (err) {
-			error = `Failed to recalculate reputation: ${err}`;
+			success = `Recalculated reputation for user ${userKey}`;
+			error = '';
+		} catch (e) {
+			console.error('[Admin] Error recalculating reputation:', e);
+			error = e instanceof Error ? e.message : 'Failed to recalculate reputation';
+			success = '';
+		}
+	}
+
+	// Helper function to format time ago
+	function getTimeAgo(timestamp: number): string {
+		const now = Date.now() * 1_000_000; // Convert to nanoseconds
+		const diff = now - timestamp;
+		
+		const seconds = diff / 1_000_000_000;
+		const minutes = seconds / 60;
+		const hours = minutes / 60;
+		const days = hours / 24;
+		
+		if (days > 1) return `${Math.floor(days)}d ago`;
+		if (hours > 1) return `${Math.floor(hours)}h ago`;
+		if (minutes > 1) return `${Math.floor(minutes)}m ago`;
+		return `${Math.floor(seconds)}s ago`;
+	}
+
+	// Function to recalculate reputation
+	async function recalculateReputation(userKey: string, tagKey: string) {
+		try {
+			const actor = await getSatelliteExtendedActor<SatelliteActor>({
+				idlFactory
+			});
+			
+			const result = await actor.recalculate_reputation(userKey, tagKey);
+			if ('Ok' in result) {
+				// Reload reputations after recalculation
+				await loadUserReputations(tagKey);
+				success = `Recalculated reputation for ${userKey}`;
+			} else {
+				error = `Failed to recalculate: ${result.Err}`;
+			}
+		} catch (e) {
+			error = `Error recalculating reputation: ${e}`;
+			console.error('[Admin] Recalculation error:', e);
 		}
 	}
 </script>
@@ -598,13 +745,13 @@
 
 		<!-- Tag Selector -->
 		<div class="mb-8">
-			<label for="tag-select" class="block text-lg mb-2">Select Reputation Tag:</label>
+			<label for="tag-select" class="block text-lg mb-2">Select Tag to View Data:</label>
 			<select
 				id="tag-select"
 				bind:value={selectedTag}
 				class="border p-2 w-full max-w-md"
 			>
-				<option value="">Select a tag to view reputations</option>
+				<option value="">Select a tag to view all related data</option>
 				{#each tags as tag}
 					<option value={tag.key}>
 						{tag.data.name}
@@ -612,6 +759,224 @@
 				{/each}
 			</select>
 		</div>
+
+		{#if selectedTag}
+			<!-- Selected Tag Details -->
+			{@const selectedTagDoc = tags.find(t => t.key === selectedTag)}
+			{#if selectedTagDoc}
+				<div class="mb-8">
+					<h2 class="text-xl mb-4">Selected Tag Details</h2>
+					<div class="overflow-x-auto">
+						<table class="table table-zebra w-full">
+							<tbody>
+								<tr>
+									<td class="font-bold">Document Key</td>
+									<td class="font-mono">{selectedTagDoc.key}</td>
+								</tr>
+								<tr>
+									<td class="font-bold">Description</td>
+									<td class="font-mono">{selectedTagDoc.description}</td>
+								</tr>
+								<tr>
+									<td class="font-bold">Owner</td>
+									<td class="font-mono">{selectedTagDoc.owner}</td>
+								</tr>
+								<tr>
+									<td class="font-bold">Created At</td>
+									<td>{new Date(Number(selectedTagDoc.created_at) / 1_000_000).toLocaleString()}</td>
+								</tr>
+								<tr>
+									<td class="font-bold">Updated At</td>
+									<td>{new Date(Number(selectedTagDoc.updated_at) / 1_000_000).toLocaleString()}</td>
+								</tr>
+								<tr>
+									<td class="font-bold">Version</td>
+									<td>{selectedTagDoc.version}</td>
+								</tr>
+								<tr>
+									<td class="font-bold">Author Key</td>
+									<td class="font-mono">{selectedTagDoc.data.author_key}</td>
+								</tr>
+								<tr>
+									<td class="font-bold">Name</td>
+									<td>{selectedTagDoc.data.name}</td>
+								</tr>
+								<tr>
+									<td class="font-bold">Description</td>
+									<td>{selectedTagDoc.data.description}</td>
+								</tr>
+								<tr>
+									<td class="font-bold">Time Periods</td>
+									<td>
+										<ul class="list-disc list-inside">
+											{#each selectedTagDoc.data.time_periods as period}
+												<li>{period.months} months: {period.multiplier}x</li>
+											{/each}
+										</ul>
+									</td>
+								</tr>
+								<tr>
+									<td class="font-bold">Reputation Threshold</td>
+									<td>{selectedTagDoc.data.reputation_threshold}</td>
+								</tr>
+								<tr>
+									<td class="font-bold">Vote Reward</td>
+									<td>{selectedTagDoc.data.vote_reward}</td>
+								</tr>
+								<tr>
+									<td class="font-bold">Min Users for Threshold</td>
+									<td>{selectedTagDoc.data.min_users_for_threshold}</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			{/if}
+
+			<!-- Users with Reputation -->
+			<div class="mb-8">
+				<h2 class="text-xl mb-4">Users and Their Reputation</h2>
+				<div class="overflow-x-auto">
+					<table class="table table-zebra w-full">
+						<thead>
+							<tr>
+								<th>Document Info</th>
+								<th>User Data</th>
+								<th>Reputation Data</th>
+								<th>Actions</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each users as user}
+								{@const reputation = userReputations[user.key] ?? {
+									total_basis_reputation: 0,
+									total_voting_rewards_reputation: 0,
+									last_known_effective_reputation: 0,
+									vote_weight: 0,
+									has_voting_power: false,
+									last_calculation: BigInt(0)
+								}}
+								<tr>
+									<td>
+										<div class="space-y-1">
+											<div class="font-mono text-xs">Key: {user.key}</div>
+											<div class="font-mono text-xs">Description: {user.description}</div>
+											<div class="font-mono text-xs">Owner: {user.owner}</div>
+											<div class="text-xs">Created: {new Date(Number(user.created_at) / 1_000_000).toLocaleString()}</div>
+											<div class="text-xs">Updated: {new Date(Number(user.updated_at) / 1_000_000).toLocaleString()}</div>
+											<div class="text-xs">Version: {user.version}</div>
+										</div>
+									</td>
+									<td>
+										<div class="space-y-1">
+											<div class="font-bold">{user.data.username}</div>
+											<div class="text-sm opacity-75">{user.data.display_name}</div>
+										</div>
+									</td>
+									<td>
+										<div class="space-y-1">
+											<div>Base Rep: {reputation.total_basis_reputation.toFixed(2)}</div>
+											<div>Vote Rep: {reputation.total_voting_rewards_reputation.toFixed(2)}</div>
+											<div>Total Rep: {reputation.last_known_effective_reputation.toFixed(2)}</div>
+											<div>Weight: {(reputation.vote_weight * 100).toFixed(1)}%</div>
+											<div>Status: {reputation.has_voting_power ? 'Active' : 'Inactive'}</div>
+											<div class="text-xs">Last Calc: {new Date(Number(reputation.last_calculation) / 1_000_000).toLocaleString()}</div>
+										</div>
+									</td>
+									<td>
+										<div class="flex gap-2 justify-center">
+											<button
+												class="btn btn-xs btn-primary"
+												on:click={() => recalculateReputation(user.key, selectedTag)}
+												title="Recalculate reputation"
+											>
+												🔄
+											</button>
+											<button
+												class="btn btn-xs btn-info"
+												on:click={() => editUser(user)}
+												title="Edit user"
+											>
+												✏️
+											</button>
+											<button
+												class="btn btn-xs btn-error"
+												on:click={() => deleteUser(user.key)}
+												title="Delete user"
+											>
+												❌
+											</button>
+										</div>
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			<!-- Votes in Selected Tag -->
+			<div class="mb-8">
+				<h2 class="text-xl mb-4">Votes in This Tag</h2>
+				<div class="overflow-x-auto">
+					<table class="table table-zebra w-full">
+						<thead>
+							<tr>
+								<th>Document Info</th>
+								<th>Vote Data</th>
+								<th>References</th>
+								<th>Actions</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each votes.filter(v => v.data.tag_key === selectedTag) as vote}
+								{@const author = users.find(u => u.key === vote.data.author_key)}
+								{@const target = users.find(u => u.key === vote.data.target_key)}
+								<tr>
+									<td>
+										<div class="space-y-1">
+											<div class="font-mono text-xs">Key: {vote.key}</div>
+											<div class="font-mono text-xs">Description: {vote.description}</div>
+											<div class="font-mono text-xs">Owner: {vote.owner}</div>
+											<div class="text-xs">Created: {new Date(Number(vote.created_at) / 1_000_000).toLocaleString()}</div>
+											<div class="text-xs">Updated: {new Date(Number(vote.updated_at) / 1_000_000).toLocaleString()}</div>
+											<div class="text-xs">Version: {vote.version}</div>
+										</div>
+									</td>
+									<td>
+										<div class="space-y-1">
+											<div>Value: {vote.data.value > 0 ? '✅ +1' : '❌ -1'}</div>
+											<div>Weight: {vote.data.weight.toFixed(2)}</div>
+											<div class="text-xs">Created: {new Date(Number(vote.data.created_at) / 1_000_000).toLocaleString()}</div>
+										</div>
+									</td>
+									<td>
+										<div class="space-y-1">
+											<div>Author: {author ? `${author.data.display_name} (${author.data.username})` : 'Unknown'}</div>
+											<div>Target: {target ? `${target.data.display_name} (${target.data.username})` : 'Unknown'}</div>
+											<div class="font-mono text-xs">Author Key: {vote.data.author_key}</div>
+											<div class="font-mono text-xs">Target Key: {vote.data.target_key}</div>
+											<div class="font-mono text-xs">Tag Key: {vote.data.tag_key}</div>
+										</div>
+									</td>
+									<td>
+										<div class="flex gap-2 justify-center">
+											<button
+												on:click={() => deleteVote(vote.key)}
+												class="btn btn-xs btn-error"
+												title="Delete vote"
+											>
+												❌
+											</button>
+										</div>
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		{/if}
 
 		<!-- Create/Update User Form -->
 		<div class="mb-8" id="userForm">
@@ -631,13 +996,13 @@
 				{/if}
 
 				<div>
-					<label for="handle" class="block">Handle (username):</label>
+					<label for="username" class="block">Username:</label>
 					<input
 						type="text"
-						id="handle"
-						bind:value={newUser.handle}
+						id="username"
+						bind:value={newUser.username}
 						class="border p-2 w-full"
-						placeholder="e.g., john_doe"
+						placeholder="Enter username"
 					/>
 				</div>
 
@@ -661,7 +1026,7 @@
 							type="button"
 							class="bg-gray-500 text-white px-4 py-2 rounded"
 							on:click={() => {
-								newUser = { key: '', handle: '', display_name: '' };
+								newUser = { key: '', username: '', display_name: '' };
 							}}
 						>
 							Cancel Edit
@@ -678,62 +1043,6 @@
 			{/if}
 		</div>
 
-		<!-- User List -->
-		<div class="mb-8">
-			<h2 class="text-xl mb-4">Existing Users</h2>
-			<table class="w-full border-collapse border">
-				<thead>
-					<tr>
-						<th class="border p-2 w-48">Key</th>
-						<th class="border p-2">Handle</th>
-						<th class="border p-2">Display Name</th>
-						{#if selectedTag}
-							<th class="border p-2">Reputation</th>
-						{/if}
-						<th class="border p-2">Actions</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each users as user}
-						<tr>
-							<td class="border p-2 font-mono text-sm bg-gray-50">{user.key}</td>
-							<td class="border p-2">{user.data.handle}</td>
-							<td class="border p-2">{user.data.display_name}</td>
-							{#if selectedTag}
-								<td class="border p-2">
-									{userReputations[user.key]?.toFixed(2) ?? '0.00'}
-								</td>
-							{/if}
-							<td class="border p-2">
-								<div class="flex gap-2">
-									{#if selectedTag}
-										<button
-											class="btn btn-sm btn-outline-primary"
-											on:click={() => recalculateUserReputation(user.key, selectedTag)}
-										>
-											Recalculate
-										</button>
-									{/if}
-									<button
-										class="btn btn-sm btn-outline-primary"
-										on:click={() => editUser(user)}
-									>
-										Edit
-									</button>
-									<button
-										class="btn btn-sm btn-outline-error"
-										on:click={() => deleteUser(user.key)}
-									>
-										Delete
-									</button>
-								</div>
-							</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
-
 		<!-- Create Vote Form -->
 		<div class="mb-8" id="voteForm">
 			<h2 class="text-xl mb-4">Create New Vote</h2>
@@ -748,7 +1057,7 @@
 						<option value="">Select Author</option>
 						{#each users as user}
 							<option value={user.key}>
-								{user.data.display_name} ({user.data.handle})
+								{user.data.display_name} ({user.data.username})
 							</option>
 						{/each}
 					</select>
@@ -764,7 +1073,7 @@
 						<option value="">Select Target</option>
 						{#each users as user}
 							<option value={user.key}>
-								{user.data.display_name} ({user.data.handle})
+								{user.data.display_name} ({user.data.username})
 							</option>
 						{/each}
 					</select>
@@ -818,45 +1127,6 @@
 					</button>
 				</div>
 			</form>
-		</div>
-
-		<!-- Vote List -->
-		<div class="mb-8">
-			<h2 class="text-xl mb-4">Existing Votes</h2>
-			<table class="w-full border-collapse border">
-				<thead>
-					<tr>
-						<th class="border p-2">Key</th>
-						<th class="border p-2">Author</th>
-						<th class="border p-2">Target</th>
-						<th class="border p-2">Tag</th>
-						<th class="border p-2">Type</th>
-						<th class="border p-2">Actions</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each votes as vote}
-						<tr>
-							<td class="border p-2 font-mono text-sm bg-gray-50">{vote.key}</td>
-							<td class="border p-2">{vote.description?.split(',')[0].split(':')[1] || 'Unknown'}</td>
-							<td class="border p-2">{vote.data.target_key}</td>
-							<td class="border p-2">{vote.data.tag_key}</td>
-							<td class="border p-2">{vote.data.value > 0 ? '✅ +1' : '❌ -1'}</td>
-							<td class="border p-2">
-								<div class="flex gap-2 justify-center">
-									<button
-										on:click={() => deleteVote(vote.key)}
-										class="text-red-500 hover:text-red-700"
-										title="Delete vote"
-									>
-										❌
-									</button>
-								</div>
-							</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
 		</div>
 
 		<!-- Create/Update Tag Form -->

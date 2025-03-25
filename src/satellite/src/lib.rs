@@ -54,7 +54,7 @@
  * 
  * Users Collection:
  * ```text
- * [owner:{id}],[username:{normalized_handle}]
+ * [owner:{key}],[username:{normalized_username}]
  * ```
  * 
  * Votes Collection:
@@ -184,7 +184,6 @@ use candid::Principal;
 // ===========================================================================
 
 use junobuild_utils::{decode_doc_data, encode_doc_data};
-use serde::{Deserialize, Serialize};
 
 // Import our utility modules
 use crate::utils::{
@@ -196,7 +195,7 @@ use crate::utils::{
         calculate_and_store_vote_weight
     },
     logging::{log_error, log_warn, log_info, log_debug},
-    description_helpers::{DocumentDescription, create_vote_description}
+    description_helpers::{DocumentDescription, create_vote_description, validate_description}
 };
 
 // =============================================================================
@@ -278,10 +277,13 @@ pub const IS_PLAYGROUND: bool = true;  // Set to false for production
 
 #[assert_set_doc(collections = ["users", "votes", "tags", "reputations"])]
 fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
+    ic_cdk::println!("[CRITICAL DEBUG] assert_set_doc CALLED for collection: {}, key: {}", 
+        context.data.collection, context.data.key);
+    
     log_debug(&format!("[assert_set_doc] Starting validation for collection: {}, key: {}", 
         context.data.collection, context.data.key));
 
-    match context.data.collection.as_str() {
+    let result = match context.data.collection.as_str() {
         "users" => validate_user_document(&context),
         "votes" => validate_vote_document(&context),
         "tags" => validate_tag_document(&context),
@@ -291,7 +293,15 @@ fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
             log_error(&format!("[assert_set_doc] {}", err_msg));
             Err(err_msg)
         }
+    };
+    
+    if result.is_err() {
+        ic_cdk::println!("[CRITICAL DEBUG] assert_set_doc FAILED with error: {:?}", result.as_ref().err());
+    } else {
+        ic_cdk::println!("[CRITICAL DEBUG] assert_set_doc PASSED validation");
     }
+    
+    result
 }
 
 /// Validates a user document before creation or update
@@ -300,8 +310,9 @@ fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
 /// 1. Decodes and validates the basic user data structure
 /// 2. Validates username format and restrictions
 /// 3. Validates display name format and restrictions
-/// 4. Ensures username uniqueness across the system
-/// 5. Enforces one-document-per-identity rule in production mode
+/// 4. Validates description format and referenced documents
+/// 5. Ensures username uniqueness across the system
+/// 6. Enforces one-document-per-identity rule in production mode
 /// 
 /// # Arguments
 /// * `context` - The validation context containing:
@@ -317,32 +328,71 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
     // This ensures the document contains all required fields in the correct format
     let user_data: UserData = decode_doc_data(&context.data.data.proposed.data)
         .map_err(|e| {
-            log_error(&format!("[assert_set_doc] Failed to decode user data: key={}, error={}", 
-                context.data.key, e));
+            let err_msg = format!("[assert_set_doc] Failed to decode user data: key={}, error={}", 
+                context.data.key, e);
+            log_error(&err_msg);
             format!("Invalid user data format: {}", e)
         })?;
     
     // Step 2: Validate username format and restrictions
-    validate_username(&user_data.handle)?;
+    validate_username(&user_data.username)
+        .map_err(|e| {
+            let err_msg = format!("[assert_set_doc] Username validation failed: {}", e);
+            log_error(&err_msg);
+            e
+        })?;
 
     // Step 3: Validate display name format and restrictions
-    validate_display_name(&user_data.display_name)?;
+    validate_display_name(&user_data.display_name)
+        .map_err(|e| {
+            let err_msg = format!("[assert_set_doc] Display name validation failed: {}", e);
+            log_error(&err_msg);
+            e
+        })?;
 
-    // Step 4: Ensure username uniqueness across the system
+    // Step 4: Validate description format and referenced documents
+    if let Some(description) = &context.data.data.proposed.description {
+        // Since validate_description is async, we'll validate the format synchronously
+        // and leave the document existence check to the on_set_doc hook
+        let mut desc = DocumentDescription::new();
+        if IS_PLAYGROUND {
+            desc.add_owner(&context.data.key);
+        } else {
+            desc.add_owner(&context.caller.to_string());
+        }
+        desc.add_field("username", &user_data.username);
+        
+        let expected_description = desc.build();
+        if description != &expected_description {
+            let err_msg = format!(
+                "Invalid description format. Expected: {}, Got: {}",
+                expected_description, description
+            );
+            log_error(&format!("[assert_set_doc] {}", err_msg));
+            return Err(err_msg);
+        }
+    } else {
+        let err_msg = "Description field is required for user documents";
+        log_error(&format!("[assert_set_doc] {} key={}", err_msg, context.data.key));
+        return Err(err_msg.to_string());
+    }
+
+    // Step 5: Ensure username uniqueness across the system
     // First, normalize the username to lowercase for comparison
-    let normalized_handle = user_data.handle.to_lowercase();
+    let normalized_username = user_data.username.to_lowercase();
     
-    // Build the search query based on mode
-    let matcher = ListMatcher {
-        description: Some(format!("[username:{}]", normalized_handle)),
-        ..Default::default()
-    };
-
+    // Build the search query to find any document with this username
+    // The pattern will match [username:name] anywhere in the description string
+    // This works regardless of whether it's at the start, middle, or end
     let params = ListParams {
-        matcher: Some(matcher),
+        matcher: Some(ListMatcher {
+            description: Some(format!(".*\\[username:{}\\].*", normalized_username)),
+            ..Default::default()
+        }),
         ..Default::default()
     };
 
+    // Call list_docs and handle potential errors
     let existing_users = list_docs(String::from("users"), params);
 
     // Check if we found any existing users with this normalized username
@@ -350,15 +400,15 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
     for (doc_key, _) in existing_users.items {
         if doc_key != context.data.key {
             let err_msg = format!(
-                "Username '{}' is already taken (case-insensitive comparison)",
-                user_data.handle
+                "Username '{}' is already taken. Please choose a different username.",
+                user_data.username
             );
-            log_error(&format!("[assert_set_doc] {} key={}", err_msg, context.data.key));
+            log_error(&format!("[assert_set_doc] {} key={}, username={}", err_msg, context.data.key, user_data.username));
             return Err(err_msg);
         }
     }
 
-    // Step 5: In production mode, enforce one-document-per-identity rule
+    // Step 6: In production mode, enforce one-document-per-identity rule
     if !IS_PLAYGROUND {
         // In production mode, we search by Principal ID in the description
         let mut desc = DocumentDescription::new();
@@ -372,6 +422,7 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
             ..Default::default()
         };
 
+        // Call list_docs and handle potential errors
         let existing_docs = list_docs(String::from("users"), owner_params);
 
         // Check if we found any existing documents owned by this user
@@ -530,8 +581,14 @@ fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
 
     // Check for tag name uniqueness (case-insensitive)
     let normalized_name = tag_data.name.to_lowercase();
+    
+    // Build the search query using DocumentDescription helper
+    let mut name_desc = DocumentDescription::new();
+    name_desc.add_field("name", &normalized_name);
+    let name_description = name_desc.build();
+    
     let matcher = ListMatcher {
-        description: Some(format!("[name:{}]", normalized_name)),
+        description: Some(name_description),
         ..Default::default()
     };
 
@@ -557,10 +614,12 @@ fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
 
     // Step 3: Validate description length
     if tag_data.description.len() > 1024 {
-        return Err(format!(
+        let err_msg = format!(
             "Tag description cannot exceed 1024 characters (current length: {})",
             tag_data.description.len()
-        ));
+        );
+        log_error(&format!("[validate_tag_document] {}", err_msg));
+        return Err(err_msg);
     }
 
     // Step 4: Validate time periods
@@ -568,10 +627,12 @@ fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
 
     // Step 5: Validate vote reward (0.0 to 1.0)
     if tag_data.vote_reward < 0.0 || tag_data.vote_reward > 1.0 {
-        return Err(format!(
+        let err_msg = format!(
             "Vote reward must be between 0.0 and 1.0 (got: {})",
             tag_data.vote_reward
-        ));
+        );
+        log_error(&format!("[validate_tag_document] {}", err_msg));
+        return Err(err_msg);
     }
 
     // Step 6: Validate minimum users (must be greater than 0)
@@ -580,7 +641,7 @@ fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
             "Minimum users must be greater than 0 (got: {})",
             tag_data.min_users_for_threshold
         );
-        log_error(&format!("[assert_set_doc] {} key={}", err_msg, context.data.key));
+        log_error(&format!("[validate_tag_document] {}", err_msg));
         return Err(err_msg);
     }
 
@@ -936,6 +997,64 @@ async fn get_user_reputation(user_key: String, tag_key: String) -> Result<f64, S
     }
 }
 
+/// Gets a user's complete reputation data for a specific tag
+/// 
+/// This function retrieves all reputation data components for a user in a tag,
+/// including basis reputation, voting rewards, effective reputation, and trust status.
+/// 
+/// Use this function when you need the complete reputation profile, such as for
+/// detailed analysis, admin dashboards, or user profiles.
+/// 
+/// # Arguments
+/// * `user_key` - The unique identifier of the user
+/// * `tag_key` - The unique identifier of the tag
+/// 
+/// # Returns
+/// * `Result<ReputationData, String>` - The complete reputation data or a detailed error message
+/// 
+/// # Errors
+/// - Returns error if user_key or tag_key is empty
+/// - Returns error if tag doesn't exist
+/// - Returns error if user has no reputation in this tag
+#[query]
+async fn get_user_reputation_full(user_key: String, tag_key: String) -> Result<ReputationData, String> {
+    log_debug(&format!("[get_user_reputation_full] Fetching complete reputation data for user={}, tag={}", user_key, tag_key));
+    
+    // Input validation
+    if user_key.is_empty() {
+        let err_msg = "User key cannot be empty";
+        log_error(&format!("[get_user_reputation_full] {}", err_msg));
+        return Err(err_msg.to_string());
+    }
+    if tag_key.is_empty() {
+        let err_msg = "Tag key cannot be empty";
+        log_error(&format!("[get_user_reputation_full] {}", err_msg));
+        return Err(err_msg.to_string());
+    }
+
+    // Check if user has reputation in this tag
+    let reputation_key = format!("{}_{}", user_key, tag_key);
+    let reputation_doc = junobuild_satellite::get_doc(reputation_key, String::from("reputations"));
+    
+    // Match on the result instead of using map_err
+    match reputation_doc {
+        Some(doc) => {
+            let reputation_data: ReputationData = decode_doc_data(&doc.data)
+                .map_err(|e| format!("Failed to decode reputation data: {}", e))?;
+    
+            log_info(&format!("[get_user_reputation_full] Successfully retrieved complete reputation data: user={}, tag={}", 
+                user_key, tag_key));
+    
+            Ok(reputation_data)
+        },
+        None => {
+            let err_msg = format!("User {} has no reputation in tag {}", user_key, tag_key);
+            log_error(&format!("[get_user_reputation_full] {}", err_msg));
+            Err(err_msg)
+        }
+    }
+}
+
 /// Forces a recalculation of a user's reputation in a specific tag
 /// 
 /// This function triggers a complete recalculation of the user's reputation, including:
@@ -966,7 +1085,8 @@ async fn get_user_reputation(user_key: String, tag_key: String) -> Result<f64, S
 /// - Returns error if reputation calculation fails
 /// - Returns error with context about what specifically failed
 #[ic_cdk::update]
-async fn recalculate_reputation(user_key: String, tag_key: String) -> Result<f64, String> {
+#[candid::candid_method(update)]
+pub async fn recalculate_reputation(user_key: String, tag_key: String) -> Result<f64, String> {
     log_debug(&format!("[recalculate_reputation] Starting recalculation for user={}, tag={}", user_key, tag_key));
     
     // Input validation

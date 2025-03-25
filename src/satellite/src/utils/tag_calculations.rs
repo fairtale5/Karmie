@@ -28,6 +28,7 @@ use junobuild_shared::types::list::{ListMatcher, ListParams, ListResults};
 use junobuild_utils::decode_doc_data;
 use crate::utils::structs::{Tag, ReputationData};
 use crate::utils::logging::{log_error, log_warn, log_info, log_with_prefix};
+use crate::utils::description_helpers;
 
 /// Calculates the number of active users for a given tag
 /// 
@@ -54,14 +55,20 @@ pub async fn get_active_users_count(tag_key: &str) -> Result<u32, String> {
     let threshold = tag.data.reputation_threshold;
 
     // Step 2: Get all reputations for this tag
-    // Note: In test phase, we use description field for filtering instead of owner
-    // Format: "user:{user_key},tag:{tag_key},author:{author_key}"
-    // We use ",tag:{tag_key}," to ensure we match the exact tag part of the description
+    // Query all reputation documents for this tag with proper description filter
+    // We need to use a description-based filter that matches all reputations with this tag
+    
+    // Create properly formatted description using the DocumentDescription helper
+    // Since we want to match any reputation document with this tag, we only filter by the tag field
+    let mut desc = description_helpers::DocumentDescription::new();
+    desc.add_field("tag", tag_key);
+    let description_filter = desc.build();
+    
     let reputations: ListResults<_> = list_docs(
         String::from("reputations"),
         ListParams {
             matcher: Some(ListMatcher {
-                description: Some(format!(",tag:{},", tag_key)),  // The commas ensure we match the exact tag part
+                description: Some(description_filter),
                 ..Default::default()
             }),
             ..Default::default()

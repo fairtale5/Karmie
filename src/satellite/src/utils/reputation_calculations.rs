@@ -16,12 +16,12 @@ use crate::utils::structs::{
 // Import tag calculations
 use crate::utils::tag_calculations::get_active_users_count;
 
-/// Gets a user's reputation data for a specific tag
+/// Gets a user's complete reputation data for a specific tag
 /// 
 /// This function queries the reputations collection to find a user's 
 /// cached reputation data for a specific tag. The reputation document is identified 
 /// by a description field that combines the user_key and tag_key in the format 
-/// "user:{user_key},tag:{tag_key},author:{author_key}".
+/// "[owner:{user_key}],[tag:{tag_key}]".
 /// 
 /// The function returns:
 /// - None if no reputation document exists (user hasn't received any votes in this tag)
@@ -29,23 +29,32 @@ use crate::utils::tag_calculations::get_active_users_count;
 ///   - total_basis_reputation: Reputation from received votes
 ///   - total_voting_rewards_reputation: Reputation from casting votes
 ///   - last_known_effective_reputation: Final reputation score
-///   - votes_active: Whether the user's votes are active (above threshold)
+///   - last_calculation: Timestamp of last calculation
+///   - vote_weight: User's vote weight in this tag
+///   - has_voting_power: Whether user's votes are active
 /// 
 /// # Arguments
 /// * `user_key` - The unique identifier of the user
 /// * `tag_key` - The unique identifier of the tag
 /// 
 /// # Returns
-/// * `Result<Option<ReputationData>, String>` - The user's reputation data or an error message
+/// * `Result<Option<ReputationData>, String>` - The user's complete reputation data or an error message
 pub async fn get_user_reputation_data(user_key: &str, tag_key: &str) -> Result<Option<ReputationData>, String> {
     // Query the reputations collection using a description filter
-    // The description field format is "user:{user_key},tag:{tag_key},author:{author_key}"
+    // The description field format is "[owner:{user_key}],[tag:{tag_key}]"
     // This ensures we get the specific reputation document for this user in this tag
+    
+    // Create properly formatted description using the DocumentDescription helper
+    let mut desc = crate::utils::description_helpers::DocumentDescription::new();
+    desc.add_owner(user_key)
+        .add_field("tag", tag_key);
+    let description_filter = desc.build();
+    
     let results = list_docs(
         String::from("reputations"),
         ListParams {
             matcher: Some(ListMatcher {
-                description: Some(format!("user:{},tag:{}", user_key, tag_key)),
+                description: Some(description_filter),
                 ..Default::default()
             }),
             ..Default::default()
@@ -72,7 +81,9 @@ pub async fn get_user_reputation_data(user_key: &str, tag_key: &str) -> Result<O
     // - total_basis_reputation (from received votes)
     // - total_voting_rewards_reputation (from casting votes)
     // - last_known_effective_reputation (the final cached score)
-    // - votes_active (whether their votes are active)
+    // - last_calculation (timestamp of last calculation)
+    // - vote_weight (user's vote weight in this tag)
+    // - has_voting_power (whether their votes are active)
     let reputation: Reputation = decode_doc_data(&doc.data)
         .map_err(|e| {
             let err_msg = format!("Failed to deserialize reputation data: {}", e);
@@ -82,6 +93,43 @@ pub async fn get_user_reputation_data(user_key: &str, tag_key: &str) -> Result<O
     
     // Return the complete reputation data
     Ok(Some(reputation.data))
+}
+
+/// Gets only the essential reputation data needed for calculations
+/// 
+/// This is an optimized version of get_user_reputation_data that returns only
+/// the minimum data needed for reputation calculations. It's designed to be
+/// efficient for use in calculate_user_reputation where we need to process
+/// many authors' reputation data.
+/// 
+/// The function returns:
+/// - author_key: For verification purposes
+/// - effective_reputation: The score used in calculations
+/// - has_voting_power: Whether the user's votes are active
+/// - vote_weight: The weight of the user's votes
+/// 
+/// # Arguments
+/// * `user_key` - The unique identifier of the user
+/// * `tag_key` - The unique identifier of the tag
+/// 
+/// # Returns
+/// * `Result<Option<AuthorInfo>, String>` - The essential reputation data or an error message
+pub async fn get_user_reputation_slim(user_key: &str, tag_key: &str) -> Result<Option<AuthorInfo>, String> {
+    // Call the main function to get the full data
+    match get_user_reputation_data(user_key, tag_key).await {
+        Ok(Some(rep_data)) => {
+            // Extract only the necessary fields
+            let author_info = AuthorInfo {
+                effective_reputation: rep_data.last_known_effective_reputation,
+                vote_weight: rep_data.vote_weight,
+                votes_active: rep_data.has_voting_power,
+            };
+            
+            Ok(Some(author_info))
+        },
+        Ok(None) => Ok(None),
+        Err(e) => Err(e),
+    }
 }
 
 /// Calculates and stores a user's vote weight for a specific tag
@@ -153,13 +201,20 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
     // Step 2: Get User's Votes
     // -----------------------
     // - Query all votes where this user is the AUTHOR (they made the vote)
-    // - Uses description format: "author:{author_key},tag:{tag_key}"
+    // - Uses description format: "[owner:{author_key}],[tag:{tag_key}]"
     // - This gives us all votes the user has cast in this tag
+    
+    // Create properly formatted description using the DocumentDescription helper
+    let mut desc = crate::utils::description_helpers::DocumentDescription::new();
+    desc.add_owner(user_key)
+        .add_field("tag", tag_key);
+    let description_filter = desc.build();
+    
     let results = list_docs(
         String::from("votes"),
         ListParams {
             matcher: Some(ListMatcher {
-                description: Some(format!("author:{},tag:{}", user_key, tag_key)),
+                description: Some(description_filter),
                 ..Default::default()
             }),
             ..Default::default()
@@ -222,13 +277,20 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
     // Step 5: Get Existing Reputation Document
     // -------------------------------------
     // - Look for user's existing reputation in this tag
-    // - Query format: "user:{user_key},tag:{tag_key}"
+    // - Query format: "[owner:{user_key}],[tag:{tag_key}]"
     // - Will be used to update or create reputation data
+    
+    // Create properly formatted description for reputation document query
+    let mut rep_desc = crate::utils::description_helpers::DocumentDescription::new();
+    rep_desc.add_owner(user_key)
+           .add_field("tag", tag_key);
+    let rep_filter = rep_desc.build();
+    
     let results = list_docs(
         String::from("reputations"),
         ListParams {
             matcher: Some(ListMatcher {
-                description: Some(format!("user:{},tag:{}", user_key, tag_key)),
+                description: Some(rep_filter),
                 ..Default::default()
             }),
             ..Default::default()
@@ -289,9 +351,16 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
     // -----------------------------
     // - Build full reputation document with metadata
     // - Include key, description, timestamps, etc.
+    
+    // Create the description for the reputation document using proper format
+    let mut desc = crate::utils::description_helpers::DocumentDescription::new();
+    desc.add_owner(&reputation_data.user_key)
+        .add_field("tag", &reputation_data.tag_key);
+    let description = desc.build();
+    
     let reputation = Reputation {
         key: format!("rep_{}_{}", user_key, tag_key),
-        description: format!("user:{},tag:{}", user_key, tag_key),
+        description,
         owner: ic_cdk::id(),  // Use canister's Principal ID as owner
         created_at: ic_cdk::api::time(),
         updated_at: ic_cdk::api::time(),
@@ -308,7 +377,7 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
         Ok(encoded_data) => {
             let doc = SetDoc {
                 data: encoded_data,
-                description: Some(format!("user:{},tag:{}", reputation.data.user_key, reputation.data.tag_key)),
+                description: Some(reputation.description),
                 version: Some(1),  // For new documents
             };
 
@@ -343,7 +412,7 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
 /// This function implements the complete reputation calculation process for a user in a specific tag.
 /// The calculation follows these steps:
 /// 
-/// 1. **Vote Collection**
+/// 1. **Query Votes**
 ///    - Queries all votes where the user is the target
 /// 
 /// 2. **Author Index Creation**
@@ -368,7 +437,8 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
 ///    - If the user is trusted/untrusted, we will need to store the fact that he is trusted in the user's reputation document for this tag
 /// 
 /// 5. **Voting Rewards Calculation**
-///    - Retrieve all votes where author is the user being calculated and uses the tag key
+///    - Retrieve all votes where author is the user being calculated
+///    - Format is now: "[owner:{user_key}],[tag:{tag_key}]"
 ///    - Get voting reward value from tag's configuration (tag.vote_reward)
 ///    - For each vote made by user:
 ///      - Calculate reward = tag.vote_reward * time multiplier
@@ -404,16 +474,22 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
     // Get the tag once at the start - we'll reuse this for all calculations
     let tag = get_tag(tag_key).await?;
 
-    // Step 1: Vote Collection
+    // Step 1: Query Votes
     // ----------------------
-    // Query all votes where this user is the target in this tag
+    // Query all votes targeted the user under a specified tag
     // We use the description field to filter votes efficiently
-    // Format: "author:{author_key},target:{target_key},tag:{tag_key}"
+    
+    // Create properly formatted description using the DocumentDescription helper
+    let mut desc = crate::utils::description_helpers::DocumentDescription::new();
+    desc.add_field("target", user_key)
+        .add_field("tag", tag_key);
+    let description_filter = desc.build();
+    
     let votes = list_docs(
         String::from("votes"),
         ListParams {
             matcher: Some(ListMatcher {
-                description: Some(format!("target:{},tag:{}", user_key, tag_key)),
+                description: Some(description_filter),
                 ..Default::default()
             }),
             ..Default::default()
@@ -460,10 +536,10 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
         }
 
         // Get author's reputation data
-        match get_user_reputation_data(&vote.author_key, tag_key).await {
-            Ok(Some(rep_data)) => {
+        match get_user_reputation_slim(&vote.author_key, tag_key).await {
+            Ok(Some(author_info)) => {
                 // Skip if author's votes are not active
-                if !rep_data.has_voting_power {
+                if !author_info.votes_active {
                     log_warn(&format!(
                         "Skipping inactive author: author={}, tag={}",
                         vote.author_key, tag_key
@@ -474,11 +550,7 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
                 // Store author information
                 author_index.insert(
                     vote.author_key.clone(),
-                    AuthorInfo {
-                        effective_reputation: rep_data.last_known_effective_reputation,
-                        vote_weight: rep_data.vote_weight,
-                        votes_active: true, // We know it's true because we checked above
-                    },
+                    author_info, // Use the AuthorInfo directly
                 );
             }
             Ok(None) => {
@@ -564,20 +636,26 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
     let has_voting_power = total_basis_reputation >= tag.data.reputation_threshold;
 
     // Step 5: Voting Rewards Calculation
-    // -------------------------------
+    // --------------------------------
     // Retrieve all votes where author is the user being calculated and uses the tag key
     // Get voting reward value from tag's configuration (tag.vote_reward)
     // For each vote made by user:
     // - Calculate reward = tag.vote_reward * time multiplier
     // Sum all rewards to get total_voting_rewards_reputation
-    let mut total_voting_rewards_reputation = 0.0;
-
     // Query votes where this user is the author
+    // Format is now: "[owner:{user_key}],[tag:{tag_key}]"
+    
+    // Create properly formatted description using the DocumentDescription helper
+    let mut desc = crate::utils::description_helpers::DocumentDescription::new();
+    desc.add_owner(user_key)
+        .add_field("tag", tag_key);
+    let description_filter = desc.build();
+
     let user_votes = list_docs(
         String::from("votes"),
         ListParams {
             matcher: Some(ListMatcher {
-                description: Some(format!("author:{},tag:{}", user_key, tag_key)),
+                description: Some(description_filter),
                 ..Default::default()
             }),
             ..Default::default()
@@ -585,6 +663,7 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
     );
 
     // Calculate rewards for each vote cast by the user
+    let mut total_voting_rewards_reputation = 0.0;
     for (_, doc) in user_votes.items {
         let vote_data: VoteData = decode_doc_data(&doc.data)
             .map_err(|e| format!("Failed to deserialize vote: {}", e))?;
@@ -628,7 +707,12 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
     // Create or update the reputation document
     let reputation = Reputation {
         key: format!("rep_{}_{}", user_key, tag_key),
-        description: format!("user:{},tag:{}", user_key, tag_key),
+        description: {
+            let mut desc = crate::utils::description_helpers::DocumentDescription::new();
+            desc.add_owner(user_key)
+               .add_field("tag", tag_key);
+            desc.build()
+        },
         owner: ic_cdk::id(),  // Use canister's Principal ID as owner
         created_at: ic_cdk::api::time(),
         updated_at: ic_cdk::api::time(),
@@ -646,7 +730,12 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
                 log_error(&format!("[calculate_user_reputation] Failed to encode reputation data: {}", e));
                 e.to_string()
             })?,
-            description: Some(format!("user:{},tag:{}", reputation.data.user_key, reputation.data.tag_key)),
+            description: Some({
+                let mut desc = crate::utils::description_helpers::DocumentDescription::new();
+                desc.add_owner(&reputation.data.user_key)
+                   .add_field("tag", &reputation.data.tag_key);
+                desc.build()
+            }),
             version: Some(1),  // For new documents
         }
     ) {
@@ -690,22 +779,45 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
 /// ```
 /// 
 /// # Arguments
-/// * `vote_timestamp` - The timestamp when the vote was created (in nanoseconds)
-/// * `tag_key` - The key of the tag whose configuration to use
-/// 
+/// * `vote_timestamp_ns` - The creation timestamp of the vote in nanoseconds
+/// * `tag_key` - The tag key to get time period configuration from
+///
 /// # Returns
-/// * `Result<f64, String>` - The multiplier value or an error message
-async fn get_period_multiplier(vote_timestamp: u64, tag_key: &str) -> Result<f64, String> {
-    // Get the tag configuration
+/// * `Result<f64, String>` - The calculated multiplier value or an error
+///
+/// # Example
+/// If tag has periods:
+/// - Period 1: 2629800000000000ns (1 month), multiplier 1.5
+/// - Period 2: 5259600000000000ns (2 months), multiplier 1.2
+/// - Period 3: 7889400000000000ns (3 months), multiplier 1.1
+///
+/// And the vote is 40 days old:
+/// - It's not in Period 1 (exceeds 30 days)
+/// - It is in Period 2 (less than 60 days)
+/// - Returns multiplier of 1.2
+pub async fn get_period_multiplier(vote_timestamp_ns: u64, tag_key: &str) -> Result<f64, String> {
+    // Get tag settings to access configured time periods
     let tag = get_tag(tag_key).await?;
     
-    // Get current timestamp
-    let now = ic_cdk::api::time();
+    // Calculate how old the vote is from timestamp to now
+    let current_time = ic_cdk::api::time();
+    let age_ns = if current_time > vote_timestamp_ns {
+        current_time - vote_timestamp_ns
+    } else {
+        // Timestamp is in the future (should not happen)
+        // Default to zero age and log warning
+        log_error(&format!(
+            "[get_period_multiplier] Vote timestamp is in the future! current_time={}, timestamp={}",
+            current_time, vote_timestamp_ns
+        ));
+        0
+    };
     
     // Calculate months difference between vote and now
-    let months_ago = calculate_months_between(vote_timestamp, now)?;
+    let months_ago = calculate_months_between(vote_timestamp_ns, current_time)?;
     
     // Find the appropriate time period in the tag configuration
+    // We accumulate months as we go through each period
     let mut accumulated_months = 0;
     for time_period in &tag.data.time_periods {
         accumulated_months += time_period.months;
@@ -713,13 +825,13 @@ async fn get_period_multiplier(vote_timestamp: u64, tag_key: &str) -> Result<f64
             return Ok(time_period.multiplier);
         }
     }
-
-    // If we've gone through all periods, return the last one's multiplier
-    // This handles votes older than all defined periods
+    
+    // If no matching period found, use the last period's multiplier
+    // This handles votes older than any defined period
     if let Some(last_period) = tag.data.time_periods.last() {
         Ok(last_period.multiplier)
     } else {
-        // If no periods defined, return default multiplier
+        // Fallback if no periods defined (shouldn't happen due to validation)
         Ok(1.0)
     }
 }
@@ -769,4 +881,114 @@ async fn get_tag(tag_key: &str) -> Result<Tag, String> {
         })?;
 
     Ok(tag)
+}
+
+/// Updates a user's reputation when they receive a vote
+///
+/// This function is called when a user receives a vote in a specific tag.
+/// It looks up or creates a reputation document for the user, then updates
+/// the reputation score based on the vote's impact.
+///
+/// # Arguments
+/// * `target_key` - The key of the user receiving the vote (vote target)
+/// * `tag_key` - The tag the vote is assigned to
+/// * `vote_value` - The value of the vote (often +1 or -1)
+/// * `vote_weight` - The weight of the vote (from author's voting power)
+///
+/// # Returns
+/// * `Result<(), String>` - Success or an error message
+pub async fn update_reputation_on_vote(
+    target_key: &str,
+    tag_key: &str,
+    vote_value: f64,
+    vote_weight: f64,
+) -> Result<(), String> {
+    // Step 1: Get or create reputation document for target user in this tag
+    // Query format: "[owner:{target_key}],[tag:{tag_key}]"
+    
+    // Create properly formatted description using the DocumentDescription helper
+    let mut desc = crate::utils::description_helpers::DocumentDescription::new();
+    desc.add_owner(target_key)
+        .add_field("tag", tag_key);
+    let description_filter = desc.build();
+    
+    let results = list_docs(
+        String::from("reputations"),
+        ListParams {
+            matcher: Some(ListMatcher {
+                description: Some(description_filter),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+    );
+
+    // Step 2: Process existing reputation data or create new
+    let (rep_key, mut reputation_data, mut version) = if let Some((doc_key, doc)) = results.items.first() {
+        // If reputation document exists, decode it
+        let reputation: Reputation = decode_doc_data(&doc.data)
+            .map_err(|e| {
+                let err_msg = format!("Failed to deserialize reputation data: {}", e);
+                log_error(&err_msg);
+                err_msg
+            })?;
+        
+        (doc_key.clone(), reputation.data, doc.version)
+    } else {
+        // If no reputation document exists, create a new one with default values
+        let default_weight = VoteWeight::new(0.0).unwrap_or_else(|_| {
+            log_error("[update_reputation_on_vote] Failed to create default vote weight, using 0.0");
+            VoteWeight::new(0.0).unwrap() // This should never fail for 0.0
+        });
+        
+        let rep_data = ReputationData {
+            user_key: target_key.to_string(),
+            tag_key: tag_key.to_string(),
+            total_basis_reputation: 0.0,
+            total_voting_rewards_reputation: 0.0,
+            last_known_effective_reputation: 0.0,
+            last_calculation: ic_cdk::api::time(),
+            vote_weight: default_weight,
+            has_voting_power: false,
+        };
+        
+        (format!("rep_{}_{}", target_key, tag_key), rep_data, Some(0))
+    };
+
+    // Step 3: Update reputation based on vote
+    // The basis reputation is directly affected by votes
+    reputation_data.total_basis_reputation += vote_value * vote_weight;
+    reputation_data.last_calculation = ic_cdk::api::time();
+
+    // Step 4: Create updated reputation document
+    // Create the description using proper format
+    let mut desc = crate::utils::description_helpers::DocumentDescription::new();
+    desc.add_owner(&reputation_data.user_key)
+        .add_field("tag", &reputation_data.tag_key);
+    let description = desc.build();
+    
+    // Step 5: Store updated reputation
+    let doc = SetDoc {
+        data: encode_doc_data(&reputation_data).map_err(|e| {
+            let err_msg = format!("Failed to serialize reputation data: {}", e);
+            log_error(&err_msg);
+            err_msg
+        })?,
+        description: Some(description),
+        version: version,
+    };
+
+    match set_doc_store(
+        ic_cdk::id(),
+        String::from("reputations"),
+        rep_key,
+        doc,
+    ) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            let err_msg = format!("Failed to store reputation: {}", e);
+            log_error(&err_msg);
+            Err(err_msg)
+        }
+    }
 }
