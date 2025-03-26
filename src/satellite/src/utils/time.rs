@@ -1,5 +1,19 @@
-use chrono::{DateTime, Datelike};
+/*!
+ * Time-related calculations and utilities
+ * 
+ * This module provides functions for calculating time-based metrics
+ * using Juno's native time functions. It's designed to work efficiently
+ * on the Internet Computer platform.
+ * 
+ * Key features:
+ * - Month calculations between timestamps
+ * - Time period determination based on tag configuration
+ * - Efficient timestamp handling using Juno's native functions
+ */
+
+use junobuild_shared::day::calendar_date;
 use crate::utils::structs::{TimePeriod, Tag};
+use crate::utils::logging::{log_error, log_warn};
 
 /// Calculates the number of months between two timestamps
 /// 
@@ -40,24 +54,22 @@ use crate::utils::structs::{TimePeriod, Tag};
 /// assert!(calculate_months_between(jan1, future).is_err()); // Future date
 /// ```
 pub fn calculate_months_between(timestamp1: u64, timestamp2: u64) -> Result<u32, String> {
-    // Convert nanoseconds to milliseconds
+    // Convert nanoseconds to milliseconds for Juno's calendar_date function
     let t1 = timestamp1 / 1_000_000;
     let t2 = timestamp2 / 1_000_000;
     
-    // Convert to DateTime with proper error handling
-    let date1 = DateTime::from_timestamp_millis(t1 as i64)
-        .ok_or_else(|| format!("Invalid timestamp 1: {}", timestamp1))?;
-    let date2 = DateTime::from_timestamp_millis(t2 as i64)
-        .ok_or_else(|| format!("Invalid timestamp 2: {}", timestamp2))?;
+    // Get calendar dates using Juno's native function
+    let date1 = calendar_date(&t1);
+    let date2 = calendar_date(&t2);
     
     // Check for future timestamps - return error instead of 0
     if t2 > ic_cdk::api::time() / 1_000_000 {
         return Err(format!("Cannot calculate months for future date: {}", timestamp2));
     }
     
-    // Calculate months difference
-    let months = (date2.year() - date1.year()) * 12 + 
-                 (date2.month() as i32 - date1.month() as i32);
+    // Calculate months difference using year and month components
+    let months = (date2.year - date1.year) * 12 + 
+                 (date2.month as i32 - date1.month as i32);
     
     // Check for negative months
     if months < 0 {

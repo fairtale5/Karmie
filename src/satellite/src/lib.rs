@@ -183,6 +183,7 @@ use ic_cdk_macros::*;
 // Utility Imports
 // ===========================================================================
 
+#[allow(unused_imports)]
 use junobuild_utils::{decode_doc_data, encode_doc_data};
 
 // Import our utility modules
