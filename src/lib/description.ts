@@ -29,10 +29,14 @@ import type { User } from '@junobuild/core';
 
 /**
  * Creates a description for a user document
- * Format: [owner:documentKey],[username:data.username]
+ * Format: [owner:{key}],[username:{username}]
+ * 
+ * In playground mode, we use the document key as the owner.
+ * The document key is the nanoid generated when creating the document.
  */
-export function createUserDescription(user: User | null, documentKey: string, username: string): string {
-    return `[owner:${documentKey}],[username:${username}]`;
+export function createUserDescription(documentKey: string, username: string): string {
+    // In playground mode, always use the document key as owner
+    return `[owner:${documentKey}],[username:${username.toLowerCase()}]`;
 }
 
 /**

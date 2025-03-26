@@ -799,25 +799,10 @@ pub async fn get_period_multiplier(vote_timestamp_ns: u64, tag_key: &str) -> Res
     // Get tag settings to access configured time periods
     let tag = get_tag(tag_key).await?;
     
-    // Calculate how old the vote is from timestamp to now
-    let current_time = ic_cdk::api::time();
-    let age_ns = if current_time > vote_timestamp_ns {
-        current_time - vote_timestamp_ns
-    } else {
-        // Timestamp is in the future (should not happen)
-        // Default to zero age and log warning
-        log_error(&format!(
-            "[get_period_multiplier] Vote timestamp is in the future! current_time={}, timestamp={}",
-            current_time, vote_timestamp_ns
-        ));
-        0
-    };
-    
     // Calculate months difference between vote and now
-    let months_ago = calculate_months_between(vote_timestamp_ns, current_time)?;
+    let months_ago = calculate_months_between(vote_timestamp_ns, ic_cdk::api::time())?;
     
     // Find the appropriate time period in the tag configuration
-    // We accumulate months as we go through each period
     let mut accumulated_months = 0;
     for time_period in &tag.data.time_periods {
         accumulated_months += time_period.months;

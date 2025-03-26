@@ -157,7 +157,7 @@ describe('UserCard Component', () => {
     test('displays user information', () => {
         const user = {
             key: 'user1',
-            handle: 'gamer123',
+            username: 'gamer123',
             display_name: 'Gamer Pro',
             reputation: 100
         };
@@ -171,7 +171,7 @@ describe('UserCard Component', () => {
     test('handles vote interactions', async () => {
         const user = {
             key: 'user1',
-            handle: 'gamer123',
+            username: 'gamer123',
             display_name: 'Gamer Pro',
             reputation: 100
         };
@@ -192,7 +192,7 @@ describe('Error Handling', () => {
     test('displays error message on failed vote', async () => {
         const user = {
             key: 'user1',
-            handle: 'gamer123',
+            username: 'gamer123',
             display_name: 'Gamer Pro',
             reputation: 100
         };
@@ -263,7 +263,7 @@ function getAgeForIndex(index: number): string {
 export const mockUsers = [
     {
         key: 'user1',
-        handle: 'gamer123',
+        username: 'gamer123',
         display_name: 'Gamer Pro',
         reputation: 100
     }

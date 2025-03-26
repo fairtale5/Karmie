@@ -25,7 +25,7 @@ The system contains four main collections:
 | `User.updated_at` | ✓ `updated_at` | Compatible | Type difference: u64 vs bigint |
 | `User.version` | ✓ `version` | Compatible | Type difference: u64 vs bigint |
 | `User.data` | ✓ `data` | Compatible | Contains `UserData` |
-| `UserData.handle` | ✓ `data.handle` | Compatible | |
+| `UserData.username` | ✓ `data.username` | Compatible | |
 | `UserData.display_name` | ✓ `data.display_name` | Compatible | |
 
 **Format Notes:**

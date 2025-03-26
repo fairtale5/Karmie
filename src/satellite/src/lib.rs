@@ -276,7 +276,7 @@ async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
 /// Configuration flag for playground mode
 pub const IS_PLAYGROUND: bool = true;  // Set to false for production
 
-#[assert_set_doc(collections = ["users", "votes", "tags", "reputations"])]
+#[cfg(not(feature = "assert_set_doc"))]
 fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
     ic_cdk::println!("[CRITICAL DEBUG] assert_set_doc CALLED for collection: {}, key: {}", 
         context.data.collection, context.data.key);

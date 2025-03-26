@@ -103,7 +103,7 @@ impl DocumentValidator for UserValidator {
 
 impl UserDocumentValidator for UserValidator {
     fn validate_username(&self) -> Result<(), String> {
-        ValidationBuilder::new(&self.user_data.handle, "Username")
+        ValidationBuilder::new(&self.user_data.username, "Username")
             .not_empty()
             .length(3, 30)
             .alphanumeric_with(&['_', '-'])

@@ -33,7 +33,7 @@ Key differences:
 ## Collection-Specific Formats
 
 ### Users Collection
-Pre-migration: `username:{normalized_handle},author:{author_key}`
+Pre-migration: `username:{normalized_username},author:{author_key}`
 Post-migration: `[owner:{principal}],[username:{name}]`
 
 ### Tags Collection

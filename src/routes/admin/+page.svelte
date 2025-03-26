@@ -285,56 +285,74 @@
 		}
 	}
 
+	// User form data type definition
+	interface DocData {
+		collection: string;
+		doc: {
+			key: string;
+			data: {
+				username: string;
+				display_name: string;
+			};
+			description: string;
+			version?: bigint;
+		};
+	}
+
 	/**
 	 * Creates or updates a user in the Juno collection
 	 * @throws {Error} If saving fails
 	 */
 	async function saveUser() {
 		try {
-			console.log('[Admin] Saving user:', newUser);
-			
-			// Validate inputs
+			// Clear any previous messages
+			error = '';
+			success = '';
+
+			// Basic validation
 			if (!newUser.username || !newUser.display_name) {
 				error = 'Please fill in all required fields';
 				return;
 			}
 
-			// If we're updating an existing user, we need to get its current version
-			let version;
-			if (newUser.key) {
-				try {
-					const existingDoc = await getDoc({
-						collection: COLLECTIONS.USERS,
-						key: newUser.key
-					});
-					if (!existingDoc) {
-						error = 'User not found';
-						return;
-					}
-					version = existingDoc.version;
-				} catch (e) {
-					console.error('[Admin] Error fetching existing user:', e);
-					error = 'Failed to fetch existing user version';
-					return;
-				}
+			// Validate username format
+			const usernameRegex = /^[a-zA-Z0-9_-]{3,30}$/;
+			if (!usernameRegex.test(newUser.username)) {
+				error = 'Username must be 3-30 characters long and can only contain letters, numbers, underscores, and hyphens';
+				return;
 			}
 
-			// Generate document key if not updating
+			// Validate display name format
+			if (newUser.display_name.trim().length === 0) {
+				error = 'Display name cannot be empty';
+				return;
+			}
+			if (newUser.display_name.length > 100) {
+				error = 'Display name cannot be longer than 100 characters';
+				return;
+			}
+
+			// For new documents: generate key with nanoid
 			const documentKey = newUser.key || nanoid();
 
-			// Create or update user document
-			await setDoc({
+			// Create the document data with required fields
+			const docData = {
 				collection: COLLECTIONS.USERS,
 				doc: {
 					key: documentKey,
 					data: {
-						username: newUser.username,  // Changed from handle to username
-						display_name: newUser.display_name
+						username: newUser.username.toLowerCase(),
+						display_name: newUser.display_name.trim()
 					},
-					description: createUserDescription(null, documentKey, newUser.username),  // Pass null for user since it's a new user
-					...(version && { version })
+					description: createUserDescription(documentKey, newUser.username.toLowerCase())
 				}
-			});
+			};
+
+			// Log the exact data being sent to setDoc
+			console.log('[Admin] Sending to setDoc:', docData);
+
+			// Create or update user document
+			await setDoc(docData);
 
 			// Clear form and show success message
 			newUser = {
@@ -343,18 +361,24 @@
 				display_name: ''
 			};
 			success = 'User saved successfully';
-			error = '';
 
 			// Reload users list
 			await loadUsers();
 		} catch (e) {
 			console.error('[Admin] Error saving user:', e);
 			
-			// Simply use the error message from the canister
-			error = e instanceof Error ? e.message : 'Failed to save user';
-			
-			// Clear success message if there was one
-			success = '';
+			// Enhanced error handling
+			if (e instanceof Error) {
+				if (e.message.includes('Username')) {
+					error = 'This username is already taken. Please choose a different one.';
+				} else if (e.message.includes('Invalid user data format')) {
+					error = 'Invalid user data format. Please check your input and try again.';
+				} else {
+					error = e.message;
+				}
+			} else {
+				error = 'Failed to save user. Please try again.';
+			}
 		}
 	}
 
