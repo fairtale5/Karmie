@@ -103,6 +103,7 @@
 // documented for future use.
 
 // Import all available macro decorators from junobuild_macros
+#[allow(unused_imports)]
 use junobuild_macros::{
     assert_delete_asset,   // For asserting asset deletion
     assert_delete_doc,     // For asserting document deletion
@@ -126,6 +127,7 @@ use junobuild_macros::{
 // These imports provide the necessary types and utilities for working with
 // Juno's satellite features.
 
+#[allow(unused_imports)]
 use junobuild_satellite::{
     include_satellite,           // Required macro for Juno integration
     AssertDeleteAssetContext,    // Context for asset deletion assertion
@@ -149,9 +151,7 @@ use junobuild_satellite::{
 // Types for working with Juno's list functionality
 
 use junobuild_shared::types::list::{ListMatcher, ListParams};
-use ic_cdk::api::call::CallResult;
 use ic_cdk_macros::*;
-use candid::Principal;
 
 // IMPORTANT NOTE:
 // Any additional functionality needed (like data serialization, string manipulation, etc.)

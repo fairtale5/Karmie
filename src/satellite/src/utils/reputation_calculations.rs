@@ -924,7 +924,7 @@ pub async fn update_reputation_on_vote(
     );
 
     // Step 2: Process existing reputation data or create new
-    let (rep_key, mut reputation_data, mut version) = if let Some((doc_key, doc)) = results.items.first() {
+    let (rep_key, mut reputation_data, version) = if let Some((doc_key, doc)) = results.items.first() {
         // If reputation document exists, decode it
         let reputation: Reputation = decode_doc_data(&doc.data)
             .map_err(|e| {
@@ -978,10 +978,11 @@ pub async fn update_reputation_on_vote(
         version: version,
     };
 
+    // Important: Clone rep_key when passing it to set_doc_store to preserve it for error messages
     match set_doc_store(
         ic_cdk::id(),
         String::from("reputations"),
-        rep_key,
+        rep_key.clone(), // Clone here to preserve the value for the error message
         doc,
     ) {
         Ok(_) => Ok(()),

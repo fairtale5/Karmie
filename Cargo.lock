@@ -399,26 +399,13 @@ dependencies = [
 
 [[package]]
 name = "getrandom"
-version = "0.2.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4567c8db10ae91089c99af84c68c38da3ec2f087c3f82960bcdbf3656b6f4d7"
-dependencies = [
- "cfg-if",
- "js-sys",
- "libc",
- "wasi 0.11.0+wasi-snapshot-preview1",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "getrandom"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43a49c392881ce6d5c3b8cb70f98717b7c07aabbdff06687b9030dbfbe2725f8"
 dependencies = [
  "cfg-if",
  "libc",
- "wasi 0.13.3+wasi-0.2.2",
+ "wasi",
  "windows-targets",
 ]
 
@@ -468,14 +455,15 @@ dependencies = [
 
 [[package]]
 name = "iana-time-zone"
-version = "0.1.61"
+version = "0.1.62"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "235e081f3925a06703c2d0117ea8b91f042756fd6e7a6e5d901e8ca1a996b220"
+checksum = "b2fd658b06e56721792c5df4475705b6cda790e9298d19d2f8af083457bcd127"
 dependencies = [
  "android_system_properties",
  "core-foundation-sys",
  "iana-time-zone-haiku",
  "js-sys",
+ "log",
  "wasm-bindgen",
  "windows-core",
 ]
@@ -828,7 +816,7 @@ checksum = "c2455bfd7168c6aa0bc47caafbec9ba48eca5e186b49534cdbeb8483510437a1"
 dependencies = [
  "candid",
  "ciborium",
- "getrandom 0.3.1",
+ "getrandom",
  "ic-cdk",
  "ic-cdk-macros",
  "ic-cdk-timers",
@@ -853,7 +841,7 @@ dependencies = [
  "candid",
  "ciborium",
  "futures",
- "getrandom 0.3.1",
+ "getrandom",
  "ic-cdk",
  "ic-ledger-types",
  "ic-stable-structures",
@@ -1108,7 +1096,7 @@ version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "99d9a13982dcf210057a8a78572b2217b667c3beacbf3a0d8b454f6f82837d38"
 dependencies = [
- "getrandom 0.3.1",
+ "getrandom",
 ]
 
 [[package]]
@@ -1158,7 +1146,6 @@ version = "0.0.1"
 dependencies = [
  "candid",
  "chrono",
- "getrandom 0.2.15",
  "ic-cdk",
  "ic-cdk-macros",
  "junobuild-macros",
@@ -1168,6 +1155,7 @@ dependencies = [
  "lazy_static",
  "regex",
  "serde",
+ "serde_cbor",
  "serde_json",
 ]
 
@@ -1468,12 +1456,6 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
-
-[[package]]
-name = "wasi"
-version = "0.11.0+wasi-snapshot-preview1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
 
 [[package]]
 name = "wasi"
