@@ -834,8 +834,8 @@ pub async fn get_period_multiplier(vote_timestamp_ns: u64, tag_key: &str) -> Res
 async fn get_tag(tag_key: &str) -> Result<Tag, String> {
     // Get the document from Juno
     let tag_doc = get_doc(
-        String::from("tags"),
         tag_key.to_string(),
+        String::from("tags"),
     )
     .ok_or_else(|| {
         log_error(&format!(
@@ -845,18 +845,8 @@ async fn get_tag(tag_key: &str) -> Result<Tag, String> {
         format!("Tag not found: {}", tag_key)
     })?;
 
-    // First deserialize into a Value to handle potential binary data
-    let value: Value = serde_json::from_slice(&tag_doc.data)
-        .map_err(|e| {
-            log_error(&format!(
-                "[get_tag] Failed to parse tag data as JSON: tag={}, error={}",
-                tag_key, e
-            ));
-            format!("Failed to parse tag data: {}", e)
-        })?;
-
-    // Then deserialize from the Value into our Tag struct
-    let tag: Tag = serde_json::from_value(value)
+    // Decode the tag data directly
+    let tag: Tag = decode_doc_data(&tag_doc.data)
         .map_err(|e| {
             log_error(&format!(
                 "[get_tag] Failed to deserialize tag data: tag={}, error={}",

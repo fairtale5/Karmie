@@ -309,6 +309,8 @@
 			error = '';
 			success = '';
 
+			// Comment out frontend validation to test satellite validation
+			/*
 			// Basic validation
 			if (!newUser.username || !newUser.display_name) {
 				error = 'Please fill in all required fields';
@@ -331,6 +333,7 @@
 				error = 'Display name cannot be longer than 100 characters';
 				return;
 			}
+			*/
 
 			// For new documents: generate key with nanoid
 			const documentKey = newUser.key || nanoid();
@@ -341,6 +344,7 @@
 				doc: {
 					key: documentKey,
 					data: {
+						key: documentKey,
 						username: newUser.username.toLowerCase(),
 						display_name: newUser.display_name.trim()
 					},
@@ -594,9 +598,23 @@
 			}
 
 			// Generate document key
-			const documentKey = nanoid();
+			const documentKey = newVote.key || nanoid();
 
-			// Create vote document
+			// If updating, get the current version
+			let version;
+			if (newVote.key) {
+				const existingDoc = await getDoc({
+					collection: COLLECTIONS.VOTES,
+					key: documentKey
+				});
+				if (!existingDoc) {
+					error = 'Vote not found';
+					return;
+				}
+				version = existingDoc.version;
+			}
+
+			// Create vote document with complete data structure
 			await setDoc({
 				collection: COLLECTIONS.VOTES,
 				doc: {
@@ -606,8 +624,7 @@
 						target_key: newVote.target_key,
 						tag_key: newVote.tag_key,
 						value: newVote.value,
-						weight: DEFAULT_VOTE_WEIGHT,
-						created_at: Date.now() * 1_000_000  // Convert to nanoseconds
+						weight: DEFAULT_VOTE_WEIGHT
 					},
 					description: createVoteDescription(
 						user,
@@ -615,7 +632,8 @@
 						newVote.author_key,
 						newVote.target_key,
 						newVote.tag_key
-					)
+					),
+					...(version && { version }) // Only include version for updates
 				}
 			});
 
@@ -1331,57 +1349,74 @@
 		<!-- Tag List -->
 		<div>
 			<h2 class="text-xl mb-4">Existing Tags</h2>
-			<table class="w-full border-collapse border">
-				<thead>
-					<tr>
-						<th class="border p-2 w-48">Key</th>
-						<th class="border p-2">Name</th>
-						<th class="border p-2">Description</th>
-						<th class="border p-2">Time Periods</th>
-						<th class="border p-2">Threshold</th>
-						<th class="border p-2">Reward</th>
-						<th class="border p-2">Min Users</th>
-						<th class="border p-2">Actions</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each tags as tag}
+			<div class="overflow-x-auto">
+				<table class="table table-zebra w-full">
+					<thead>
 						<tr>
-							<td class="border p-2 font-mono text-sm bg-gray-50">{tag.key}</td>
-							<td class="border p-2">{tag.data.name}</td>
-							<td class="border p-2">{tag.data.description}</td>
-							<td class="border p-2">
-								<ul class="list-disc list-inside">
-									{#each tag.data.time_periods as period}
-										<li>{period.months}mo: {period.multiplier}x</li>
-									{/each}
-								</ul>
-							</td>
-							<td class="border p-2">{tag.data.reputation_threshold}</td>
-							<td class="border p-2">{tag.data.vote_reward}</td>
-							<td class="border p-2">{tag.data.min_users_for_threshold}</td>
-							<td class="border p-2">
-								<div class="flex gap-2 justify-center">
-									<button
-										on:click={() => editTag(tag)}
-										class="text-blue-500 hover:text-blue-700"
-										title="Edit tag"
-									>
-										✏️
-									</button>
-									<button
-										on:click={() => deleteTag(tag.key)}
-										class="text-red-500 hover:text-red-700"
-										title="Delete tag"
-									>
-										❌
-									</button>
-								</div>
-							</td>
+							<th>Document Info</th>
+							<th>Tag Data</th>
+							<th>Time Periods</th>
+							<th>Settings</th>
+							<th>Actions</th>
 						</tr>
-					{/each}
-				</tbody>
-			</table>
+					</thead>
+					<tbody>
+						{#each tags as tag}
+							<tr>
+								<td>
+									<div class="space-y-1">
+										<div class="font-mono text-xs">Key: {tag.key}</div>
+										<div class="font-mono text-xs">Description: {tag.description}</div>
+										<div class="font-mono text-xs">Owner: {tag.owner}</div>
+										<div class="text-xs">Created: {new Date(Number(tag.created_at) / 1_000_000).toLocaleString()}</div>
+										<div class="text-xs">Updated: {new Date(Number(tag.updated_at) / 1_000_000).toLocaleString()}</div>
+										<div class="text-xs">Version: {tag.version}</div>
+									</div>
+								</td>
+								<td>
+									<div class="space-y-1">
+										<div class="font-bold">{tag.data.name}</div>
+										<div class="text-sm opacity-75">{tag.data.description}</div>
+										<div class="font-mono text-xs">Author: {tag.data.author_key}</div>
+									</div>
+								</td>
+								<td>
+									<ul class="list-disc list-inside">
+										{#each tag.data.time_periods as period}
+											<li>{period.months}mo: {period.multiplier}x</li>
+										{/each}
+									</ul>
+								</td>
+								<td>
+									<div class="space-y-1">
+										<div>Threshold: {tag.data.reputation_threshold}</div>
+										<div>Reward: {tag.data.vote_reward}</div>
+										<div>Min Users: {tag.data.min_users_for_threshold}</div>
+									</div>
+								</td>
+								<td>
+									<div class="flex gap-2 justify-center">
+										<button
+											on:click={() => editTag(tag)}
+											class="text-blue-500 hover:text-blue-700"
+											title="Edit tag"
+										>
+											✏️
+										</button>
+										<button
+											on:click={() => deleteTag(tag.key)}
+											class="text-red-500 hover:text-red-700"
+											title="Delete tag"
+										>
+											❌
+										</button>
+									</div>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
 		</div>
 	</div>
 {:else}

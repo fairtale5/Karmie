@@ -102,8 +102,10 @@
 // Currently we only use on_set_doc and assert_set_doc, but others are
 // documented for future use.
 
+use std::thread::JoinHandle;
+
 // Import all available macro decorators from junobuild_macros
-#[allow(unused_imports)]
+
 use junobuild_macros::{
     assert_delete_asset,   // For asserting asset deletion
     assert_delete_doc,     // For asserting document deletion
@@ -127,7 +129,7 @@ use junobuild_macros::{
 // These imports provide the necessary types and utilities for working with
 // Juno's satellite features.
 
-#[allow(unused_imports)]
+
 use junobuild_satellite::{
     include_satellite,           // Required macro for Juno integration
     AssertDeleteAssetContext,    // Context for asset deletion assertion
@@ -262,7 +264,7 @@ async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
         }
         "users" | "tags" => {
             // No side effects needed for users or tags
-            log_debug(&format!("[on_set_doc] No side effects needed for collection: {}", context.data.collection));
+            log_debug(&format!("[on_set_doc] No hooks defined for collection: {}", context.data.collection));
         }
         _ => {
             log_error(&format!("[on_set_doc] Unknown collection: {}", context.data.collection));
@@ -276,21 +278,37 @@ async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
 /// Configuration flag for playground mode
 pub const IS_PLAYGROUND: bool = true;  // Set to false for production
 
-#[cfg(not(feature = "assert_set_doc"))]
+#[assert_set_doc]
 fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
     ic_cdk::println!("[CRITICAL DEBUG] assert_set_doc CALLED for collection: {}, key: {}", 
         context.data.collection, context.data.key);
+    
+    ic_cdk::println!("[CRITICAL DEBUG] Proposed data: {:?}", context.data.data.proposed.data);
+    ic_cdk::println!("[CRITICAL DEBUG] Proposed description: {:?}", context.data.data.proposed.description);
     
     log_debug(&format!("[assert_set_doc] Starting validation for collection: {}, key: {}", 
         context.data.collection, context.data.key));
 
     let result = match context.data.collection.as_str() {
-        "users" => validate_user_document(&context),
-        "votes" => validate_vote_document(&context),
-        "tags" => validate_tag_document(&context),
-        "reputations" => validate_reputation_document(&context),
+        "users" => {
+            ic_cdk::println!("[CRITICAL DEBUG] Validating user document");
+            validate_user_document(&context)
+        },
+        "votes" => {
+            ic_cdk::println!("[CRITICAL DEBUG] Validating vote document");
+            validate_vote_document(&context)
+        },
+        "tags" => {
+            ic_cdk::println!("[CRITICAL DEBUG] Validating tag document");
+            validate_tag_document(&context)
+        },
+        "reputations" => {
+            ic_cdk::println!("[CRITICAL DEBUG] Validating reputation document");
+            validate_reputation_document(&context)
+        },
         _ => {
             let err_msg = format!("Unknown collection: {}", context.data.collection);
+            ic_cdk::println!("[CRITICAL DEBUG] {}", err_msg);
             log_error(&format!("[assert_set_doc] {}", err_msg));
             Err(err_msg)
         }
@@ -383,11 +401,14 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
     let normalized_username = user_data.username.to_lowercase();
     
     // Build the search query to find any document with this username
-    // The pattern will match [username:name] anywhere in the description string
+    // The pattern will match [username:name] in the description string
     // This works regardless of whether it's at the start, middle, or end
+    let search_pattern = format!("[username:{}]", normalized_username);
+    ic_cdk::println!("[CRITICAL DEBUG] Searching for username with pattern: {}", search_pattern);
+    
     let params = ListParams {
         matcher: Some(ListMatcher {
-            description: Some(format!(".*\\[username:{}\\].*", normalized_username)),
+            description: Some(search_pattern),
             ..Default::default()
         }),
         ..Default::default()
@@ -395,17 +416,35 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
 
     // Call list_docs and handle potential errors
     let existing_users = list_docs(String::from("users"), params);
-
+    ic_cdk::println!("[CRITICAL DEBUG] Found {} existing users with this username", existing_users.items.len());
+    
     // Check if we found any existing users with this normalized username
-    // Exclude the current document if we're updating
-    for (doc_key, _) in existing_users.items {
-        if doc_key != context.data.key {
-            let err_msg = format!(
-                "Username '{}' is already taken. Please choose a different username.",
-                user_data.username
-            );
-            log_error(&format!("[assert_set_doc] {} key={}, username={}", err_msg, context.data.key, user_data.username));
-            return Err(err_msg);
+    // For new users (no key), we check all documents
+    // For updates (has key), we exclude the current document
+    let is_update = context.data.data.current.is_some();
+    ic_cdk::println!("[CRITICAL DEBUG] Is this an update? {}", is_update);
+    
+    for (doc_key, doc) in existing_users.items {
+        ic_cdk::println!("[CRITICAL DEBUG] Checking document: key={}, description={:?}", doc_key, doc.description);
+        
+        // If this is an update and the document key matches, skip it
+        if is_update && doc_key == context.data.key {
+            ic_cdk::println!("[CRITICAL DEBUG] Skipping current document during update");
+            continue;
+        }
+        
+        // Extract username from description and compare
+        if let Some(desc) = doc.description {
+            if let Some(existing_username) = desc.split("[username:").nth(1).and_then(|s| s.split(']').next()) {
+                if existing_username.to_lowercase() == normalized_username {
+                    let err_msg = format!(
+                        "Username '{}' is already taken. Please choose a different username.",
+                        user_data.username
+                    );
+                    log_error(&format!("[assert_set_doc] {} key={}, username={}", err_msg, context.data.key, user_data.username));
+                    return Err(err_msg);
+                }
+            }
         }
     }
 
@@ -583,33 +622,50 @@ fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
     // Check for tag name uniqueness (case-insensitive)
     let normalized_name = tag_data.name.to_lowercase();
     
-    // Build the search query using DocumentDescription helper
-    let mut name_desc = DocumentDescription::new();
-    name_desc.add_field("name", &normalized_name);
-    let name_description = name_desc.build();
+    // Build the search query to find any document with this tag name
+    // The pattern will match [name:tag_name] in the description string
+    let search_pattern = format!("[name:{}]", normalized_name);
+    ic_cdk::println!("[CRITICAL DEBUG] Searching for tag name with pattern: {}", search_pattern);
     
-    let matcher = ListMatcher {
-        description: Some(name_description),
-        ..Default::default()
-    };
-
     let params = ListParams {
-        matcher: Some(matcher),
+        matcher: Some(ListMatcher {
+            description: Some(search_pattern),
+            ..Default::default()
+        }),
         ..Default::default()
     };
 
+    // Call list_docs and handle potential errors
     let existing_tags = list_docs(String::from("tags"), params);
-
+    ic_cdk::println!("[CRITICAL DEBUG] Found {} existing tags with this name", existing_tags.items.len());
+    
     // Check if we found any existing tags with this normalized name
-    // Exclude the current document if we're updating
-    for (doc_key, _) in existing_tags.items {
-        if doc_key != context.data.key {
-            let err_msg = format!(
-                "Tag name '{}' is already taken (case-insensitive comparison)",
-                tag_data.name
-            );
-            log_error(&format!("[assert_set_doc] {} key={}", err_msg, context.data.key));
-            return Err(err_msg);
+    // For new tags (no key), we check all documents
+    // For updates (has key), we exclude the current document
+    let is_update = context.data.data.current.is_some();
+    ic_cdk::println!("[CRITICAL DEBUG] Is this an update? {}", is_update);
+    
+    for (doc_key, doc) in existing_tags.items {
+        ic_cdk::println!("[CRITICAL DEBUG] Checking document: key={}, description={:?}", doc_key, doc.description);
+        
+        // If this is an update and the document key matches, skip it
+        if is_update && doc_key == context.data.key {
+            ic_cdk::println!("[CRITICAL DEBUG] Skipping current document during update");
+            continue;
+        }
+        
+        // Extract tag name from description and compare
+        if let Some(desc) = doc.description {
+            if let Some(existing_name) = desc.split("[name:").nth(1).and_then(|s| s.split(']').next()) {
+                if existing_name.to_lowercase() == normalized_name {
+                    let err_msg = format!(
+                        "Tag name '{}' is already taken (case-insensitive comparison)",
+                        tag_data.name
+                    );
+                    log_error(&format!("[assert_set_doc] {} key={}", err_msg, context.data.key));
+                    return Err(err_msg);
+                }
+            }
         }
     }
 
@@ -836,9 +892,11 @@ fn validate_time_periods(periods: &[TimePeriod]) -> Result<(), String> {
             return Err(err_msg);
         }
 
-        // Validate multiplier step increments (0.05)
-        let remainder = (period.multiplier * 100.0) % 5.0;
-        if remainder != 0.0 {
+        // Validate multiplier step increments (0.05) with floating-point tolerance
+        // We multiply by 100 to work with integers and avoid floating-point issues
+        let multiplier_int = (period.multiplier * 100.0).round();
+        let remainder = multiplier_int % 5.0;
+        if remainder > 0.000001 { // Allow for small floating-point rounding errors
             let err_msg = format!(
                 "Multiplier for period {} must use 0.05 step increments (got: {})",
                 i + 1, period.multiplier
