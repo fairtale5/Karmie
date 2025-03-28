@@ -27,7 +27,7 @@ use junobuild_satellite::{get_doc, list_docs};
 use junobuild_shared::types::list::{ListMatcher, ListParams, ListResults};
 use junobuild_utils::decode_doc_data;
 use crate::utils::structs::{Tag, ReputationData};
-use crate::utils::logging::{log_error, log_warn, log_info, log_with_prefix};
+use crate::utils::logging::{log_error, log_info, log_with_prefix};
 use crate::utils::description_helpers;
 
 /// Calculates the number of active users for a given tag
@@ -43,8 +43,8 @@ use crate::utils::description_helpers;
 pub async fn get_active_users_count(tag_key: &str) -> Result<u32, String> {
     // Step 1: Get tag configuration to find threshold
     let tag_doc = get_doc(
-        String::from("tags"),
-        tag_key.to_string(),
+        tag_key.to_string(),   // Correct order: document key first
+        String::from("tags"),  // Collection name second
     ).ok_or_else(|| {
         let err_msg = format!("Tag not found: {}", tag_key);
         log_error(&err_msg); // This is a fatal error - we can't proceed without the tag

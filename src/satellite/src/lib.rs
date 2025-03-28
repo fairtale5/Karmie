@@ -102,8 +102,6 @@
 // Currently we only use on_set_doc and assert_set_doc, but others are
 // documented for future use.
 
-use std::thread::JoinHandle;
-
 // Import all available macro decorators from junobuild_macros
 
 use junobuild_macros::{
@@ -192,10 +190,11 @@ use junobuild_utils::{decode_doc_data, encode_doc_data};
 use crate::utils::{
     normalize::normalize_username,
     validation::{validate_username, validate_display_name, validate_tag_name},
-    structs::{Vote, Tag, Reputation, UserData, TagData, TimePeriod, ReputationData},
+    structs::{Vote, VoteData, Tag, Reputation, UserData, TagData, TimePeriod, ReputationData},
     reputation_calculations::{
         calculate_user_reputation, get_user_reputation_data,
-        calculate_and_store_vote_weight
+        calculate_and_store_vote_weight,
+        get_period_multiplier,
     },
     logging::{log_error, log_warn, log_info, log_debug},
     description_helpers::{DocumentDescription, create_vote_description, validate_description}
@@ -225,52 +224,76 @@ async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
     match context.data.collection.as_str() {
         "votes" => {
             log_debug("[on_set_doc - Votes] Processing new vote");
-            
-            // Decode the vote data
-            let vote: Vote = decode_doc_data(&context.data.data.after.data)
-                .map_err(|e| {
-                    log_error(&format!("[on_set_doc - Votes] Failed to decode vote data: {}", e));
-                    e.to_string()
-                })?;
-            
-            // Step 1: Calculate and store the voting user's vote weight
-            log_debug(&format!("[on_set_doc - Votes] Calculating vote weight for author: {}", vote.data.author_key));
-            calculate_and_store_vote_weight(&vote.data.author_key, &vote.data.tag_key).await
-                .map_err(|e| {
-                    log_error(&format!("[on_set_doc - Votes] Failed to calculate vote weight: {}", e));
-                    e.to_string()
-                })?;
-            
-            // Step 2: Calculate reputation for the voting user (author)
-            log_debug(&format!("[on_set_doc - Votes] Calculating reputation for author: {}", vote.data.author_key));
-            calculate_user_reputation(&vote.data.author_key, &vote.data.tag_key).await
-                .map_err(|e| {
-                    log_error(&format!("[on_set_doc - Votes] Failed to calculate author reputation: {}", e));
-                    e.to_string()
-                })?;
-            
-            // Step 3: Calculate target's reputation
-            log_debug(&format!("[on_set_doc - Votes] Calculating reputation for target: {}", vote.data.target_key));
-            calculate_user_reputation(&vote.data.target_key, &vote.data.tag_key).await
-                .map_err(|e| {
-                    log_error(&format!("[on_set_doc - Votes] Failed to calculate target reputation: {}", e));
-                    e.to_string()
-                })?;
-
-            log_info(&format!(
-                "[on_set_doc - Votes] Successfully processed vote: author={}, target={}, tag={}",
-                vote.data.author_key, vote.data.target_key, vote.data.tag_key
-            ));
-        }
+            process_vote(&context).await
+        },
         "users" | "tags" => {
             // No side effects needed for users or tags
             log_debug(&format!("[on_set_doc] No hooks defined for collection: {}", context.data.collection));
+            Ok(())
         }
         _ => {
             log_error(&format!("[on_set_doc] Unknown collection: {}", context.data.collection));
-            return Err(format!("Unknown collection: {}", context.data.collection));
+            Err(format!("Unknown collection: {}", context.data.collection))
         }
     }
+}
+
+/// Process a vote document after it has been created or updated
+async fn process_vote(context: &OnSetDocContext) -> Result<(), String> {
+    // Access the vote document metadata directly
+    let vote_doc = &context.data.data.after;
+    
+    // Only decode the inner data field when needed
+    let vote_data: VoteData = decode_doc_data(&vote_doc.data)
+        .map_err(|e| {
+            log_error(&format!("[process_vote] Failed to decode vote data: {}", e));
+            e.to_string()
+        })?;
+    
+    // Log the vote details in a human-readable format
+    log_info(&format!(
+        "[process_vote] Processing new vote: author={} voted {} on target={} in tag={}",
+        vote_data.author_key,
+        if vote_data.value > 0 { "up" } else { "down" },
+        vote_data.target_key,
+        vote_data.tag_key
+    ));
+    
+    // Ensure tag_key is not empty - this is critical to prevent later errors
+    if vote_data.tag_key.is_empty() {
+        let err_msg = "Tag key cannot be empty";
+        log_error(&format!("[process_vote] {}", err_msg));
+        return Err(err_msg.to_string());
+    }
+    
+    // Step 1: Calculate and store the voting user's vote weight
+    log_debug(&format!("[process_vote] Calculating vote weight for author: {}", vote_data.author_key));
+    calculate_and_store_vote_weight(&vote_data.author_key, &vote_data.tag_key).await
+        .map_err(|e| {
+            log_error(&format!("[process_vote] Failed to calculate vote weight: {}", e));
+            e.to_string()
+        })?;
+    
+    // Step 2: Calculate reputation for the voting user (author)
+    log_debug(&format!("[process_vote] Calculating reputation for author: {}", vote_data.author_key));
+    calculate_user_reputation(&vote_data.author_key, &vote_data.tag_key).await
+        .map_err(|e| {
+            log_error(&format!("[process_vote] Failed to calculate author reputation: {}", e));
+            e.to_string()
+        })?;
+    
+    // Step 3: Calculate reputation for the target user
+    log_debug(&format!("[process_vote] Calculating reputation for target: {}", vote_data.target_key));
+    calculate_user_reputation(&vote_data.target_key, &vote_data.tag_key).await
+        .map_err(|e| {
+            log_error(&format!("[process_vote] Failed to calculate target reputation: {}", e));
+            e.to_string()
+        })?;
+
+    log_info(&format!(
+        "[process_vote] Successfully processed vote: author={}, target={}, tag={}",
+        vote_data.author_key, vote_data.target_key, vote_data.tag_key
+    ));
     
     Ok(())
 }
@@ -280,30 +303,33 @@ pub const IS_PLAYGROUND: bool = true;  // Set to false for production
 
 #[assert_set_doc]
 fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
-    ic_cdk::println!("[CRITICAL DEBUG] assert_set_doc CALLED for collection: {}, key: {}", 
-        context.data.collection, context.data.key);
-    
-    ic_cdk::println!("[CRITICAL DEBUG] Proposed data: {:?}", context.data.data.proposed.data);
-    ic_cdk::println!("[CRITICAL DEBUG] Proposed description: {:?}", context.data.data.proposed.description);
-    
-    log_debug(&format!("[assert_set_doc] Starting validation for collection: {}, key: {}", 
-        context.data.collection, context.data.key));
-
     let result = match context.data.collection.as_str() {
         "users" => {
-            ic_cdk::println!("[CRITICAL DEBUG] Validating user document");
+            log_debug(&format!(
+                "[assert_set_doc] Validating user document: key={}",
+                context.data.key
+            ));
             validate_user_document(&context)
         },
         "votes" => {
-            ic_cdk::println!("[CRITICAL DEBUG] Validating vote document");
+            log_debug(&format!(
+                "[assert_set_doc] Validating vote document: key={}",
+                context.data.key
+            ));
             validate_vote_document(&context)
         },
         "tags" => {
-            ic_cdk::println!("[CRITICAL DEBUG] Validating tag document");
+            log_debug(&format!(
+                "[assert_set_doc] Validating tag document: key={}",
+                context.data.key
+            ));
             validate_tag_document(&context)
         },
         "reputations" => {
-            ic_cdk::println!("[CRITICAL DEBUG] Validating reputation document");
+            log_debug(&format!(
+                "[assert_set_doc] Validating reputation document: key={}",
+                context.data.key
+            ));
             validate_reputation_document(&context)
         },
         _ => {
@@ -487,7 +513,7 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
 /// 3. Validates vote value constraints (+1 or -1)
 /// 4. Validates vote weight constraints (0.0 to 1.0)
 /// 5. Prevents self-voting
-/// 6. Verifies tag exists
+/// 6. Verifies tag exists using ListMatcher by key
 /// 
 /// # Arguments
 /// * `context` - The validation context containing the document data
@@ -496,94 +522,99 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
 /// * `Result<(), String>` - Ok if validation passes, Err with detailed message if it fails
 fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
     log_debug(&format!(
-        "[validate_vote_document] Validating vote document: key={}",
+        "[validate_vote_document] Starting vote validation: key={}",
         context.data.key
     ));
 
-    // Step 1: Decode and validate the basic vote data structure
-    // This ensures the document contains all required fields in the correct format
-    let vote: Vote = decode_doc_data(&context.data.data.proposed.data)
+    // Step 1: Access the full document structure and prepare it
+    
+    // Decode and validate the basic vote data structure
+    let vote_doc = &context.data.data.proposed;
+    let vote_data: VoteData = decode_doc_data(&context.data.data.proposed.data)
         .map_err(|e| {
             log_error(&format!(
-                "[validate_vote_document] Failed to decode vote data: {}",
-                e
+                "[validate_vote_document] Failed to decode vote data: key={}, error={}",
+                context.data.key, e
             ));
-            format!("Failed to decode vote data: {}", e)
+            format!("Invalid vote data format: {}", e)
         })?;
 
-    // Step 2: Create and validate description using DocumentDescription helper
-    // This ensures the description follows our standardized format for both playground and production modes
-    let mut desc = DocumentDescription::new();
-    let caller_string = context.caller.to_string(); // Create a string that lives for the duration of the function
-    desc.add_owner(if IS_PLAYGROUND {
-        &vote.data.author_key
-    } else {
-        &caller_string
-    })
-    .add_field("target", &vote.data.target_key)
-    .add_field("tag", &vote.data.tag_key);
+    // Step 2: Validate vote value constraints
+    // Vote value must be -1, 0, or 1 to:
+    // - Ensure votes have clear, binary meaning in the system
+    // - Prevent vote manipulation through arbitrary values
+    // - Maintain consistent reputation calculations
+    // - Keep the system simple and understandable
+    // - Enable clear upvote/downvote UI representation
+    if vote_data.value < -1 || vote_data.value > 1 {
+        let err_msg = format!(
+            "Vote value must be -1, 0, or 1 (got: {})",
+            vote_data.value
+        );
+        log_error(&format!("[validate_vote_document] {}", err_msg));
+        return Err(err_msg);
+    }
 
-    let expected_description = desc.build();
+    // Step 3: Validate vote weight constraints
+    // Vote weight must be between 0.0 and 1.0 to:
+    // - Represent voter's proportional influence in the tag
+    // - Prevent any single voter from dominating
+    // - Scale impact based on reputation and activity
+    // - Ensure fair distribution of voting power
+    // - Enable time-based vote decay
+    // Weight is calculated from:
+    // - Author's reputation in the tag
+    // - Number of votes cast
+    // - Age of previous votes
+    if vote_data.weight < 0.0 || vote_data.weight > 1.0 {
+        let err_msg = format!(
+            "Vote weight must be between 0.0 and 1.0 (got: {})",
+            vote_data.weight
+        );
+        log_error(&format!("[validate_vote_document] {}", err_msg));
+        return Err(err_msg);
+    }
 
-    // Verify the description matches our expected format
-    if let Some(actual_description) = &context.data.data.proposed.description {
-        if actual_description != &expected_description {
-            let err_msg = format!(
-                "Invalid description format. Expected: {}, Got: {}",
-                expected_description, actual_description
-            );
-            log_error(&format!("[validate_vote_document] {}", err_msg));
-            return Err(err_msg);
-        }
-    } else {
-        let err_msg = "Description field is required for vote documents";
+    // Step 4: Validate tag exists
+    log_debug(&format!(
+        "[validate_vote_document] Verifying tag exists: {}",
+        vote_data.tag_key
+    ));
+    
+    let params = ListParams {
+        matcher: Some(ListMatcher {
+            key: Some(vote_data.tag_key.clone()),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+
+    // Search for the tag in the tags collection
+    let existing_tags = list_docs(String::from("tags"), params);
+    if existing_tags.items.is_empty() {
+        let err_msg = format!("Tag not found: {}", vote_data.tag_key);
+        log_error(&format!("[validate_vote_document] {}", err_msg));
+        return Err(err_msg);
+    }
+    
+    log_debug(&format!(
+        "[validate_vote_document] Found tag: {}",
+        vote_data.tag_key
+    ));
+
+    // Step 5: Validate no self-voting
+    if vote_data.author_key == vote_data.target_key {
+        let err_msg = "Users cannot vote on themselves";
         log_error(&format!("[validate_vote_document] {}", err_msg));
         return Err(err_msg.to_string());
     }
 
-    // Step 3: Validate vote value constraints
-    // Vote value must be either +1 (upvote) or -1 (downvote)
-    // This ensures votes have clear, binary meaning in the system
-    if vote.data.value != 1.0 && vote.data.value != -1.0 {
-        let err_msg = format!("Vote value must be either +1 or -1, got: {}", vote.data.value);
-        log_error(&format!("[validate_vote_document] {}", err_msg));
-        return Err(err_msg);
-    }
-
-    // Step 4: Validate vote weight constraints
-    // Vote weight represents the voter's influence, scaled from 0.0 to 1.0
-    // This is calculated based on the voter's reputation in the tag
-    if vote.data.weight < 0.0 || vote.data.weight > 1.0 {
-        let err_msg = format!("Vote weight must be between 0.0 and 1.0, got: {}", vote.data.weight);
-        log_error(&format!("[validate_vote_document] {}", err_msg));
-        return Err(err_msg);
-    }
-
-    // Step 5: Prevent self-voting
-    // Users cannot vote on their own content to prevent reputation manipulation
-    if vote.data.author_key == vote.data.target_key {
-        let err_msg = format!("Cannot vote on yourself (author_key: {})", vote.data.author_key);
-        log_error(&format!("[validate_vote_document] {}", err_msg));
-        return Err(err_msg);
-    }
-
-    // Step 6: Verify the tag exists
-    // This ensures votes are only cast on valid tags
-    let tag_doc = junobuild_satellite::get_doc(vote.data.tag_key.clone(), String::from("tags"));
-    
-    // Match on the result instead of using map_err
-    let tag_doc = match tag_doc {
-        Some(doc) => doc,
-        None => {
-            let err_msg = format!("Tag not found: {}", vote.data.tag_key);
-            log_error(&format!("[validate_vote_document] {}", err_msg));
-            return Err(err_msg);
-        }
-    };
-
     log_info(&format!(
-        "[validate_vote_document] Successfully validated vote document: key={}",
-        context.data.key
+        "[validate_vote_document] Vote validation passed: author={} voted {} on target={} in tag={}",
+        vote_data.author_key,
+        if vote_data.value > 0 { "up" } else { "down" },
+        vote_data.target_key,
+        vote_data.tag_key
     ));
 
     Ok(())
@@ -773,17 +804,46 @@ fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), Str
         return Err(err_msg.to_string());
     }
 
-    // Step 3: Validate total basis reputation
+    // Step 3: Basis Reputation Calculation
+    // -----------------------------------
+    // Calculate total basis reputation from all received votes
+    // For each vote, calculate its contribution by multiplying:
+    // - Base value (+1 for positive, -1 for negative)
+    // - Author's effective reputation
+    // - Author's vote weight
+    // - Time-based multiplier from tag rules
+    // Then sum all vote contributions to get total_basis_reputation
+    // This weighted sum ensures:
+    // - More reputable authors have more influence
+    // - Recent votes count more than old ones
+    // - Authors can't dominate by spamming votes
+    // - The final score reflects community consensus
+    let mut total_basis_reputation = 0.0;
+
+    // Step 4: Trust Status Check
+    // -------------------------
+    // Compare total_basis_reputation against tag's minimum threshold
+    // to determine if user has voting power. This check:
+    // - Ensures users meet minimum reputation requirements
+    // - Prevents new/untrusted users from affecting scores
+    // - Helps maintain system integrity
+    // - Creates incentive to earn community trust
+    // - Allows for tag-specific trust thresholds
+    // - Enables graduated voting privileges
+    // - Helps prevent manipulation by new accounts
+    let has_voting_power = total_basis_reputation >= tag_data.reputation_threshold;
+
+    // Step 5: Validate total basis reputation
     // Basis reputation (from received votes) can be negative or positive:
     // - Positive: User has received more upvotes or higher-weighted upvotes
     // - Negative: User has received more downvotes or higher-weighted downvotes
     // - This is the raw vote-based reputation before voting rewards
     log_debug(&format!(
         "[validate_reputation_document] Total basis reputation: {}",
-        reputation.data.total_basis_reputation
+        total_basis_reputation
     ));
 
-    // Step 4: Validate voting rewards constraints
+    // Step 6: Validate voting rewards constraints
     // Voting rewards must be non-negative because:
     // - They represent participation rewards
     // - They help bootstrap new communities
@@ -797,16 +857,16 @@ fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), Str
         return Err(err_msg);
     }
 
-    // Step 5: Validate effective reputation calculation consistency
+    // Step 7: Validate effective reputation calculation consistency
     // The effective reputation:
     // - Can be negative (when heavily downvoted)
     // - Should match basis + rewards when above threshold
     // - Should match only basis when below threshold
     // - Is used to determine voting power and privileges
-    let expected_effective = if reputation.data.has_voting_power {
-        reputation.data.total_basis_reputation + reputation.data.total_voting_rewards_reputation
+    let expected_effective = if has_voting_power {
+        total_basis_reputation + reputation.data.total_voting_rewards_reputation
     } else {
-        reputation.data.total_basis_reputation
+        total_basis_reputation
     };
 
     if (reputation.data.last_known_effective_reputation - expected_effective).abs() > 0.000001 {
@@ -819,7 +879,7 @@ fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), Str
         return Err(err_msg);
     }
 
-    // Step 6: Validate vote weight constraints
+    // Step 8: Validate vote weight constraints
     // Vote weight must be between 0.0 and 1.0 to:
     // - weight represents how much that vote is part of the user's total 100% votes
     // - it is a percentage (0-1)

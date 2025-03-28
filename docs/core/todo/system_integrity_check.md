@@ -78,7 +78,7 @@ The system contains four main collections:
 | `VoteData.tag_key` | ✓ `data.tag_key` | Compatible | |
 | `VoteData.value` | ✓ `data.value` | Compatible | |
 | `VoteData.weight` | ✓ `data.weight` | Compatible | |
-| `VoteData.created_at` | ✓ `data.created_at` | Compatible | Type difference: u64 vs bigint |
+| `VoteData.created_at` | ✗ `created_at` | Removed | Field moved to document level |
 
 **Format Notes:**
 - `description` format now aligned between structs.rs and database.md: `[owner:{VoteData.author_key}],[target:{VoteData.target_key}][tag:{VoteData.tag_key}]`

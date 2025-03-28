@@ -62,6 +62,23 @@ function isVoteData(data: unknown): data is VoteData {
         vote.author_key !== vote.target_key // Prevent self-voting
     );
 }
+
+const validateVote = (vote: any): boolean => {
+    return (
+        typeof vote.key === 'string' &&
+        typeof vote.description === 'string' &&
+        typeof vote.owner === 'string' &&
+        typeof vote.created_at === 'bigint' &&
+        typeof vote.updated_at === 'bigint' &&
+        typeof vote.version === 'bigint' &&
+        typeof vote.data === 'object' &&
+        typeof vote.data.author_key === 'string' &&
+        typeof vote.data.target_key === 'string' &&
+        typeof vote.data.tag_key === 'string' &&
+        typeof vote.data.value === 'number' &&
+        typeof vote.data.weight === 'number'
+    );
+};
 ```
 
 ### Reputation Validation

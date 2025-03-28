@@ -13,7 +13,7 @@
 
 use junobuild_shared::day::calendar_date;
 use crate::utils::structs::{TimePeriod, Tag};
-use crate::utils::logging::{log_error, log_warn};
+use crate::utils::logging::log_error;
 
 /// Calculates the number of months between two timestamps
 /// 

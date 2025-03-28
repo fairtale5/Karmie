@@ -4,7 +4,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use junobuild_utils::{encode_doc_data, decode_doc_data};
 use junobuild_satellite::SetDoc;
-use crate::utils::logging::{log_error, log_warn, log_info};
+use crate::utils::logging::{log_error, log_warn, log_info, log_debug};
 use crate::utils::time::{calculate_months_between, get_period_for_timestamp};
 
 // Import our data structures
@@ -228,20 +228,20 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
     // - Multiplier increases/decreases based on vote age
     // - Newer votes generally have higher multipliers
     let mut total_weighted_votes = 0.0;
-    for (doc_key, doc) in results.items {
+    for (_, doc) in results.items {
         // Decode vote data from binary format
         let vote_data: VoteData = decode_doc_data(&doc.data)
             .map_err(|e| {
-                let err_msg = format!("Failed to deserialize vote data for document {}: {}", doc_key, e);
+                let err_msg = format!("Failed to deserialize vote data: {}", e);
                 log_error(&err_msg);
                 err_msg
             })?;
         
-        // Get time-based multiplier for this vote's age
-        let multiplier = get_period_multiplier(vote_data.created_at, tag_key).await?;
+        // Get time-based multiplier for this vote using the document's created_at timestamp
+        let time_multiplier = get_period_multiplier(doc.created_at, tag_key).await?;
         
         // Add to total: base value (1.0) * time multiplier
-        total_weighted_votes += 1.0 * multiplier;
+        total_weighted_votes += 1.0 * time_multiplier;
     }
 
     // Step 4: Calculate Individual Vote Weight
@@ -496,13 +496,16 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
         },
     );
 
+    // Store vote items in a vector to avoid multiple moves
+    let vote_items: Vec<_> = votes.items;
+
     // Convert raw vote documents into VoteData structs
     // This step:
     // 1. Iterates through each vote document from Juno storage
     // 2. Uses decode_doc_data to convert binary data into VoteData
     // 3. Handles any binary decoding errors
     let mut vote_data_list: Vec<VoteData> = Vec::new();
-    for (_, doc) in votes.items {
+    for (_, doc) in &vote_items {
         match decode_doc_data::<VoteData>(&doc.data) {
             Ok(vote_data) => {
                 vote_data_list.push(vote_data);
@@ -529,40 +532,43 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
     let mut author_index: HashMap<String, AuthorInfo> = HashMap::new();
 
     // Process each vote to get author information
-    for vote in &vote_data_list {
+    for (_, doc) in &vote_items {
+        let vote_data: VoteData = decode_doc_data(&doc.data)
+            .map_err(|e| format!("Failed to deserialize vote: {}", e))?;
+
         // Skip if we already have this author's information
-        if author_index.contains_key(&vote.author_key) {
+        if author_index.contains_key(&vote_data.author_key) {
             continue;
         }
 
         // Get author's reputation data
-        match get_user_reputation_slim(&vote.author_key, tag_key).await {
+        match get_user_reputation_slim(&vote_data.author_key, tag_key).await {
             Ok(Some(author_info)) => {
                 // Skip if author's votes are not active
                 if !author_info.votes_active {
                     log_warn(&format!(
                         "Skipping inactive author: author={}, tag={}",
-                        vote.author_key, tag_key
+                        vote_data.author_key, tag_key
                     ));
                     continue;
                 }
 
                 // Store author information
                 author_index.insert(
-                    vote.author_key.clone(),
+                    vote_data.author_key.clone(),
                     author_info, // Use the AuthorInfo directly
                 );
             }
             Ok(None) => {
                 log_warn(&format!(
                     "No reputation data found for author in calculate_user_reputation: author={}, tag={}",
-                    vote.author_key, tag_key
+                    vote_data.author_key, tag_key
                 ));
             }
             Err(e) => {
                 log_error(&format!(
                     "[calculate_user_reputation] Error getting author reputation: author={}, tag={}, error={}",
-                    vote.author_key, tag_key, e
+                    vote_data.author_key, tag_key, e
                 ));
                 continue;
             }
@@ -596,25 +602,28 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
     let mut total_basis_reputation = 0.0;
 
     // Iterate through all received votes
-    for vote in &vote_data_list {
+    for (_, doc) in &vote_items {
+        let vote_data: VoteData = decode_doc_data(&doc.data)
+            .map_err(|e| format!("Failed to deserialize vote: {}", e))?;
+
         // Get author's information from our index
-        let author_info = match author_index.get(&vote.author_key) {
+        let author_info = match author_index.get(&vote_data.author_key) {
             Some(info) => info,
             None => {
                 log_warn(&format!(
                     "[calculate_user_reputation - Iterate Votes] Warning: Author info not found in index to calculate vote, author={}",
-                    vote.author_key
+                    vote_data.author_key
                 ));
                 continue;
             }
         };
 
-        // Get time-based multiplier for this vote using the timestamp from the vote
-        let time_multiplier = get_period_multiplier(vote.created_at, tag_key).await?;
+        // Get time-based multiplier for this vote using the document's created_at timestamp
+        let time_multiplier = get_period_multiplier(doc.created_at, tag_key).await?;
 
         // Calculate this vote's contribution:
         // 1. Base value: Use the vote's value directly
-        let base_value = vote.value;
+        let base_value = vote_data.value;
 
         // 2. Multiply by author's effective reputation
         let with_reputation = base_value * author_info.effective_reputation;
@@ -668,8 +677,8 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
         let vote_data: VoteData = decode_doc_data(&doc.data)
             .map_err(|e| format!("Failed to deserialize vote: {}", e))?;
         
-        // Get time-based multiplier for this vote using the timestamp from the vote
-        let time_multiplier = get_period_multiplier(vote_data.created_at, tag_key).await?;
+        // Get time-based multiplier for this vote using the document's created_at timestamp
+        let time_multiplier = get_period_multiplier(doc.created_at, tag_key).await?;
         
         let reward = tag.data.vote_reward * time_multiplier;
         total_voting_rewards_reputation += reward;

@@ -256,13 +256,19 @@ interface User {
 ### Vote Document
 ```typescript
 interface Vote {
-    key: string;      // Unique identifier
-    author: string;   // User key who created the vote
-    target: string;   // User key being voted on
-    positive: boolean; // true = upvote, false = downvote
-    created_at: bigint;
+    key: string;           // Unique identifier
+    description: string;
+    owner: Principal;      // User key who created the vote document
+    created_at: bigint;   // Document creation timestamp
     updated_at: bigint;
-    owner: Principal;
+    version: bigint;
+    data: {
+        author_key: string;   // User key who 'owns' the vote
+        target_key: string;   // User key being voted on
+        tag_key: string;
+        value: number;
+        weight: number;
+    }
 }
 ```
 

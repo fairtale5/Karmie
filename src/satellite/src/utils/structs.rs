@@ -164,9 +164,6 @@ pub struct VoteData {
 
     /// Vote weight (default: 1.0)
     pub weight: f64,
-
-    /// Creation timestamp in nanoseconds
-    pub created_at: u64,
 }
 
 /// Represents a user's reputation in a specific tag

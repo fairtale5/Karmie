@@ -72,11 +72,13 @@
 
 	// Form data for creating votes
 	let newVote = {
-		key: '',
-		author_key: '',  // User key of the vote author
-		target_key: '',  // User key of the vote target
-		value: 1,  // Vote value (+1 for upvote, -1 for downvote)
-		tag_key: ''  // Tag key
+		data: {
+			author_key: '',
+			target_key: '',
+			tag_key: '',
+			value: 1,
+			weight: 1.0
+		}
 	};
 
 	// List of all votes
@@ -86,7 +88,6 @@
 		tag_key: string;
 		value: number;
 		weight: number;
-		created_at: bigint;
 	}>[] = [];
 
 	// Error message if something goes wrong
@@ -255,7 +256,7 @@
 	// Load votes
 	async function loadVotes() {
 		try {
-			const votesList = await listDocs<{ author_key: string; target_key: string; tag_key: string; value: number; weight: number; created_at: bigint }>({
+			const votesList = await listDocs<{ author_key: string; target_key: string; tag_key: string; value: number; weight: number }>({
 				collection: COLLECTIONS.VOTES
 			});
 			console.log('Loaded votes:', votesList.items); // Debug log
@@ -589,70 +590,42 @@
 	 */
 	async function saveVote() {
 		try {
-			console.log('[Admin] Saving vote:', newVote);
+			// Generate a new document key
+			const documentKey = nanoid();
 			
-			// Validate inputs
-			if (!newVote.author_key || !newVote.target_key || !newVote.tag_key) {
-				error = 'Please fill in all required fields';
-				return;
-			}
-
-			// Generate document key
-			const documentKey = newVote.key || nanoid();
-
-			// If updating, get the current version
-			let version;
-			if (newVote.key) {
-				const existingDoc = await getDoc({
-					collection: COLLECTIONS.VOTES,
-					key: documentKey
-				});
-				if (!existingDoc) {
-					error = 'Vote not found';
-					return;
-				}
-				version = existingDoc.version;
-			}
-
-			// Create vote document with complete data structure
-			await setDoc({
-				collection: COLLECTIONS.VOTES,
+			// Create the vote document with proper structure
+			// WARNING: key is a root-level field in the document structure, NOT part of data
+			const voteDoc = {
+				collection: "votes",
 				doc: {
 					key: documentKey,
+					description: createVoteDescription(user, documentKey, newVote.data.author_key, newVote.data.target_key, newVote.data.tag_key),
 					data: {
-						author_key: newVote.author_key,
-						target_key: newVote.target_key,
-						tag_key: newVote.tag_key,
-						value: newVote.value,
-						weight: DEFAULT_VOTE_WEIGHT
-					},
-					description: createVoteDescription(
-						user,
-						documentKey,
-						newVote.author_key,
-						newVote.target_key,
-						newVote.tag_key
-					),
-					...(version && { version }) // Only include version for updates
+						author_key: newVote.data.author_key,
+						target_key: newVote.data.target_key,
+						tag_key: newVote.data.tag_key,
+						value: newVote.data.value,
+						weight: newVote.data.weight
+					}
 				}
-			});
+			};
 
-			// Clear form and show success message
-			newVote = {
-				key: '',
+			// Log the document being saved
+			console.log('[Admin] Sending to setDoc:', voteDoc);
+			
+			await setDoc(voteDoc);
+			
+			// Reset form
+			newVote.data = {
 				author_key: '',
 				target_key: '',
 				value: 1,
-				tag_key: ''
+				tag_key: '',
+				weight: 1.0
 			};
-			success = 'Vote saved successfully';
-			error = '';
-
-			// Reload votes list and update reputations
+			
+			// Refresh votes list
 			await loadVotes();
-			if (selectedTag) {
-				await loadUserReputations(selectedTag);
-			}
 		} catch (e) {
 			console.error('[Admin] Error saving vote:', e);
 			error = e instanceof Error ? e.message : 'Failed to save vote';
@@ -787,13 +760,13 @@
 
 		<!-- Tag Selector -->
 		<div class="mb-8">
-			<label for="tag-select" class="block text-lg mb-2">Select Tag to View Data:</label>
+			<label for="tag-select" class="block text-lg mb-2">Select Tag to Filter Data:</label>
 			<select
 				id="tag-select"
 				bind:value={selectedTag}
 				class="border p-2 w-full max-w-md"
 			>
-				<option value="">Select a tag to view all related data</option>
+				<option value="">Show all data</option>
 				{#each tags as tag}
 					<option value={tag.key}>
 						{tag.data.name}
@@ -874,150 +847,6 @@
 					</div>
 				</div>
 			{/if}
-
-			<!-- Users with Reputation -->
-			<div class="mb-8">
-				<h2 class="text-xl mb-4">Users and Their Reputation</h2>
-				<div class="overflow-x-auto">
-					<table class="table table-zebra w-full">
-						<thead>
-							<tr>
-								<th>Document Info</th>
-								<th>User Data</th>
-								<th>Reputation Data</th>
-								<th>Actions</th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each users as user}
-								{@const reputation = userReputations[user.key] ?? {
-									total_basis_reputation: 0,
-									total_voting_rewards_reputation: 0,
-									last_known_effective_reputation: 0,
-									vote_weight: 0,
-									has_voting_power: false,
-									last_calculation: BigInt(0)
-								}}
-								<tr>
-									<td>
-										<div class="space-y-1">
-											<div class="font-mono text-xs">Key: {user.key}</div>
-											<div class="font-mono text-xs">Description: {user.description}</div>
-											<div class="font-mono text-xs">Owner: {user.owner}</div>
-											<div class="text-xs">Created: {new Date(Number(user.created_at) / 1_000_000).toLocaleString()}</div>
-											<div class="text-xs">Updated: {new Date(Number(user.updated_at) / 1_000_000).toLocaleString()}</div>
-											<div class="text-xs">Version: {user.version}</div>
-										</div>
-									</td>
-									<td>
-										<div class="space-y-1">
-											<div class="font-bold">{user.data.username}</div>
-											<div class="text-sm opacity-75">{user.data.display_name}</div>
-										</div>
-									</td>
-									<td>
-										<div class="space-y-1">
-											<div>Base Rep: {reputation.total_basis_reputation.toFixed(2)}</div>
-											<div>Vote Rep: {reputation.total_voting_rewards_reputation.toFixed(2)}</div>
-											<div>Total Rep: {reputation.last_known_effective_reputation.toFixed(2)}</div>
-											<div>Weight: {(reputation.vote_weight * 100).toFixed(1)}%</div>
-											<div>Status: {reputation.has_voting_power ? 'Active' : 'Inactive'}</div>
-											<div class="text-xs">Last Calc: {new Date(Number(reputation.last_calculation) / 1_000_000).toLocaleString()}</div>
-										</div>
-									</td>
-									<td>
-										<div class="flex gap-2 justify-center">
-											<button
-												class="btn btn-xs btn-primary"
-												on:click={() => recalculateReputation(user.key, selectedTag)}
-												title="Recalculate reputation"
-											>
-												🔄
-											</button>
-											<button
-												class="btn btn-xs btn-info"
-												on:click={() => editUser(user)}
-												title="Edit user"
-											>
-												✏️
-											</button>
-											<button
-												class="btn btn-xs btn-error"
-												on:click={() => deleteUser(user.key)}
-												title="Delete user"
-											>
-												❌
-											</button>
-										</div>
-									</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-			</div>
-
-			<!-- Votes in Selected Tag -->
-			<div class="mb-8">
-				<h2 class="text-xl mb-4">Votes in This Tag</h2>
-				<div class="overflow-x-auto">
-					<table class="table table-zebra w-full">
-						<thead>
-							<tr>
-								<th>Document Info</th>
-								<th>Vote Data</th>
-								<th>References</th>
-								<th>Actions</th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each votes.filter(v => v.data.tag_key === selectedTag) as vote}
-								{@const author = users.find(u => u.key === vote.data.author_key)}
-								{@const target = users.find(u => u.key === vote.data.target_key)}
-								<tr>
-									<td>
-										<div class="space-y-1">
-											<div class="font-mono text-xs">Key: {vote.key}</div>
-											<div class="font-mono text-xs">Description: {vote.description}</div>
-											<div class="font-mono text-xs">Owner: {vote.owner}</div>
-											<div class="text-xs">Created: {new Date(Number(vote.created_at) / 1_000_000).toLocaleString()}</div>
-											<div class="text-xs">Updated: {new Date(Number(vote.updated_at) / 1_000_000).toLocaleString()}</div>
-											<div class="text-xs">Version: {vote.version}</div>
-										</div>
-									</td>
-									<td>
-										<div class="space-y-1">
-											<div>Value: {vote.data.value > 0 ? '✅ +1' : '❌ -1'}</div>
-											<div>Weight: {vote.data.weight.toFixed(2)}</div>
-											<div class="text-xs">Created: {new Date(Number(vote.data.created_at) / 1_000_000).toLocaleString()}</div>
-										</div>
-									</td>
-									<td>
-										<div class="space-y-1">
-											<div>Author: {author ? `${author.data.display_name} (${author.data.username})` : 'Unknown'}</div>
-											<div>Target: {target ? `${target.data.display_name} (${target.data.username})` : 'Unknown'}</div>
-											<div class="font-mono text-xs">Author Key: {vote.data.author_key}</div>
-											<div class="font-mono text-xs">Target Key: {vote.data.target_key}</div>
-											<div class="font-mono text-xs">Tag Key: {vote.data.tag_key}</div>
-										</div>
-									</td>
-									<td>
-										<div class="flex gap-2 justify-center">
-											<button
-												on:click={() => deleteVote(vote.key)}
-												class="btn btn-xs btn-error"
-												title="Delete vote"
-											>
-												❌
-											</button>
-										</div>
-									</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-			</div>
 		{/if}
 
 		<!-- Create/Update User Form -->
@@ -1085,6 +914,88 @@
 			{/if}
 		</div>
 
+		<!-- Users with Reputation -->
+		<div class="mb-8">
+			<h2 class="text-xl mb-4">Users and Their Reputation</h2>
+			<div class="overflow-x-auto">
+				<table class="table table-zebra w-full">
+					<thead>
+						<tr>
+							<th>Document Info</th>
+							<th>User Data</th>
+							<th>Reputation Data</th>
+							<th>Actions</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each users as user}
+							{@const reputation = userReputations[user.key] ?? {
+								total_basis_reputation: 0,
+								total_voting_rewards_reputation: 0,
+								last_known_effective_reputation: 0,
+								vote_weight: 0,
+								has_voting_power: false,
+								last_calculation: BigInt(0)
+							}}
+							<tr>
+								<td>
+									<div class="space-y-1">
+										<div class="font-mono text-xs">Key: {user.key}</div>
+										<div class="font-mono text-xs">Description: {user.description}</div>
+										<div class="font-mono text-xs">Owner: {user.owner}</div>
+										<div class="text-xs">Created: {new Date(Number(user.created_at) / 1_000_000).toLocaleString()}</div>
+										<div class="text-xs">Updated: {new Date(Number(user.updated_at) / 1_000_000).toLocaleString()}</div>
+										<div class="text-xs">Version: {user.version}</div>
+									</div>
+								</td>
+								<td>
+									<div class="space-y-1">
+										<div class="font-bold">{user.data.username}</div>
+										<div class="text-sm opacity-75">{user.data.display_name}</div>
+									</div>
+								</td>
+								<td>
+									<div class="space-y-1">
+										<div>Base Rep: {reputation.total_basis_reputation.toFixed(2)}</div>
+										<div>Vote Rep: {reputation.total_voting_rewards_reputation.toFixed(2)}</div>
+										<div>Total Rep: {reputation.last_known_effective_reputation.toFixed(2)}</div>
+										<div>Weight: {(reputation.vote_weight * 100).toFixed(1)}%</div>
+										<div>Status: {reputation.has_voting_power ? 'Active' : 'Inactive'}</div>
+										<div class="text-xs">Last Calc: {new Date(Number(reputation.last_calculation) / 1_000_000).toLocaleString()}</div>
+									</div>
+								</td>
+								<td>
+									<div class="flex gap-2 justify-center">
+										<button
+											class="btn btn-xs btn-primary"
+											on:click={() => recalculateReputation(user.key, selectedTag)}
+											title="Recalculate reputation"
+										>
+											🔄
+										</button>
+										<button
+											class="btn btn-xs btn-info"
+											on:click={() => editUser(user)}
+											title="Edit user"
+										>
+											✏️
+										</button>
+										<button
+											class="btn btn-xs btn-error"
+											on:click={() => deleteUser(user.key)}
+											title="Delete user"
+										>
+											❌
+										</button>
+									</div>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		</div>
+
 		<!-- Create Vote Form -->
 		<div class="mb-8" id="voteForm">
 			<h2 class="text-xl mb-4">Create New Vote</h2>
@@ -1093,7 +1004,7 @@
 					<label for="author" class="block">Author (User Key):</label>
 					<select
 						id="author"
-						bind:value={newVote.author_key}
+						bind:value={newVote.data.author_key}
 						class="border p-2 w-full"
 					>
 						<option value="">Select Author</option>
@@ -1109,7 +1020,7 @@
 					<label for="target" class="block">Target (User Key):</label>
 					<select
 						id="target"
-						bind:value={newVote.target_key}
+						bind:value={newVote.data.target_key}
 						class="border p-2 w-full"
 					>
 						<option value="">Select Target</option>
@@ -1125,8 +1036,9 @@
 					<label for="tag" class="block">Tag:</label>
 					<select
 						id="tag"
-						bind:value={newVote.tag_key}
+						bind:value={newVote.data.tag_key}
 						class="border p-2 w-full"
+						required
 					>
 						<option value="">Select Tag</option>
 						{#each tags as tag}
@@ -1144,7 +1056,7 @@
 							<label class="inline-flex items-center">
 								<input
 									type="radio"
-									bind:group={newVote.value}
+									bind:group={newVote.data.value}
 									value={1}
 									class="mr-2"
 								/>
@@ -1153,7 +1065,7 @@
 							<label class="inline-flex items-center">
 								<input
 									type="radio"
-									bind:group={newVote.value}
+									bind:group={newVote.data.value}
 									value={-1}
 									class="mr-2"
 								/>
@@ -1169,6 +1081,69 @@
 					</button>
 				</div>
 			</form>
+		</div>
+
+		<!-- All Votes -->
+		<div class="mb-8">
+			<h2 class="text-xl mb-4">{selectedTag ? 'Votes in Selected Tag' : 'All Votes'}</h2>
+			<div class="overflow-x-auto">
+				<table class="table table-zebra w-full">
+					<thead>
+						<tr>
+							<th>Document Info</th>
+							<th>Vote Data</th>
+							<th>References</th>
+							<th>Actions</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each votes.filter(v => !selectedTag || v.data.tag_key === selectedTag) as vote}
+							{@const author = users.find(u => u.key === vote.data.author_key)}
+							{@const target = users.find(u => u.key === vote.data.target_key)}
+							{@const tag = tags.find(t => t.key === vote.data.tag_key)}
+							<tr>
+								<td>
+									<div class="space-y-1">
+										<div class="font-mono text-xs">Key: {vote.key}</div>
+										<div class="font-mono text-xs">Description: {vote.description}</div>
+										<div class="font-mono text-xs">Owner: {vote.owner}</div>
+										<div class="text-xs">Created: {new Date(Number(vote.created_at) / 1_000_000).toLocaleString()}</div>
+										<div class="text-xs">Updated: {new Date(Number(vote.updated_at) / 1_000_000).toLocaleString()}</div>
+										<div class="text-xs">Version: {vote.version}</div>
+									</div>
+								</td>
+								<td>
+									<div class="space-y-1">
+										<div>Value: {vote.data.value > 0 ? '✅ +1' : '❌ -1'}</div>
+										<div>Weight: {vote.data.weight.toFixed(2)}</div>
+									</div>
+								</td>
+								<td>
+									<div class="space-y-1">
+										<div>Author: {author ? `${author.data.display_name} (${author.data.username})` : 'Unknown'}</div>
+										<div>Target: {target ? `${target.data.display_name} (${target.data.username})` : 'Unknown'}</div>
+										<div>Tag: {tag ? tag.data.name : 'No Tag'}</div>
+										<div class="font-mono text-xs">Author Key: {vote.data.author_key}</div>
+										<div class="font-mono text-xs">Target Key: {vote.data.target_key}</div>
+										<div class="font-mono text-xs">Tag Key: {vote.data.tag_key || 'None'}</div>
+									</div>
+								</td>
+								<td>
+									<div class="flex gap-2 justify-center">
+										<button
+											on:click={() => deleteVote(vote.key)}
+											class="btn btn-xs btn-error"
+											title="Delete vote"
+										>
+											❌
+										</button>
+									</div>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
 		</div>
 
 		<!-- Create/Update Tag Form -->

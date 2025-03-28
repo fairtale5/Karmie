@@ -1,5 +1,5 @@
-use crate::utils::structs::{User, UserData, Tag, TagData, Vote, VoteData, Reputation, ReputationData};
 use candid::Principal;
+use crate::utils::structs::{User, UserData, Tag, TagData, Vote, VoteData, Reputation, ReputationData};
 use junobuild_satellite::get_doc;
 use regex::Regex;
 use lazy_static::lazy_static;
@@ -158,7 +158,6 @@ pub fn create_tag_description(tag: &Tag, owner: &Principal, is_playground: bool)
 ///     tag_key: String    // Reference to Tags collection
 ///     value: f64,        // Vote value (+1 or -1)
 ///     weight: f64,       // Vote weight (0.0 to 1.0)
-///     created_at: u64    // Vote timestamp
 /// }
 /// ```
 /// 
@@ -253,13 +252,20 @@ pub async fn validate_description(collection: &str, description: &str, document_
         }
 
         // For other reference fields, verify the referenced document exists
+        // This section validates that any referenced documents (users, tags) actually exist
+        // in their respective collections before allowing the reference to be created.
         let referenced_collection = match *field_name {
-            "owner" | "target" => "users",
-            "tag" => "tags",
-            _ => continue
+            "owner" | "target" => "users",  // References to users (either as owner or target)
+            "tag" => "tags",               // References to tag documents
+            _ => continue                  // Skip validation for non-reference fields
         };
 
-        if let None = get_doc(field_value.to_string(), referenced_collection.to_string()) {
+        // Verify the referenced document exists in its collection
+        // Parameters for get_doc:
+        // 1. document_key: The unique identifier of the document we're looking for
+        // 2. collection_name: The collection where we expect to find the document
+        // Example: For a tag reference, we look for the tag_id in the "tags" collection
+        if let None = junobuild_satellite::get_doc(field_value.to_string(), referenced_collection.to_string()) {
             return Err(format!(
                 "Referenced {} document not found: {}",
                 referenced_collection, field_value
@@ -381,7 +387,6 @@ mod tests {
                 tag_key: "tag_123".to_string(),
                 value: 1.0,               // Not relevant for this test
                 weight: 1.0,              // Not relevant for this test
-                created_at: 0,            // Not relevant for this test
             },
         };
         let owner = Principal::from_text("2vxsx-fae").unwrap();
