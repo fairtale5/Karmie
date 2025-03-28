@@ -262,10 +262,13 @@ pub async fn validate_description(collection: &str, description: &str, document_
 
         // Verify the referenced document exists in its collection
         // Parameters for get_doc:
-        // 1. document_key: The unique identifier of the document we're looking for
-        // 2. collection_name: The collection where we expect to find the document
+        // 1. collection_name: The collection where we expect to find the document
+        // 2. document_key: The unique identifier of the document we're looking for
         // Example: For a tag reference, we look for the tag_id in the "tags" collection
-        if let None = junobuild_satellite::get_doc(field_value.to_string(), referenced_collection.to_string()) {
+        if let None = junobuild_satellite::get_doc(
+            referenced_collection.to_string(),  // Collection name first
+            field_value.to_string(),            // Document key second
+        ) {
             return Err(format!(
                 "Referenced {} document not found: {}",
                 referenced_collection, field_value

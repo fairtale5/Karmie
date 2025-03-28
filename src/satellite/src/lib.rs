@@ -254,7 +254,7 @@ async fn process_vote(context: &OnSetDocContext) -> Result<(), String> {
     log_info(&format!(
         "[process_vote] Processing new vote: author={} voted {} on target={} in tag={}",
         vote_data.author_key,
-        if vote_data.value > 0 { "up" } else { "down" },
+        vote_data.value,
         vote_data.target_key,
         vote_data.tag_key
     ));
@@ -546,7 +546,7 @@ fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
     // - Maintain consistent reputation calculations
     // - Keep the system simple and understandable
     // - Enable clear upvote/downvote UI representation
-    if vote_data.value < -1 || vote_data.value > 1 {
+    if vote_data.value < -1.0 || vote_data.value > 1.0 {
         let err_msg = format!(
             "Vote value must be -1, 0, or 1 (got: {})",
             vote_data.value
@@ -612,7 +612,7 @@ fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
     log_info(&format!(
         "[validate_vote_document] Vote validation passed: author={} voted {} on target={} in tag={}",
         vote_data.author_key,
-        if vote_data.value > 0 { "up" } else { "down" },
+        vote_data.value,
         vote_data.target_key,
         vote_data.tag_key
     ));
@@ -738,33 +738,43 @@ fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
 
 /// Validates a reputation document before creation or update
 /// 
-/// This function performs comprehensive validation of reputation documents:
-/// 1. Decodes and validates the basic reputation data structure
-/// 2. Validates description format using DocumentDescription helper
-/// 3. Validates total basis reputation (from received votes)
-/// 4. Validates voting rewards reputation (must be non-negative)
-/// 5. Validates effective reputation calculation consistency
-/// 6. Validates vote weight constraints (between 0.0 and 1.0)
+/// This function performs validation of reputation documents:
+/// 1. Verifies collection name is "reputations"
+/// 2. Decodes and validates the basic reputation data structure
+/// 3. Validates description format using DocumentDescription helper
+/// 4. Validates field constraints (voting rewards non-negative, vote weight in range)
 /// 
 /// # Arguments
 /// * `context` - The validation context containing:
 ///   - caller: The Principal ID of the user making the request
 ///   - collection: Must be "reputations"
 ///   - key: The document key (nanoid-generated)
-///   - data: The proposed document data
+///   - data.data.proposed.data: The binary data of the proposed document
+///   - data.data.proposed.description: The description field
 /// 
 /// # Returns
 /// * `Result<(), String>` - Ok if validation passes, Err with detailed message if it fails
 fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), String> {
+    // Step 1: Verify collection name
+    // This ensures we're only validating documents in the correct collection
+    if context.data.collection != "reputations" {
+        let err_msg = format!(
+            "Invalid collection: expected 'reputations', got '{}'",
+            context.data.collection
+        );
+        log_error(&format!("[validate_reputation_document] {}", err_msg));
+        return Err(err_msg);
+    }
+
     log_debug(&format!(
         "[validate_reputation_document] Validating reputation document: key={}",
         context.data.key
     ));
 
-    // Step 1: Decode and validate the basic reputation data structure
+    // Step 2: Decode and validate the basic reputation data structure
     // This ensures the document contains all required fields in the correct format
     // and that we can properly access the reputation data for further validation
-    let reputation: Reputation = decode_doc_data(&context.data.data.proposed.data)
+    let rep_data: ReputationData = decode_doc_data(&context.data.data.proposed.data)
         .map_err(|e| {
             log_error(&format!(
                 "[validate_reputation_document] Failed to decode reputation data: {}",
@@ -773,18 +783,18 @@ fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), Str
             format!("Failed to decode reputation data: {}", e)
         })?;
 
-    // Step 2: Create and validate description using DocumentDescription helper
+    // Step 3: Create and validate description using DocumentDescription helper
     // This ensures the description follows our standardized format:
     // - Playground mode: [owner:{user_key}][tag:{tag_key}]
     // - Production mode: [owner:{principal_id}][tag:{tag_key}]
     let mut desc = DocumentDescription::new();
     let caller_string = context.caller.to_string(); // Create a string that lives for the duration of the function
     desc.add_owner(if IS_PLAYGROUND {
-        &reputation.data.user_key
+        &rep_data.user_key
     } else {
         &caller_string
     })
-    .add_field("tag", &reputation.data.tag_key);
+    .add_field("tag", &rep_data.tag_key);
 
     let expected_description = desc.build();
 
@@ -804,89 +814,30 @@ fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), Str
         return Err(err_msg.to_string());
     }
 
-    // Step 3: Basis Reputation Calculation
-    // -----------------------------------
-    // Calculate total basis reputation from all received votes
-    // For each vote, calculate its contribution by multiplying:
-    // - Base value (+1 for positive, -1 for negative)
-    // - Author's effective reputation
-    // - Author's vote weight
-    // - Time-based multiplier from tag rules
-    // Then sum all vote contributions to get total_basis_reputation
-    // This weighted sum ensures:
-    // - More reputable authors have more influence
-    // - Recent votes count more than old ones
-    // - Authors can't dominate by spamming votes
-    // - The final score reflects community consensus
-    let mut total_basis_reputation = 0.0;
+    // Step 4: Validate field constraints
+    // Check that the values are within acceptable ranges
 
-    // Step 4: Trust Status Check
-    // -------------------------
-    // Compare total_basis_reputation against tag's minimum threshold
-    // to determine if user has voting power. This check:
-    // - Ensures users meet minimum reputation requirements
-    // - Prevents new/untrusted users from affecting scores
-    // - Helps maintain system integrity
-    // - Creates incentive to earn community trust
-    // - Allows for tag-specific trust thresholds
-    // - Enables graduated voting privileges
-    // - Helps prevent manipulation by new accounts
-    let has_voting_power = total_basis_reputation >= tag_data.reputation_threshold;
-
-    // Step 5: Validate total basis reputation
-    // Basis reputation (from received votes) can be negative or positive:
-    // - Positive: User has received more upvotes or higher-weighted upvotes
-    // - Negative: User has received more downvotes or higher-weighted downvotes
-    // - This is the raw vote-based reputation before voting rewards
+    // 4.1: Log total_basis_reputation (can be negative or positive)
     log_debug(&format!(
         "[validate_reputation_document] Total basis reputation: {}",
-        total_basis_reputation
+        rep_data.total_basis_reputation
     ));
 
-    // Step 6: Validate voting rewards constraints
-    // Voting rewards must be non-negative because:
-    // - They represent participation rewards
-    // - They help bootstrap new communities
-    // - They incentivize active participation
-    if reputation.data.total_voting_rewards_reputation < 0.0 {
+    // 4.2: Validate voting rewards (must be non-negative)
+    if rep_data.total_voting_rewards_reputation < 0.0 {
         let err_msg = format!(
             "Total voting rewards reputation cannot be negative (got: {})",
-            reputation.data.total_voting_rewards_reputation
+            rep_data.total_voting_rewards_reputation
         );
         log_error(&format!("[validate_reputation_document] {}", err_msg));
         return Err(err_msg);
     }
 
-    // Step 7: Validate effective reputation calculation consistency
-    // The effective reputation:
-    // - Can be negative (when heavily downvoted)
-    // - Should match basis + rewards when above threshold
-    // - Should match only basis when below threshold
-    // - Is used to determine voting power and privileges
-    let expected_effective = if has_voting_power {
-        total_basis_reputation + reputation.data.total_voting_rewards_reputation
-    } else {
-        total_basis_reputation
-    };
-
-    if (reputation.data.last_known_effective_reputation - expected_effective).abs() > 0.000001 {
-        let err_msg = format!(
-            "Effective reputation calculation mismatch. Expected: {}, Got: {}",
-            expected_effective,
-            reputation.data.last_known_effective_reputation
-        );
-        log_error(&format!("[validate_reputation_document] {}", err_msg));
-        return Err(err_msg);
-    }
-
-    // Step 8: Validate vote weight constraints
-    // Vote weight must be between 0.0 and 1.0 to:
-    // - weight represents how much that vote is part of the user's total 100% votes
-    // - it is a percentage (0-1)
-    if reputation.data.vote_weight.value() < 0.0 || reputation.data.vote_weight.value() > 1.0 {
+    // 4.3: Validate vote weight (must be between 0.0 and 1.0)
+    if rep_data.vote_weight.value() < 0.0 || rep_data.vote_weight.value() > 1.0 {
         let err_msg = format!(
             "Vote weight must be between 0.0 and 1.0 (got: {})",
-            reputation.data.vote_weight.value()
+            rep_data.vote_weight.value()
         );
         log_error(&format!("[validate_reputation_document] {}", err_msg));
         return Err(err_msg);
@@ -1095,7 +1046,10 @@ async fn get_user_reputation(user_key: String, tag_key: String) -> Result<f64, S
 
     // Check if user has reputation in this tag
     let reputation_key = format!("{}_{}", user_key, tag_key);
-    let reputation_doc = junobuild_satellite::get_doc(reputation_key, String::from("reputations"));
+    let reputation_doc = junobuild_satellite::get_doc(
+        String::from("reputations"),  // Collection name first
+        reputation_key,               // Document key second
+    );
     
     // Match on the result instead of using map_err
     match reputation_doc {
@@ -1153,7 +1107,10 @@ async fn get_user_reputation_full(user_key: String, tag_key: String) -> Result<R
 
     // Check if user has reputation in this tag
     let reputation_key = format!("{}_{}", user_key, tag_key);
-    let reputation_doc = junobuild_satellite::get_doc(reputation_key, String::from("reputations"));
+    let reputation_doc = junobuild_satellite::get_doc(
+        String::from("reputations"),  // Collection name first
+        reputation_key,               // Document key second
+    );
     
     // Match on the result instead of using map_err
     match reputation_doc {

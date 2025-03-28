@@ -108,12 +108,15 @@
 		total_voting_rewards_reputation: number;
 		last_known_effective_reputation: number;
 		last_calculation: bigint;
-		vote_weight: number;
+		vote_weight: { _value: number } | number;
 		has_voting_power: boolean;
 	};
 
 	// Update the userReputations type
 	let userReputations: Record<string, ReputationData> = {};
+
+	// Add a variable to store reputation documents
+	let reputationDocs: Doc<ReputationData>[] = [];
 
 	// Function to load user reputations for selected tag
 	async function loadUserReputations(tagKey: string) {
@@ -227,6 +230,7 @@
 				loadUsers();
 				loadVotes();
 				loadTags();
+				loadReputations();
 			}
 		});
 
@@ -283,6 +287,19 @@
 			tags = tagsList.items;
 		} catch (error) {
 			console.error('Error loading tags:', error);
+		}
+	}
+
+	// Load reputation documents
+	async function loadReputations() {
+		try {
+			const reputationsList = await listDocs<ReputationData>({
+				collection: COLLECTIONS.REPUTATIONS
+			});
+			console.log('Loaded reputation documents:', reputationsList.items);
+			reputationDocs = reputationsList.items;
+		} catch (error) {
+			console.error('Error loading reputation documents:', error);
 		}
 	}
 
@@ -742,6 +759,44 @@
 		} catch (e) {
 			error = `Error recalculating reputation: ${e}`;
 			console.error('[Admin] Recalculation error:', e);
+		}
+	}
+
+	// Add a function to delete reputation documents
+	async function deleteReputationDoc(key: string) {
+		if (!confirm('Are you sure you want to delete this reputation document?')) {
+			return;
+		}
+
+		try {
+			error = '';
+			success = '';
+
+			// Get the current version of the document
+			const existingDoc = await getDoc({
+				collection: COLLECTIONS.REPUTATIONS,
+				key
+			});
+
+			if (!existingDoc) {
+				error = 'Reputation document not found';
+				return;
+			}
+
+			await deleteDoc({
+				collection: COLLECTIONS.REPUTATIONS,
+				doc: {
+					key,
+					data: {},
+					version: existingDoc.version
+				}
+			});
+
+			success = 'Reputation document deleted successfully!';
+			await loadReputations();
+		} catch (e) {
+			console.error('Error deleting reputation document:', e);
+			error = e instanceof Error ? e.message : 'Failed to delete reputation document';
 		}
 	}
 </script>
@@ -1382,6 +1437,68 @@
 											on:click={() => deleteTag(tag.key)}
 											class="text-red-500 hover:text-red-700"
 											title="Delete tag"
+										>
+											❌
+										</button>
+									</div>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+		<!-- Reputation Documents -->
+		<div class="mt-8">
+			<h2 class="text-xl mb-4">Reputation Documents</h2>
+			<div class="overflow-x-auto">
+				<table class="table table-zebra w-full">
+					<thead>
+						<tr>
+							<th>Document Info</th>
+							<th>Reputation Data</th>
+							<th>Actions</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each reputationDocs as doc}
+							<tr>
+								<td>
+									<div class="space-y-1">
+										<div class="font-mono text-xs">Key: {doc.key}</div>
+										<div class="font-mono text-xs">Description: {doc.description}</div>
+										<div class="font-mono text-xs">Owner: {doc.owner}</div>
+										<div class="text-xs">Created: {new Date(Number(doc.created_at) / 1_000_000).toLocaleString()}</div>
+										<div class="text-xs">Updated: {new Date(Number(doc.updated_at) / 1_000_000).toLocaleString()}</div>
+										<div class="text-xs">Version: {doc.version}</div>
+									</div>
+								</td>
+								<td>
+									<div class="space-y-1">
+										<div>User Key: {doc.data.user_key}</div>
+										<div>Tag Key: {doc.data.tag_key}</div>
+										<div>Base Rep: {doc.data.total_basis_reputation.toFixed(2)}</div>
+										<div>Vote Rep: {doc.data.total_voting_rewards_reputation.toFixed(2)}</div>
+										<div>Total Rep: {doc.data.last_known_effective_reputation.toFixed(2)}</div>
+										<div>Vote Weight: {JSON.stringify(doc.data.vote_weight)}</div>
+										<div>Status: {doc.data.has_voting_power ? 'Active' : 'Inactive'}</div>
+										<div class="text-xs">Last Calc: {new Date(Number(doc.data.last_calculation) / 1_000_000).toLocaleString()}</div>
+									</div>
+								</td>
+								<td>
+									<div class="flex gap-2 justify-center">
+										<button
+											on:click={() => recalculateReputation(doc.data.user_key, doc.data.tag_key)}
+											class="btn btn-xs btn-primary"
+											title="Recalculate reputation"
+										>
+											🔄
+										</button>
+										<button
+											on:click={() => deleteReputationDoc(doc.key)}
+											class="btn btn-xs btn-error"
+											title="Delete document"
 										>
 											❌
 										</button>
