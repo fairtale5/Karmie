@@ -444,3 +444,149 @@ Example: `[owner:user_123],[tag:tag_789]`
    - Intuitive mapping to underlying data structures
    - Self-documenting format
    - Easy to debug and understand
+
+## Description Field Pattern Matching
+
+The `ListMatcher` in Juno provides powerful pattern matching capabilities for description fields. This is particularly useful when querying documents that need to match multiple criteria.
+
+### Basic Pattern Matching
+
+```rust
+// Simple single-field match
+let results = list_docs_store(
+    caller,
+    String::from("votes"),
+    ListParams {
+        matcher: Some(ListMatcher {
+            description: Some(format!("[tag:{}]", tag_key)),
+            ..Default::default()
+        }),
+        ..Default::default()
+    },
+);
+```
+
+### Multiple Field Matching (AND Logic)
+
+To match multiple fields where ALL conditions must be met:
+
+```rust
+// Match documents where BOTH owner AND tag match
+let results = list_docs_store(
+    caller,
+    String::from("reputations"),
+    ListParams {
+        matcher: Some(ListMatcher {
+            // Will match description containing both [owner:123] AND [tag:456]
+            description: Some(format!("[owner:{}][tag:{}]", user_key, tag_key)),
+            ..Default::default()
+        }),
+        ..Default::default()
+    },
+);
+```
+
+### Multiple Field Matching (OR Logic)
+
+To match multiple fields where ANY condition can be met:
+
+```rust
+// Match documents where EITHER owner OR tag matches
+let results = list_docs_store(
+    caller,
+    String::from("reputations"),
+    ListParams {
+        matcher: Some(ListMatcher {
+            // Will match description containing EITHER [owner:123] OR [tag:456]
+            description: Some(format!("[owner:{}]|[tag:{}]", user_key, tag_key)),
+            ..Default::default()
+        }),
+        ..Default::default()
+    },
+);
+```
+
+### Multiple Field Matching (AND Logic with Regex)
+
+To match multiple fields where ALL conditions must be met, using regex positive lookaheads:
+
+```rust
+// Match documents where BOTH owner AND tag match
+let results = list_docs_store(
+    caller,
+    String::from("reputations"),
+    ListParams {
+        matcher: Some(ListMatcher {
+            // Will match description containing BOTH [owner:123] AND [tag:456]
+            // Uses regex positive lookaheads (?=.*pattern) to ensure both strings are present
+            description: Some(format!("(?=.*'[owner:{}]')(?=.*'[tag:{}]')", user_key, tag_key)),
+            ..Default::default()
+        }),
+        ..Default::default()
+    },
+);
+```
+
+### Benefits of ListMatcher
+
+1. **Database-Level Filtering**: 
+   - Pattern matching happens at the database level
+   - More efficient than filtering in application code
+   - Reduces data transfer
+
+2. **Flexible Matching**:
+   - Support for both AND/OR operations
+   - Can match partial patterns
+   - Order-independent matching
+
+3. **Clear Intent**:
+   - Pattern matching logic is explicit
+   - Easy to understand and maintain
+   - Self-documenting queries
+
+4. **Performance**:
+   - Optimized for description field queries
+   - Efficient for large datasets
+   - Minimizes memory usage
+
+### Best Practices
+
+1. **Use Proper Formatting**:
+   ```rust
+   // Good: Clear field boundaries
+   format!("[owner:{}][tag:{}]", user_key, tag_key)
+   
+   // Bad: Unclear boundaries
+   format!("owner:{} tag:{}", user_key, tag_key)
+   ```
+
+2. **Choose Appropriate Logic**:
+   ```rust
+   // AND logic: Both conditions must match
+   format!("[owner:{}][tag:{}]", user_key, tag_key)
+   
+   // OR logic: Either condition can match
+   format!("[owner:{}]|[tag:{}]", user_key, tag_key)
+   ```
+
+3. **Consider Access Control**:
+   ```rust
+   // System-level operations
+   list_docs_store(ic_cdk::id(), ...)
+   
+   // User-level operations
+   list_docs_store(ic_cdk::caller(), ...)
+   ```
+
+4. **Handle Results Appropriately**:
+   ```rust
+   // Use first() when expecting single result
+   if let Some((doc_key, doc)) = results.items.first() {
+       // Process single document
+   }
+   
+   // Iterate when expecting multiple results
+   for (doc_key, doc) in results.items {
+       // Process each document
+   }
+   ```

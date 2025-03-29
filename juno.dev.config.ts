@@ -62,7 +62,7 @@ export default defineDevConfig(() => ({
 				{
 					collection: "reputations",
 					read: "public" as PermissionText,
-					write: "controllers" as PermissionText,
+					write: "public" as PermissionText,
 					memory: "stable" as MemoryText,
 					mutablePermissions: true
 				}

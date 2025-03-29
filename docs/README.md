@@ -53,6 +53,47 @@ This directory contains comprehensive documentation for the Reputator project, o
 - If you encounter issues, check the [Troubleshooting Guide](/docs/core/juno_index.md#troubleshooting)
 - For detailed setup instructions, see [Juno Index](/docs/core/juno_index.md)
 
+## WSL Development Environment
+
+### Fixing WSL Permissions
+
+If you encounter permission issues in WSL (common when files appear as "read-only" or have incorrect permissions), follow these steps:
+
+1. **Configure WSL Mount Options**
+   Create or edit `/etc/wsl.conf`:
+   ```ini
+   [automount]
+   enabled = true
+   options = "metadata,umask=22,fmask=11"
+   ```
+
+   This configuration:
+   - Enables metadata for persisting WSL file permissions
+   - Sets umask to mask out group/others write bits (files: 0644, directories: 0755)
+   - Sets fmask to mask out group/others execute bits for files
+
+2. **Fix Default Permissions**
+   Add to your `~/.profile`:
+   ```bash
+   # Fix WSL umask if not set properly
+   if [[ "$(umask)" = "0000" ]]; then
+     umask 0022
+   fi
+   ```
+
+3. **Apply Changes**
+   ```bash
+   # Restart WSL to apply changes
+   wsl --shutdown
+   # Then restart your terminal
+   ```
+
+These settings ensure:
+- Files have permissions 0644 (rw-r--r--)
+- Directories have permissions 0755 (rwxr-xr-x)
+- New files maintain correct permissions
+- Git and other tools work correctly with file permissions
+
 ## Documentation Guidelines
 
 ### Code Documentation Principles
@@ -443,300 +484,4 @@ When updating documentation:
    - Version tagging
    - History maintenance
 
-2. **Cross-References** (`#documentation`):
-   - Relative links
-   - Path validation
-   - Link maintenance
-   - Reference checking
-
-3. **Code Examples** (`#code-examples`):
-   - Up-to-date code
-   - Tested snippets
-   - Clear comments
-   - Error handling
-
-4. **API Documentation** (`#api-documentation`):
-   - Complete coverage
-   - Example usage
-   - Parameter details
-   - Return values
-
-5. **Formatting** (`#formatting`):
-   - Markdown standards
-   - Consistent style
-   - Clear structure
-   - Readable layout
-
-6. **Security Headers** (`#content-security-policy-csp`): 
-   - CSP implementation
-   - HTTP headers
-   - iframe protection
-   - Transport security
-
-## Memory Management Guidelines (`/juno/docs/miscellaneous/memory.md`)
-
-1. **Memory Types**:
-   - Heap Memory (1GB max)
-     - Fast read/write operations
-     - Best for small datasets
-     - Requires serialization during upgrades
-     - Used for app bundles and assets
-   - Stable Memory (400GB max)
-     - Larger storage capacity
-     - Slower but more resilient
-     - Persists through upgrades
-     - Used for user data and analytics
-
-2. **Usage Patterns** (`/juno/docs/miscellaneous/memory.md#recommendations`):
-   - Choose heap for frequently accessed data
-   - Use stable for large datasets
-   - Consider upgrade implications
-   - Monitor memory consumption
-
-3. **Performance Optimization** (`/juno/docs/miscellaneous/memory.md#in-a-nutshell`):
-   - Balance memory types
-   - Implement efficient data structures
-   - Monitor memory limits
-   - Plan for scalability
-
-4. **Upgrade Considerations** (`/juno/docs/miscellaneous/memory.md#default-usage`):
-   - Handle serialization properly
-   - Test memory migration
-   - Monitor upgrade impact
-   - Plan for data growth
-
-## SvelteKit-Specific Guidelines (`/juno/docs/guides/sveltekit.mdx`)
-
-1. **Static Generation** (`/juno/docs/guides/sveltekit.mdx#static-site-generation`):
-   - Use `@sveltejs/adapter-static` for deployment
-   - Configure prerendering in `+layout.js`
-   - Avoid server-side rendering dependencies
-
-2. **Data Management** (`/juno/docs/build/datastore/development.md`):
-   - Use atomic operations for data consistency
-   - Implement version control for updates
-   - Handle concurrent modifications
-   - Use batch operations when appropriate
-
-3. **Authentication Flow** (`/juno/docs/build/authentication/development.md`):
-   - Implement proper error handling
-   - Use state subscription for user management
-   - Configure session timeouts appropriately
-   - Handle authentication interruptions gracefully
-
-4. **Performance Considerations** (`/juno/docs/build/datastore/development.md#set-multiple-documents`):
-   - Use batch operations for multiple documents
-   - Implement proper filtering and pagination
-   - Optimize data queries and updates
-   - Handle state management efficiently
-
-## Serverless Functions Guidelines (`/juno/docs/build/functions/development.md`)
-
-1. **Event Hooks** (`/juno/docs/build/functions/development.md#hooks`):
-   - Document lifecycle events (create, update, delete)
-   - Asset management events
-   - Batch operation handlers
-   - Initialization and upgrade hooks
-
-2. **Assertions and Validation** (`/juno/docs/build/functions/development.md#assertions`):
-   - Pre-operation validation
-   - Custom business logic checks
-   - Security constraints
-   - Data integrity rules
-
-3. **Implementation Patterns** (`/juno/docs/build/functions/development.md#on_set_doc`):
-   - Collection-scoped handlers
-   - Error handling and logging
-   - Asynchronous operations
-   - State management
-
-4. **Development Workflow** (`/juno/docs/build/functions/lifecycle.md`):
-   - Local testing with emulator
-   - Function deployment
-   - Version management
-   - Debugging and monitoring
-
-## Storage Management Guidelines (`/juno/docs/build/storage/development.md`)
-
-1. **Asset Organization** (`/juno/docs/build/storage/collections.md`):
-   - Collection-based file structure
-   - Filename and path conventions
-   - Protected vs public assets
-   - Token-based access control
-
-2. **Upload Patterns** (`/juno/docs/build/storage/development.md#upload-asset`):
-   - File type handling
-   - Custom headers and encoding
-   - Overwrite protection
-   - Error handling
-
-3. **Asset Retrieval** (`/juno/docs/build/storage/development.md#list-assets`):
-   - Filtering and pagination
-   - Timestamp-based queries
-   - Owner-based filtering
-   - Sorting and ordering
-
-4. **Security Considerations** (`/juno/docs/build/storage/development.md#protected-asset`):
-   - Token generation and management
-   - Access control implementation
-   - URL handling and encoding
-   - Asset protection strategies
-
-## Analytics Guidelines (`/juno/docs/build/analytics/development.md`)
-
-1. **Page View Tracking** (`#page-views`):
-   - Automatic setup (`#automatic-tracking`)
-   - Navigation monitoring (`#navigation-events`)
-   - Journey analysis (`#user-journey`)
-   - Privacy settings (`#privacy`)
-
-2. **Custom Events** (`#track-custom-events`):
-   - Event naming (`#event-names`)
-   - Metadata structure (`#metadata`)
-   - Size limits (`#limitations`)
-   - Validation rules (`#validation`)
-
-3. **Performance Monitoring** (`#performance-metrics-with-web-vitals`):
-   - Web Vitals setup (`#key-metrics`)
-   - TTFB metrics (`#time-to-first-byte`)
-   - Layout analysis (`#cumulative-layout-shift`)
-   - Latency tracking (`#interaction-to-next-paint`)
-
-4. **Configuration Options** (`/juno/docs/build/analytics/setup.mdx`):
-   - Initialization (`#init`)
-   - Opt-out settings (`#opting-out`)
-   - Data rules (`#data-collection`)
-   - Customization (`#configuration`)
-
-## Configuration Guidelines (`/juno/docs/miscellaneous/configuration.mdx`)
-
-1. **Project Setup** (`#satellite-configuration`):
-   - File structure (`#config-file`)
-   - Environment setup (`#environments`)
-   - Deploy config (`#deployment`)
-   - Resource setup (`#resources`)
-
-2. **Satellite Configuration** (`#id-or-ids`):
-   - ID setup (`#satellite-id`)
-   - Source config (`#source`)
-   - File handling (`#file-handling`)
-   - Memory config (`#memory-limits`)
-
-3. **Build Settings** (`#predeploy`):
-   - Deploy hooks (`#hooks`)
-   - Asset building (`#assets`)
-   - Test setup (`#testing`)
-   - Environment vars (`#environment-variables`)
-
-4. **Resource Management** (`#maximum-memory-size`):
-   - Memory setup (`#memory-allocation`)
-   - Compute config (`#compute-resources`)
-   - Storage setup (`#storage-limits`)
-   - Auth settings (`#authentication`)
-
-## Collaboration Guidelines (`/juno/docs/miscellaneous/workarounds.md`)
-
-1. **Satellite Transfer** (`#transferring-a-satellite-to-another-account`):
-   - Controller setup (`#add-the-new-controllers`)
-   - Permission config (`#permissions`)
-   - Account setup (`#account-setup`)
-   - Access checks (`#verify-access`)
-
-2. **Team Collaboration** (`#how-to-collaborate-on-the-same-project`):
-   - Identity config (`#create-a-new-identity`)
-   - Controller setup (`#controller-setup`)
-   - Access rules (`#access-management`)
-   - Permission types (`#permission-levels`)
-
-3. **Security Considerations** (`/juno/docs/miscellaneous/best-practices.md#security`):
-   - ID verification (`#identity-verification`)
-   - Controller checks (`#controller-validation`)
-   - Access removal (`#access-revocation`)
-   - Audit setup (`#audit-logging`)
-
-4. **Best Practices** (`#collaboration-best-practices`):
-   - Communication (`#communication`)
-   - Documentation (`#documentation`)
-   - Planning (`#transition-planning`)
-   - Backups (`#backup-procedures`)
-
-## Common Workarounds (`/juno/docs/miscellaneous/workarounds.md`)
-
-1. **Satellite Management** (`#satellite-management`):
-   - Account transfer (`#transferring-a-satellite`)
-   - Controller setup (`#controller-configuration`)
-   - Mission setup (`#mission-control-setup`)
-   - Detachment (`#detachment`)
-
-2. **Identity Sharing** (`#identity-sharing`):
-   - II setup (`#internet-identity-setup`)
-   - Passkey config (`#passkey-management`)
-   - Device setup (`#device-registration`)
-   - Access sync (`#access-coordination`)
-
-3. **Access Control** (`/juno/docs/miscellaneous/controllers.md`):
-   - Permission setup (`#permission-setup`)
-   - Controller config (`#controller-config`)
-   - ID checks (`#identity-checks`)
-   - Security rules (`#security-rules`)
-
-4. **Transition Planning** (`#transition`):
-   - Handover steps (`#handover`)
-   - Access checks (`#access-checks`)
-   - Backup plan (`#backup-plan`)
-   - Doc updates (`#documentation-updates`)
-
-## Dependency Configuration
-
-### Important: Juno Feature Configuration
-
-When configuring Juno dependencies in `Cargo.toml`, follow these guidelines:
-
-1. For `junobuild-satellite`:
-   ```toml
-   junobuild-satellite = { 
-       version = "0.0.22", 
-       default-features = false, 
-       features = ["on_set_doc", "assert_set_doc"] 
-   }
-   ```
-   - Must disable default features with `default-features = false`
-   - Explicitly specify only the features you need
-   - Don't include features you're not using
-
-2. For `junobuild-macros`:
-   ```toml
-   junobuild-macros = { version = "0.0.4" }
-   ```
-   - Do not specify any features
-   - The macros are enabled through the satellite features
-
-3. Other required dependencies:
-   ```toml
-   junobuild-shared = "0.0.24"
-   junobuild-utils = "0.0.4"
-   ```
-
-This configuration ensures that:
-- Only necessary features are included
-- Macro dependencies are properly resolved
-- No conflicts with feature flags
-
-### Common Issues to Avoid
-
-1. Don't enable features in `junobuild-macros` - they are controlled through `junobuild-satellite`
-2. Always disable default features when specifying custom features
-3. Only include the features you actually use in your code
-
-## AI Assistant Notes (`/docs/README.md#ai-assistant-guidelines`)
-
-When suggesting solutions:
-1. Verify Juno/ICP compatibility (`/core/ic_and_juno_api_reference.md`)
-2. Check SvelteKit patterns (`/juno/docs/guides/sveltekit.mdx`)
-3. Follow validation patterns (`/core/data-validation.md`)
-4. Consider blockchain impact (`/core/technical_spec.md#performance`)
-5. Alternative approaches must:
-   - Match SvelteKit/Juno/ICP (`/implementation/juno_integration.md`)
-   - Improve patterns (`/core/technical_spec.md#patterns`)
-   - Maintain security (`/core/data-validation.md#security`)
-   - Follow documentation (`
+2. **Cross-References** (`

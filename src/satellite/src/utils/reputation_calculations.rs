@@ -1,4 +1,4 @@
-use junobuild_satellite::{list_docs, set_doc_store, get_doc};
+use junobuild_satellite::{list_docs, set_doc_store, get_doc, list_docs_store};
 use junobuild_shared::types::list::{ListMatcher, ListParams};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -6,7 +6,7 @@ use junobuild_utils::{encode_doc_data, decode_doc_data};
 use junobuild_satellite::SetDoc;
 use crate::utils::logging::{log_error, log_warn, log_info, log_debug};
 use crate::utils::time::{calculate_months_between, get_period_for_timestamp};
-use nanoid::nanoid;
+use ic_cdk;
 
 // Import our data structures
 use crate::utils::structs::{
@@ -203,13 +203,14 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
     // -----------------------
     log_debug(&format!("[calculate_and_store_vote_weight] Step 2: Querying votes by user={} in tag={}", user_key, tag_key));
     
-    // Create properly formatted description using the DocumentDescription helper
+    // To query the votes, we need to create properly formatted description 
+    // using the DocumentDescription helper
     let mut desc = crate::utils::description_helpers::DocumentDescription::new();
     desc.add_owner(user_key)
         .add_field("tag", tag_key);
     let description_filter = desc.build();
     
-    let results = list_docs(
+    let user_votes_results = list_docs(
         String::from("votes"),
         ListParams {
             matcher: Some(ListMatcher {
@@ -219,13 +220,13 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
             ..Default::default()
         },
     );
-    log_debug(&format!("[calculate_and_store_vote_weight] Found {} votes by user", results.items.len()));
+    log_debug(&format!("[calculate_and_store_vote_weight] Found {} votes by user", user_votes_results.items.len()));
 
     // Step 3: Calculate Total Weighted Votes
     // ------------------------------------
     log_debug(&format!("[calculate_and_store_vote_weight] Step 3: Calculating total weighted votes"));
     let mut total_weighted_votes = 0.0;
-    for (_, doc) in results.items {
+    for (_, doc) in user_votes_results.items {
         // Decode vote data from binary format
         let vote_data: VoteData = decode_doc_data(&doc.data)
             .map_err(|e| {
@@ -274,81 +275,53 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
     // -------------------------------------
     log_debug(&format!("[calculate_and_store_vote_weight] Step 5: Getting existing reputation document"));
     
-    // Create properly formatted description for reputation document query
-    let mut rep_desc = crate::utils::description_helpers::DocumentDescription::new();
-    rep_desc.add_owner(user_key)
-           .add_field("tag", tag_key);
-    let rep_filter = rep_desc.build();
-    log_debug(&format!("[calculate_and_store_vote_weight] Searching for reputation with description filter: '{}'", rep_filter));
-    
-    // Also try searching directly by document key
-    let doc_key = format!("rep_{}_{}", user_key, tag_key);
-    log_debug(&format!("[calculate_and_store_vote_weight] Also searching by document key: '{}'", doc_key));
-    
-    // First try getting the document directly by key (most reliable)
-    let direct_doc = get_doc(String::from("reputations"), doc_key.clone());
-    if let Some(doc) = &direct_doc {
-        log_debug(&format!("[calculate_and_store_vote_weight] DIRECT CHECK: Found document by key with version={:?}", doc.version));
-        if let Some(desc) = &doc.description {
-            log_debug(&format!("[calculate_and_store_vote_weight] DIRECT CHECK: Document description is '{}'", desc));
-        }
-    } else {
-        log_debug(&format!("[calculate_and_store_vote_weight] DIRECT CHECK: No document found with key='{}'", doc_key));
-    }
-    
-    // Also try the list query to see what it finds
-    let results = list_docs(
+    // Query the reputations collection using list_docs_store
+    // We use ic_cdk::id() since reputation calculations are system-level operations
+    let results = list_docs_store(
+        ic_cdk::id(),  // Use canister ID for system-level operations
         String::from("reputations"),
-        ListParams {
+        &ListParams {
             matcher: Some(ListMatcher {
-                description: Some(rep_filter.clone()),
+                // Match documents where EITHER owner OR tag matches
+                description: Some(format!("[owner:{}]|[tag:{}]", user_key, tag_key)),
                 ..Default::default()
             }),
             ..Default::default()
         },
-    );
-    log_debug(&format!("[calculate_and_store_vote_weight] Description query returned {} results", results.items.len()));
+    )?;  // Propagate any error using ?
     
-    // Log details about each found document
-    for (found_key, found_doc) in &results.items {
-        log_debug(&format!("[calculate_and_store_vote_weight] QUERY RESULT: Found document with key='{}', version={:?}", found_key, found_doc.version));
+    // Validate results - we should only have one document per user
+    if results.items.len() > 1 {
+        let err_msg = format!(
+            "[calculate_and_store_vote_weight] ERROR: Found {} documents for user={} and tag={}. Expected only one.", 
+            results.items.len(), user_key, tag_key
+        );
+        log_error(&err_msg);
+        return Err(err_msg);
+    }
+
+    // Log details for the single document if found
+    if let Some((found_key, found_doc)) = results.items.first() {
+        log_debug(&format!(
+            "[calculate_and_store_vote_weight] Found document with key='{}', version={:?}", 
+            found_key, found_doc.version
+        ));
         if let Some(desc) = &found_doc.description {
-            log_debug(&format!("[calculate_and_store_vote_weight] QUERY RESULT: Document description is '{}'", desc));
+            log_debug(&format!(
+                "[calculate_and_store_vote_weight] Document description is '{}'", 
+                desc
+            ));
         }
     }
-    
-    // Also try a direct key query as a backup
-    let key_results = list_docs(
-        String::from("reputations"),
-        ListParams {
-            matcher: Some(ListMatcher {
-                key: Some(doc_key.clone()),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
-    );
-    log_debug(&format!("[calculate_and_store_vote_weight] Key query returned {} results", key_results.items.len()));
     
     // Step 6: Prepare Reputation Data
+    // Use existing document if found, otherwise create new
     // ----------------------------
     log_debug(&format!("[calculate_and_store_vote_weight] Step 6: Preparing reputation data"));
     
-    // Try using direct doc first (most reliable), then list results as backup
-    let (rep_key, mut reputation_data, version) = if let Some(doc) = direct_doc {
+    // Use first matching document if found, otherwise create new
+    let (rep_key, mut reputation_data, version) = if let Some((doc_key, doc)) = results.items.first() {
         // If exists, decode existing reputation
-        log_debug(&format!("[calculate_and_store_vote_weight] Using directly retrieved document with version={:?}", doc.version));
-        
-        let rep_data: ReputationData = decode_doc_data(&doc.data)
-            .map_err(|e| {
-                let err_msg = format!("Failed to deserialize reputation data: {}", e);
-                log_error(&err_msg);
-                err_msg
-            })?;
-        
-        (doc_key, rep_data, doc.version)
-    } else if let Some((doc_key, doc)) = results.items.first() {
-        // If exists via list query, decode existing reputation
         log_debug(&format!("[calculate_and_store_vote_weight] Using document from list query with key='{}', version={:?}", doc_key, doc.version));
         
         let rep_data: ReputationData = decode_doc_data(&doc.data)
@@ -357,10 +330,10 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
                 log_error(&err_msg);
                 err_msg
             })?;
-        
+
         (doc_key.clone(), rep_data, doc.version)
     } else {
-        // If not exists, create new with default values
+        // If not exists, create new with default values and generate unique key with nanoid
         log_debug(&format!("[calculate_and_store_vote_weight] No existing reputation document found, creating new"));
         let default_weight = VoteWeight::new(0.0).unwrap_or_else(|_| {
             log_error("[calculate_and_store_vote_weight] Failed to create default vote weight, using 0.0");
@@ -378,8 +351,9 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
             has_voting_power: false,
         };
         
-        log_debug(&format!("[calculate_and_store_vote_weight] Created new reputation data with initial version: {:?}", Some(0)));
-        (doc_key, rep_data, Some(0))
+        let new_key = ic_cdk::id().to_string();
+        log_debug(&format!("[calculate_and_store_vote_weight] Prepared variables for new reputation document with key={}", new_key));
+        (new_key, rep_data, None)
     };
 
     // Step 7: Update Reputation Data
@@ -399,12 +373,12 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
     let description = desc.build();
     
     let reputation = Reputation {
-        key: format!("rep_{}_{}", user_key, tag_key),
+        key: rep_key,
         description,
         owner: ic_cdk::id(),  // Use canister's Principal ID as owner
         created_at: ic_cdk::api::time(),
         updated_at: ic_cdk::api::time(),
-        version: 1,
+        version: version.map(|v| v + 1).unwrap_or(0),  // Use 0 as default version if None
         data: reputation_data.clone(),
     };
 
@@ -420,7 +394,7 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
             let doc = SetDoc {
                 data: encoded_data,
                 description: Some(reputation.description),
-                version: new_version,  // Only increment version right before storing
+                version: Some(reputation.version),  // Use the version we just calculated
             };
 
             // Make explicit double-check of version before storing
@@ -436,6 +410,10 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
                 Ok(_) => {
                     log_info(&format!("[calculate_and_store_vote_weight] SUCCESS: Stored reputation document with key={}, version={:?}, vote_weight={}",
                         reputation.key, new_version, vote_weight.value()));
+                    // Add a log for new document creation here, if this is a new document
+                    if version.is_none() {
+                        log_debug(&format!("[calculate_and_store_vote_weight] Created new reputation document with key={}", reputation.key));
+                    }
                     Ok(vote_weight.value())
                 },
                 Err(e) => {
@@ -845,7 +823,7 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
                 }
             } else {
                 // Create new document with nanoid
-                let new_key = nanoid!();
+                let new_key = ic_cdk::id().to_string();
                 log_debug(&format!("[calculate_user_reputation] Creating new document with key={}", new_key));
                 
                 let doc = SetDoc {
@@ -993,7 +971,7 @@ async fn get_tag(tag_key: &str) -> Result<Tag, String> {
         owner: tag_doc.owner,
         created_at: tag_doc.created_at,
         updated_at: tag_doc.updated_at,
-        version: tag_doc.version.unwrap_or(0),
+        version: tag_doc.version.map(|v| v + 1).unwrap_or(0),  // Use 0 as default version if None
         data: tag_data,
     };
 
@@ -1021,28 +999,33 @@ pub async fn update_reputation_on_vote(
     vote_weight: f64,
 ) -> Result<(), String> {
     // Step 1: Get or create reputation document for target user in this tag
-    // Query format: "[owner:{target_key}],[tag:{tag_key}]"
+    // We need to find if a reputation document exists for this user in this tag.
+    // We use regex positive lookaheads to ensure both owner and tag match, regardless of order.
     
-    // Create properly formatted description using the DocumentDescription helper
-    let mut desc = crate::utils::description_helpers::DocumentDescription::new();
-    desc.add_owner(target_key)
-        .add_field("tag", tag_key);
-    let description_filter = desc.build();
-    
+    // Query the reputations collection to find any existing document for this user in this tag
     let results = list_docs(
         String::from("reputations"),
         ListParams {
             matcher: Some(ListMatcher {
-                description: Some(description_filter),
+                // Use regex positive lookaheads to match both strings in any order
+                description: Some(format!("(?=.*'[owner:{}]')(?=.*'[tag:{}]')", target_key, tag_key)),
                 ..Default::default()
             }),
             ..Default::default()
         },
     );
 
-    // Step 2: Process existing reputation data or create new
-    let (rep_key, mut reputation_data, version) = if let Some((doc_key, doc)) = results.items.first() {
-        // If reputation document exists, decode it
+    // Step 2: Process the query results and prepare document data
+    // --------------------------------------------------------
+    
+    // Step 2.1: Check if a reputation document exists
+    // We look for a document with our description filter in the results
+    let existing_doc = results.items.first();
+
+    // Step 2.2: If document exists, decode its data and prepare for update
+    // We'll increment the version number for the update
+    let (rep_key, mut reputation_data, version) = if let Some((doc_key, doc)) = existing_doc {
+        // Decode the existing reputation data
         let rep_data: ReputationData = decode_doc_data(&doc.data)
             .map_err(|e| {
                 let err_msg = format!("Failed to deserialize reputation data: {}", e);
@@ -1050,9 +1033,10 @@ pub async fn update_reputation_on_vote(
                 err_msg
             })?;
         
-        (doc_key.clone(), rep_data, doc.version)
+        // Return the key, data, and incremented version
+        (doc_key.clone(), rep_data, doc.version.map(|v| v + 1))
     } else {
-        // If no reputation document exists, create a new one with default values
+        // Step 2.3: If no document exists, create new data with default values
         let default_weight = VoteWeight::new(0.0).unwrap_or_else(|_| {
             log_error("[update_reputation_on_vote] Failed to create default vote weight, using 0.0");
             VoteWeight::new(0.0).unwrap() // This should never fail for 0.0
@@ -1069,7 +1053,8 @@ pub async fn update_reputation_on_vote(
             has_voting_power: false,
         };
         
-        (format!("rep_{}_{}", target_key, tag_key), rep_data, Some(0))
+        // For new documents, we don't set a version
+        (target_key.to_string(), rep_data, None)
     };
 
     // Step 3: Update reputation based on vote
