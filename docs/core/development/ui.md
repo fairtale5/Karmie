@@ -96,4 +96,42 @@ This document outlines the high-level UI/UX decisions and guidelines for the Rep
 - Add high contrast mode
 - Improve keyboard navigation
 - Enhance screen reader support
-- Add focus management 
+- Add focus management
+
+## SvelteKit Integration Guidelines
+
+### Important Limitations
+- **No Server-Side Rendering (SSR)**
+  - Juno requires static site generation
+  - Avoid using server-side only features like:
+    - `+layout.server.ts` files
+    - `+page.server.ts` files
+    - `+layout.ts` files with server-side logic
+    - `actions` in forms
+  - Use client-side alternatives where possible
+  - All routes should be pre-rendered at build time
+
+### Recommended Patterns
+- Use static generation with `+page.ts` instead of server files
+- Handle authentication and data fetching on the client side
+- Use client-side routing for dynamic content
+
+## SvelteKit Route Configuration
+
+### Required Settings
+All routes in a Juno project should use these settings:
+```typescript
+export const prerender = true;  // Enable static generation
+export const ssr = false;       // Disable server-side rendering
+export const csr = true;        // Enable client-side rendering
+```
+
+### Why These Settings?
+- `prerender = true`: Required for Juno's static hosting
+- `ssr = false`: Juno doesn't support server-side rendering
+- `csr = true`: Enables client-side functionality
+
+### Common Issues
+- Never set `prerender = false` as it prevents static generation
+- Always keep `ssr = false` for Juno compatibility
+- Maintain consistent settings across all routes 

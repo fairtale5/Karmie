@@ -56,7 +56,7 @@ rm -rf .juno
 #### PART 2: Fresh Rebuild
 1. **Install Node.js dependencies**:
 ```bash
-npm install
+npm ci  # Uses package-lock.json for exact dependency versions
 ```
 
 2. **Build the SvelteKit application**:

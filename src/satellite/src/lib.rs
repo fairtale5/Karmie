@@ -303,6 +303,11 @@ pub const IS_PLAYGROUND: bool = true;  // Set to false for production
 
 #[assert_set_doc]
 fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
+    // Allow Juno's internal collections (prefixed with #) to pass through
+    if context.data.collection.starts_with("#") {
+        return Ok(());
+    }
+
     let result = match context.data.collection.as_str() {
         "users" => {
             log_debug(&format!(
