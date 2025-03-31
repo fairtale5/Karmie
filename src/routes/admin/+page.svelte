@@ -356,6 +356,26 @@
 			// For new documents: generate key with nanoid
 			const documentKey = newUser.key || nanoid();
 
+			// If we're updating an existing user, we need to get its current version
+			let version;
+			if (newUser.key) {
+				try {
+					const existingDoc = await getDoc({
+						collection: COLLECTIONS.USERS,
+						key: newUser.key
+					});
+					if (!existingDoc) {
+						error = 'User not found';
+						return;
+					}
+					version = existingDoc.version;
+				} catch (e) {
+					console.error('[Admin] Error fetching existing user:', e);
+					error = 'Failed to fetch existing user version';
+					return;
+				}
+			}
+
 			// Create the document data with required fields
 			const docData = {
 				collection: COLLECTIONS.USERS,
@@ -366,7 +386,8 @@
 						username: newUser.username.toLowerCase(),
 						display_name: newUser.display_name.trim()
 					},
-					description: createUserDescription(documentKey, newUser.username.toLowerCase())
+					description: createUserDescription(documentKey, newUser.username.toLowerCase()),
+					...(version && { version })
 				}
 			};
 

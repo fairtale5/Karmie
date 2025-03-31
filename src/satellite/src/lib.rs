@@ -340,13 +340,8 @@ pub const IS_PLAYGROUND: bool = true;  // Set to false for production
 /// ### Reputations Collection
 /// * owner=id;user=key;tag=key;
 /// 
-#[assert_set_doc]
+#[assert_set_doc(collections = ["users", "votes", "tags", "reputations"])]
 fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
-    // Allow Juno's internal collections (prefixed with #) to pass through
-    if context.data.collection.starts_with("#") {
-        return Ok(());
-    }
-
     let result = match context.data.collection.as_str() {
         "users" => {
             log_debug(&format!(
@@ -377,7 +372,8 @@ fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
             validate_reputation_document(&context)
         },
         _ => {
-            let err_msg = format!("Unknown collection: {}", context.data.collection);
+            // This should never happen because we're specifying collections in the decorator
+            let err_msg = format!("Unexpected collection reached validation: {}", context.data.collection);
             ic_cdk::println!("[CRITICAL DEBUG] {}", err_msg);
             log_error(&format!("[assert_set_doc] {}", err_msg));
             Err(err_msg)
