@@ -341,45 +341,45 @@ const { items } = await listDocs({
 # Document Description Field Standards
 
 ## Format Standard
-All document descriptions follow a consistent bracket format:
-`[field1:value1],[field2:value2],[field3:value3]`
+All document descriptions follow a consistent format with field-value pairs:
+`field1=value1;field2=value2;field3=value3;`
 
 Rules:
-- Use brackets `[]` to wrap each field-value pair
-- Separate pairs with commas `,`
+- Each field-value pair ends with a semicolon `;`
+- Use equal sign `=` to separate field from value
 - Use consistent field order per collection
 - All values are document keys unless specified otherwise
 
 ## Collection-Specific Formats
 
 ### Users Collection
-Format: `[owner:documentKey],[username:username]`
+Format: `owner=documentKey;username=username;`
 - `owner`: The key of this user document being created/edited
 - `username`: The username field from the document data (not a key)
 
-Example: `[owner:user_123],[username:john_doe]`
+Example: `owner=user_123;username=john_doe;`
 
 ### Tags Collection
-Format: `[owner:creatorUserKey],[name:tagName]`
+Format: `owner=creatorUserKey;name=tagName;`
 - `owner`: The document key of the user who is creating the tag
 - `name`: The name field provided in the frontend (not a key)
 
-Example: `[owner:user_123],[name:technical_skills]`
+Example: `owner=user_123;name=technical_skills;`
 
 ### Votes Collection
-Format: `[owner:voterUserKey],[target:targetUserKey],[tag:tagKey]`
+Format: `owner=voterUserKey;target=targetUserKey;tag=tagKey;`
 - `owner`: The document key of the user casting the vote
 - `target`: The document key of the user being voted on
 - `tag`: The document key of the tag this vote belongs to
 
-Example: `[owner:user_123],[target:user_456],[tag:tag_789]`
+Example: `owner=user_123;target=user_456;tag=tag_789;`
 
 ### Reputations Collection
-Format: `[owner:userKey],[tag:tagKey]`
+Format: `owner=userKey;tag=tagKey;`
 - `owner`: The document key of the user this reputation belongs to
 - `tag`: The document key of the tag this reputation is for
 
-Example: `[owner:user_123],[tag:tag_789]`
+Example: `owner=user_123;tag=tag_789;`
 
 ## Important Implementation Notes
 
@@ -387,7 +387,7 @@ Example: `[owner:user_123],[tag:tag_789]`
    ```rust
    // Example: Creating a vote description in Rust
    let description = format!(
-       "[owner:{}],[target:{}],[tag:{}]",
+       "owner={};target={};tag={};",
        vote.data.author_key,
        vote.data.target_key,
        vote.data.tag_key
@@ -406,7 +406,7 @@ Example: `[owner:user_123],[tag:tag_789]`
            let tag_key = data.get("tag_key").and_then(|v| v.as_str()).unwrap_or("");
            
            // Set the description using the fields
-           doc.description = format!("[owner:{}],[target:{}],[tag:{}]", author_key, target_key, tag_key);
+           doc.description = format!("owner={};target={};tag={};", author_key, target_key, tag_key);
        }
        Ok(())
    }
@@ -419,21 +419,21 @@ Example: `[owner:user_123],[tag:tag_789]`
        collection: "votes",
        filter: {
            matcher: {
-               description: `[tag:${tagKey}]`
+               description: `tag=${tagKey};`
            }
        }
    });
    ```
 
-## Benefits of Bracket Format
+## Benefits of Field=Value; Format
 
 1. **Clear Field Boundaries**: 
-   - Brackets clearly delimit each field-value pair
+   - Each field-value pair ends with a semicolon
    - Prevents issues with values containing delimiters
 
 2. **Partial Matching**: 
    - Can match on any subset of fields
-   - Order-independent matching
+   - Easier to construct search patterns
 
 3. **Consistent Pattern**:
    - Same pattern across all collections
@@ -458,7 +458,7 @@ let results = list_docs_store(
     String::from("votes"),
     ListParams {
         matcher: Some(ListMatcher {
-            description: Some(format!("[tag:{}]", tag_key)),
+            description: Some(format!("tag={};", tag_key)),
             ..Default::default()
         }),
         ..Default::default()
@@ -466,60 +466,19 @@ let results = list_docs_store(
 );
 ```
 
-### Multiple Field Matching (AND Logic)
+### Multiple Field Matching 
 
-To match multiple fields where ALL conditions must be met:
+To match multiple fields:
 
 ```rust
-// Match documents where BOTH owner AND tag match
+// Match documents where both owner AND tag match
 let results = list_docs_store(
     caller,
     String::from("reputations"),
     ListParams {
         matcher: Some(ListMatcher {
-            // Will match description containing both [owner:123] AND [tag:456]
-            description: Some(format!("[owner:{}][tag:{}]", user_key, tag_key)),
-            ..Default::default()
-        }),
-        ..Default::default()
-    },
-);
-```
-
-### Multiple Field Matching (OR Logic)
-
-To match multiple fields where ANY condition can be met:
-
-```rust
-// Match documents where EITHER owner OR tag matches
-let results = list_docs_store(
-    caller,
-    String::from("reputations"),
-    ListParams {
-        matcher: Some(ListMatcher {
-            // Will match description containing EITHER [owner:123] OR [tag:456]
-            description: Some(format!("[owner:{}]|[tag:{}]", user_key, tag_key)),
-            ..Default::default()
-        }),
-        ..Default::default()
-    },
-);
-```
-
-### Multiple Field Matching (AND Logic with Regex)
-
-To match multiple fields where ALL conditions must be met, using regex positive lookaheads:
-
-```rust
-// Match documents where BOTH owner AND tag match
-let results = list_docs_store(
-    caller,
-    String::from("reputations"),
-    ListParams {
-        matcher: Some(ListMatcher {
-            // Will match description containing BOTH [owner:123] AND [tag:456]
-            // Uses regex positive lookaheads (?=.*pattern) to ensure both strings are present
-            description: Some(format!("(?=.*'[owner:{}]')(?=.*'[tag:{}]')", user_key, tag_key)),
+            // Will match description containing both owner=123; AND tag=456;
+            description: Some(format!("owner={};tag={};", user_key, tag_key)),
             ..Default::default()
         }),
         ..Default::default()
@@ -535,7 +494,7 @@ let results = list_docs_store(
    - Reduces data transfer
 
 2. **Flexible Matching**:
-   - Support for both AND/OR operations
+   - Support for exact string matching
    - Can match partial patterns
    - Order-independent matching
 
@@ -554,19 +513,19 @@ let results = list_docs_store(
 1. **Use Proper Formatting**:
    ```rust
    // Good: Clear field boundaries
-   format!("[owner:{}][tag:{}]", user_key, tag_key)
+   format!("owner={};tag={};", user_key, tag_key)
    
    // Bad: Unclear boundaries
-   format!("owner:{} tag:{}", user_key, tag_key)
+   format!("owner={} tag={}", user_key, tag_key)
    ```
 
 2. **Choose Appropriate Logic**:
    ```rust
-   // AND logic: Both conditions must match
-   format!("[owner:{}][tag:{}]", user_key, tag_key)
+   // Match documents for a specific field
+   format!("tag={};", tag_key)
    
-   // OR logic: Either condition can match
-   format!("[owner:{}]|[tag:{}]", user_key, tag_key)
+   // Match documents with multiple criteria
+   format!("owner={};tag={};", user_key, tag_key)
    ```
 
 3. **Consider Access Control**:

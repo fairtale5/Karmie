@@ -13,4 +13,5 @@ pub mod structs;
 pub mod tag_calculations;
 pub mod time;
 pub mod validation;
-pub mod description_helpers; 
+pub mod description_helpers;
+pub mod id_generator; 

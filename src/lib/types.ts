@@ -13,13 +13,13 @@ export interface JunoDocument<T> {
  * User data interface
  * 
  * Description field format:
- * [owner:{key}],[username:{}]
+ * owner={key};username={name};
  * 
- * Example: "[owner:user_123],[username:john_doe]"
+ * Example: "owner=user_123;username=john_doe;"
  * 
  * This allows querying:
- * - By user key: [owner:user_123]
- * - By username: [username:john_doe]
+ * - By user key: owner=user_123;
+ * - By username: username=john_doe;
  */
 export interface UserData {
     username: string;         // Unique username
@@ -30,13 +30,13 @@ export interface UserData {
  * Tag data interface
  * 
  * Description field format:
- * [owner:{author_key}],[name:{name}]
+ * owner={author_key};name={name};
  * 
- * Example: "[owner:user_123],[name:technical_skills]"
+ * Example: "owner=user_123;name=technical_skills;"
  * 
  * This allows querying:
- * - By author: [owner:user_123]
- * - By tag name: [name:technical_skills]
+ * - By author: owner=user_123;
+ * - By tag name: name=technical_skills;
  */
 export interface TagData {
     author_key: string;     // User key of the creator (references Users collection)
@@ -55,15 +55,15 @@ export interface TagData {
  * Vote data interface
  * 
  * Description field format:
- * [owner:{author_key}],[target:{target_key}],[tag:{tag_key}]
+ * owner={author_key};target={target_key};tag={tag_key};
  * 
- * Example: "[owner:user_123],[target:user_456],[tag:tag_789]"
+ * Example: "owner=user_123;target=user_456;tag=tag_789;"
  * 
  * This allows querying:
- * - By vote author: [owner:user_123]
- * - By target user: [target:user_456]
- * - By tag: [tag:tag_789]
- * - By combinations: [owner:user_123],[tag:tag_789]
+ * - By vote author: owner=user_123;
+ * - By target user: target=user_456;
+ * - By tag: tag=tag_789;
+ * - By combinations: owner=user_123;tag=tag_789;
  */
 export interface VoteData {
     author_key: string;    // User key who cast the vote (references Users collection)
@@ -78,14 +78,14 @@ export interface VoteData {
  * Reputation data interface
  * 
  * Description field format:
- * [owner:{user_key}],[tag:{tag_key}]
+ * owner={user_key};tag={tag_key};
  * 
- * Example: "[owner:user_123],[tag:tag_789]"
+ * Example: "owner=user_123;tag=tag_789;"
  * 
  * This allows querying:
- * - By user: [owner:user_123]
- * - By tag: [tag:tag_789]
- * - By exact combination: [owner:user_123],[tag:tag_789]
+ * - By user: owner=user_123;
+ * - By tag: tag=tag_789;
+ * - By exact combination: owner=user_123;tag=tag_789;
  */
 export interface ReputationData {
     user_key: string;      // User this reputation is for (references Users collection)

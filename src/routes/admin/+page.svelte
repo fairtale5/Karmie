@@ -148,7 +148,7 @@
 				collection: COLLECTIONS.REPUTATIONS,
 				filter: {
 					matcher: {
-						description: `tag:${tagKey}`
+						description: `tag=${tagKey};`
 					}
 				}
 			});
@@ -1014,7 +1014,7 @@
 										<div>Base Rep: {reputation.total_basis_reputation.toFixed(2)}</div>
 										<div>Vote Rep: {reputation.total_voting_rewards_reputation.toFixed(2)}</div>
 										<div>Total Rep: {reputation.last_known_effective_reputation.toFixed(2)}</div>
-										<div>Weight: {(reputation.vote_weight * 100).toFixed(1)}%</div>
+										<div>Weight: {(Number(reputation.vote_weight) * 100).toFixed(4)}%</div>
 										<div>Status: {reputation.has_voting_power ? 'Active' : 'Inactive'}</div>
 										<div class="text-xs">Last Calc: {new Date(Number(reputation.last_calculation) / 1_000_000).toLocaleString()}</div>
 									</div>
@@ -1097,7 +1097,7 @@
 					>
 						<option value="">Select Tag</option>
 						{#each tags as tag}
-							<option value={tag.key} selected={tag.key === selectedTag}>
+							<option value={tag.key}>
 								{tag.data.name}
 							</option>
 						{/each}
@@ -1481,7 +1481,7 @@
 										<div>Base Rep: {doc.data.total_basis_reputation.toFixed(2)}</div>
 										<div>Vote Rep: {doc.data.total_voting_rewards_reputation.toFixed(2)}</div>
 										<div>Total Rep: {doc.data.last_known_effective_reputation.toFixed(2)}</div>
-										<div>Vote Weight: {JSON.stringify(doc.data.vote_weight)}</div>
+										<div>Vote Weight: {(Number(doc.data.vote_weight) * 100).toFixed(4)}%</div>
 										<div>Status: {doc.data.has_voting_power ? 'Active' : 'Inactive'}</div>
 										<div class="text-xs">Last Calc: {new Date(Number(doc.data.last_calculation) / 1_000_000).toLocaleString()}</div>
 									</div>

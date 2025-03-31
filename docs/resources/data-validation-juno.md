@@ -1,15 +1,15 @@
-# Data Validation in Juno: Best Practices and Security Considerations
+Title: Data Validation in Juno: Best Practices and Security Considerations
 
-## Why Data Validation Matters
+# Why Data Validation Matters
 
 When building applications with Juno's Datastore, data validation is crucial because:
 1. Client-side code can be manipulated by users
 2. Direct API calls can bypass client validation
 3. Invalid data structures can break application functionality
 4. Malicious users could inject harmful data
-5. Data consistency is essential for reliable applications
+5. Data consistency is essential for reliable decentralized applications
 
-## Available Approaches
+# Available Approaches
 
 Juno offers three main approaches for data validation:
 
@@ -17,9 +17,9 @@ Juno offers three main approaches for data validation:
 2. **Custom Endpoints**
 3. **Serverless Functions**
 
-### Security Analysis
+## Security Analysis
 
-#### Custom Endpoints (Vulnerable)
+### Custom Endpoints (Vulnerable)
 ```typescript
 // Custom endpoint approach
 const createUser = async (userData: UserData) => {

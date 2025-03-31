@@ -460,3 +460,47 @@ await signOut();
 - Verify collection permissions
 - Check build size
 - Test on multiple devices 
+
+## Git Commands Reference
+
+### Basic Git Workflow
+```bash
+# Check status of your changes
+git status
+
+# Stage all changes
+git add .
+
+# Stage specific files
+git add file1.ts file2.ts
+
+# Commit changes with a simple message
+git commit -m "Your commit message"
+
+# Commit with a detailed message (opens text editor)
+git commit
+
+# Example of a detailed commit message format:
+Title: Brief summary of changes
+
+- Bullet point of major change 1
+- Bullet point of major change 2
+
+Technical details:
+- Specific implementation detail 1
+- Specific implementation detail 2
+
+# Push changes to remote
+git push origin branch-name
+```
+
+### Git Configuration
+```bash
+# Set your Git identity
+git config --global user.name "Your Name"
+git config --global user.email "your.email@example.com"
+
+# Set identity for single repository (remove --global)
+git config user.name "Your Name"
+git config user.email "your.email@example.com"
+``` 

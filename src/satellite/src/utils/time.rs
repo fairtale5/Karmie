@@ -7,13 +7,11 @@
  * 
  * Key features:
  * - Month calculations between timestamps
- * - Time period determination based on tag configuration
  * - Efficient timestamp handling using Juno's native functions
  */
 
 use junobuild_shared::day::calendar_date;
 use crate::utils::structs::{TimePeriod, Tag};
-use crate::utils::logging::log_error;
 
 /// Calculates the number of months between two timestamps
 /// 
@@ -79,46 +77,7 @@ pub fn calculate_months_between(timestamp1: u64, timestamp2: u64) -> Result<u32,
     Ok(months as u32)
 }
 
-/// Gets the time period for a given timestamp based on tag configuration
-/// 
-/// This function determines which time period a vote falls into based on its age
-/// and the tag's time_periods configuration. The periods are defined in the tag
-/// and specify different multipliers for votes of different ages.
-/// 
-/// # Arguments
-/// * `timestamp` - The timestamp to get the period for (in nanoseconds)
-/// * `tag` - The tag containing the time periods configuration
-/// 
-/// # Returns
-/// * `Result<TimePeriod, String>` - The appropriate time period or an error message
-pub fn get_period_for_timestamp(timestamp: u64, tag: &Tag) -> Result<TimePeriod, String> {
-    // Get current timestamp
-    let now = ic_cdk::api::time();
-    
-    // Calculate months difference between vote and now
-    let months_ago = calculate_months_between(timestamp, now)?;
-    
-    // Find the appropriate time period in the tag configuration
-    let mut accumulated_months = 0;
-    for time_period in &tag.data.time_periods {
-        accumulated_months += time_period.months;
-        if months_ago <= accumulated_months {
-            return Ok(time_period.clone());
-        }
-    }
-
-    // If we've gone through all periods, return the last one's multiplier
-    // This handles votes older than all defined periods
-    if let Some(last_period) = tag.data.time_periods.last() {
-        Ok(last_period.clone())
-    } else {
-        // If no periods defined, return default period
-        Ok(TimePeriod {
-            months: 1,
-            multiplier: 1.0,
-        })
-    }
-}
+// NOTE: This function has been replaced by `get_period_multiplier` in reputation_calculations.rs
 
 #[cfg(test)]
 mod tests {

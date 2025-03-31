@@ -267,32 +267,49 @@ async fn process_vote(context: &OnSetDocContext) -> Result<(), String> {
     }
     
     // Step 1: Calculate and store the voting user's vote weight
-    log_debug(&format!("[process_vote] Calculating vote weight for author: {}", vote_data.author_key));
-    calculate_and_store_vote_weight(&vote_data.author_key, &vote_data.tag_key).await
+    log_info(&format!("[process_vote] Step 1/3: Calculating vote weight for author: {}", vote_data.author_key));
+    let vote_weight = calculate_and_store_vote_weight(&vote_data.author_key, &vote_data.tag_key).await
         .map_err(|e| {
             log_error(&format!("[process_vote] Failed to calculate vote weight: {}", e));
             e.to_string()
         })?;
+    log_info(&format!("[process_vote] Step 1/3 COMPLETE: Vote weight for author={}: {}", vote_data.author_key, vote_weight));
     
     // Step 2: Calculate reputation for the voting user (author)
-    log_debug(&format!("[process_vote] Calculating reputation for author: {}", vote_data.author_key));
-    calculate_user_reputation(&vote_data.author_key, &vote_data.tag_key).await
+    log_info(&format!("[process_vote] Step 2/3: Calculating reputation for author: {}", vote_data.author_key));
+    let author_rep = calculate_user_reputation(&vote_data.author_key, &vote_data.tag_key).await
         .map_err(|e| {
             log_error(&format!("[process_vote] Failed to calculate author reputation: {}", e));
             e.to_string()
         })?;
+    log_info(&format!(
+        "[process_vote] Step 2/3 COMPLETE: Author={}: basisR={}, voteR={}, totalR={}, voting_power={}",
+        vote_data.author_key, 
+        author_rep.total_basis_reputation,
+        author_rep.total_voting_rewards_reputation,
+        author_rep.last_known_effective_reputation,
+        author_rep.has_voting_power
+    ));
     
     // Step 3: Calculate reputation for the target user
-    log_debug(&format!("[process_vote] Calculating reputation for target: {}", vote_data.target_key));
-    calculate_user_reputation(&vote_data.target_key, &vote_data.tag_key).await
+    log_info(&format!("[process_vote] Step 3/3: Calculating reputation for target: {}", vote_data.target_key));
+    let target_rep = calculate_user_reputation(&vote_data.target_key, &vote_data.tag_key).await
         .map_err(|e| {
             log_error(&format!("[process_vote] Failed to calculate target reputation: {}", e));
             e.to_string()
         })?;
+    log_info(&format!(
+        "[process_vote] Step 3/3 COMPLETE: Target={}: basisR={}, voteR={}, totalR={}, voting_power={}",
+        vote_data.target_key, 
+        target_rep.total_basis_reputation,
+        target_rep.total_voting_rewards_reputation,
+        target_rep.last_known_effective_reputation,
+        target_rep.has_voting_power
+    ));
 
     log_info(&format!(
-        "[process_vote] Successfully processed vote: author={}, target={}, tag={}",
-        vote_data.author_key, vote_data.target_key, vote_data.tag_key
+        "[process_vote] SUCCESS: Vote processed - author={}, target={}, tag={}, vote_value={}, vote_weight={}",
+        vote_data.author_key, vote_data.target_key, vote_data.tag_key, vote_data.value, vote_weight
     ));
     
     Ok(())
@@ -301,6 +318,28 @@ async fn process_vote(context: &OnSetDocContext) -> Result<(), String> {
 /// Configuration flag for playground mode
 pub const IS_PLAYGROUND: bool = true;  // Set to false for production
 
+/// Description formats for Juno documents in the system
+/// All documents use a standardized description field format pattern to enable filtering
+/// 
+/// ## Description Field Format
+/// 
+/// All description fields follow a consistent pattern:
+/// * - Format: field1=value1;field2=value2;
+/// 
+/// The concrete implementation depends on the collection:
+/// 
+/// ### Users Collection
+/// * owner=key;username=normalized_username;
+/// 
+/// ### Votes Collection
+/// * owner=id;author=key;target=key;tag=key;
+/// 
+/// ### Tags Collection
+/// * owner=id;name=normalized_name;
+/// 
+/// ### Reputations Collection
+/// * owner=id;user=key;tag=key;
+/// 
 #[assert_set_doc]
 fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
     // Allow Juno's internal collections (prefixed with #) to pass through
@@ -431,10 +470,12 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
     // First, normalize the username to lowercase for comparison
     let normalized_username = user_data.username.to_lowercase();
     
-    // Build the search query to find any document with this username
-    // The pattern will match [username:name] in the description string
-    // This works regardless of whether it's at the start, middle, or end
-    let search_pattern = format!("[username:{}]", normalized_username);
+    // Sanitize the username to match how it's stored in the description
+    let sanitized_username = crate::utils::description_helpers::DocumentDescription::sanitize_key(&normalized_username);
+    
+    // Build the search query to find any document with this username using the new format
+    // The pattern will match username=name; in the description string
+    let search_pattern = format!("username={};", sanitized_username);
     ic_cdk::println!("[CRITICAL DEBUG] Searching for username with pattern: {}", search_pattern);
     
     let params = ListParams {
@@ -464,16 +505,20 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
             continue;
         }
         
-        // Extract username from description and compare
-        if let Some(desc) = doc.description {
-            if let Some(existing_username) = desc.split("[username:").nth(1).and_then(|s| s.split(']').next()) {
-                if existing_username.to_lowercase() == normalized_username {
-                    let err_msg = format!(
-                        "Username '{}' is already taken. Please choose a different username.",
-                        user_data.username
-                    );
-                    log_error(&format!("[assert_set_doc] {} key={}, username={}", err_msg, context.data.key, user_data.username));
-                    return Err(err_msg);
+        // Parse the description using the DocumentDescription helper
+        if let Some(desc_str) = &doc.description {
+            if let Ok(desc) = crate::utils::description_helpers::DocumentDescription::parse(desc_str) {
+                // Check if the username field matches
+                if let Some(existing_username) = desc.get_field("username") {
+                    // Now compare the sanitized username values
+                    if existing_username == sanitized_username {
+                        let err_msg = format!(
+                            "Username '{}' is already taken. Please choose a different username.",
+                            user_data.username
+                        );
+                        log_error(&format!("[assert_set_doc] {} key={}, username={}", err_msg, context.data.key, user_data.username));
+                        return Err(err_msg);
+                    }
                 }
             }
         }
@@ -586,6 +631,13 @@ fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
         vote_data.tag_key
     ));
     
+    // First validate that tag_key is not empty
+    if vote_data.tag_key.trim().is_empty() {
+        let err_msg = "Tag key cannot be empty";
+        log_error(&format!("[validate_vote_document] {}", err_msg));
+        return Err(err_msg.to_string());
+    }
+    
     let params = ListParams {
         matcher: Some(ListMatcher {
             key: Some(vote_data.tag_key.clone()),
@@ -658,9 +710,12 @@ fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
     // Check for tag name uniqueness (case-insensitive)
     let normalized_name = tag_data.name.to_lowercase();
     
-    // Build the search query to find any document with this tag name
-    // The pattern will match [name:tag_name] in the description string
-    let search_pattern = format!("[name:{}]", normalized_name);
+    // Sanitize the tag name to match how it's stored in the description
+    let sanitized_name = crate::utils::description_helpers::DocumentDescription::sanitize_key(&normalized_name);
+    
+    // Build the search query to find any document with this tag name using the new format
+    // The pattern will match name=tag_name; in the description string
+    let search_pattern = format!("name={};", sanitized_name);
     ic_cdk::println!("[CRITICAL DEBUG] Searching for tag name with pattern: {}", search_pattern);
     
     let params = ListParams {
@@ -690,16 +745,20 @@ fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
             continue;
         }
         
-        // Extract tag name from description and compare
-        if let Some(desc) = doc.description {
-            if let Some(existing_name) = desc.split("[name:").nth(1).and_then(|s| s.split(']').next()) {
-                if existing_name.to_lowercase() == normalized_name {
-                    let err_msg = format!(
-                        "Tag name '{}' is already taken (case-insensitive comparison)",
-                        tag_data.name
-                    );
-                    log_error(&format!("[assert_set_doc] {} key={}", err_msg, context.data.key));
-                    return Err(err_msg);
+        // Parse the description using the DocumentDescription helper
+        if let Some(desc_str) = &doc.description {
+            if let Ok(desc) = crate::utils::description_helpers::DocumentDescription::parse(desc_str) {
+                // Check if the name field matches
+                if let Some(existing_name) = desc.get_field("name") {
+                    // Now compare the sanitized name values
+                    if existing_name == sanitized_name {
+                        let err_msg = format!(
+                            "Tag name '{}' is already taken (case-insensitive comparison)",
+                            tag_data.name
+                        );
+                        log_error(&format!("[assert_set_doc] {} key={}", err_msg, context.data.key));
+                        return Err(err_msg);
+                    }
                 }
             }
         }
@@ -790,8 +849,8 @@ fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), Str
 
     // Step 3: Create and validate description using DocumentDescription helper
     // This ensures the description follows our standardized format:
-    // - Playground mode: [owner:{user_key}][tag:{tag_key}]
-    // - Production mode: [owner:{principal_id}][tag:{tag_key}]
+    // - Playground mode: owner=user_key;tag=tag_key;
+    // - Production mode: owner=principal_id;tag=tag_key;
     let mut desc = DocumentDescription::new();
     let caller_string = context.caller.to_string(); // Create a string that lives for the duration of the function
     desc.add_owner(if IS_PLAYGROUND {

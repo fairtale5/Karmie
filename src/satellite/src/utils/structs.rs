@@ -16,8 +16,8 @@ pub struct User {
 
     /// Description field for filtering/search 
     /// Format: 
-    /// Playground: [owner:{key(nanoid}],[username:{name}]
-    /// Production: [owner:{owner(principal)}],[username:{name}]
+    /// Playground: owner={key(nanoid)};username={name};
+    /// Production: owner={owner(principal)};username={name};
     /// Note: owner field uses Principal ID, not document key
     /// See: docs/core/architecture/database.md#users-collection
     pub description: String,
@@ -63,8 +63,8 @@ pub struct Tag {
 
     /// Description field for filtering/search
     /// Format:
-    /// Playground: [owner:{TagData.author_key(nanoid}],[name:{TagData.name}]
-    /// Production: [owner:{owner(principal)}],[name:{TagDataname}]
+    /// Playground: owner={TagData.author_key(nanoid)};name={TagData.name};
+    /// Production: owner={owner(principal)};name={TagData.name};
     /// Note: owner field uses Principal ID, not document key
     /// See: docs/core/architecture/database.md#tags-collection
     pub description: String,
@@ -125,8 +125,8 @@ pub struct Vote {
 
     /// Description field for filtering/search
     /// Format:
-    /// Playground: [owner:{VoteData.author_key}],[target:{VoteData.target_key}][tag:{VoteData.tag_key}]
-    /// Production [owner:{owner.principal}][target:{VoteData:target_key}][tag:{VoteData:tag_key}]
+    /// Playground: owner={VoteData.author_key};target={VoteData.target_key};tag={VoteData.tag_key};
+    /// Production: owner={owner.principal};target={VoteData.target_key};tag={VoteData.tag_key};
     /// See: docs/core/architecture/database.md#votes-collection
     pub description: String,
 
@@ -178,8 +178,8 @@ pub struct Reputation {
 
     /// Description field for filtering/search
     /// Format: 
-    /// Playground: [owner:{ReputationData:user_key}],[tag:{ReputationData:tag_key}]
-    /// Production: [owner:{owner}][tag:{ReputationData:tag_key}]
+    /// Playground: owner={ReputationData.user_key};tag={ReputationData.tag_key};
+    /// Production: owner={owner};tag={ReputationData.tag_key};
     /// See: docs/core/architecture/database.md#reputations-collection
     pub description: String,
 
