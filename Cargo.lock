@@ -1070,6 +1070,7 @@ name = "satellite"
 version = "0.0.1"
 dependencies = [
  "candid",
+ "hex",
  "ic-cdk",
  "ic-cdk-macros",
  "junobuild-macros",

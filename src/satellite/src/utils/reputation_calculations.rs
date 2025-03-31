@@ -68,40 +68,72 @@ pub async fn get_user_reputation_data(user_key: &str, tag_key: &str) -> Result<O
     Ok(Some(reputation_data))
 }
 
-/// Gets only the essential reputation data needed for calculations
-/// 
-/// This is an optimized version of get_user_reputation_data that returns only
-/// the minimum data needed for reputation calculations. It's designed to be
-/// efficient for use in calculate_user_reputation where we need to process
-/// many authors' reputation data.
-/// 
-/// The function returns:
-/// - author_key: For verification purposes
-/// - effective_reputation: The score used in calculations
-/// - has_voting_power: Whether the user's votes are active
-/// - vote_weight: The weight of the user's votes
-/// 
-/// # Arguments
-/// * `user_key` - The unique identifier of the user
-/// * `tag_key` - The unique identifier of the tag
-/// 
-/// # Returns
-/// * `Result<Option<AuthorInfo>, String>` - The essential reputation data or an error message
+/// Gets a slim version of user reputation data optimized for vote processing
+///
+/// This retrieves only the essential reputation data needed for vote processing:
+/// - Current effective reputation
+/// - Vote weight
+/// - Voting power status
+///
+/// Optimized to reduce memory usage in reputation calculations
 pub async fn get_user_reputation_slim(user_key: &str, tag_key: &str) -> Result<Option<AuthorInfo>, String> {
-    // Call the main function to get the full data
-    match get_user_reputation_data(user_key, tag_key).await {
-        Ok(Some(rep_data)) => {
-            // Extract only the necessary fields
-            let author_info = AuthorInfo {
-                effective_reputation: rep_data.last_known_effective_reputation,
-                vote_weight: rep_data.vote_weight,
-                votes_active: rep_data.has_voting_power,
+    // Get active users count to check if we're in bootstrap phase
+    let active_users = get_active_users_count(tag_key).await?;
+    
+    // Get tag to check threshold
+    let tag = get_tag(tag_key).await?;
+    let in_bootstrap_phase = active_users < tag.data.min_users_for_threshold;
+    
+    // Create the description using helper
+    let mut desc = DocumentDescription::new();
+    desc.add_owner(user_key)
+        .add_field("tag", tag_key);
+    let description_filter = desc.build();
+    
+    // Query for existing reputation document
+    let results = list_docs(
+        String::from("reputations"),
+        ListParams {
+            matcher: Some(ListMatcher {
+                description: Some(description_filter),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+    );
+    
+    // Return None if no document found
+    if results.items.is_empty() {
+        return Ok(None);
+    }
+    
+    // Get first result (should be only one)
+    let (_, doc) = results.items.first().unwrap();
+    
+    // Try to decode
+    match decode_doc_data::<ReputationData>(&doc.data) {
+        Ok(data) => {
+            // During bootstrap phase, give everyone voting power for the purpose of processing votes
+            let votes_active = if in_bootstrap_phase {
+                // In bootstrap phase, all users have active votes
+                log_info(&format!(
+                    "[get_user_reputation_slim] BOOTSTRAP PHASE: user={} has voting power in bootstrap phase (active_users={} < min_threshold={})",
+                    user_key, active_users, tag.data.min_users_for_threshold
+                ));
+                true
+            } else {
+                // Normal phase - only users with sufficient reputation have active votes
+                data.has_voting_power
             };
             
-            Ok(Some(author_info))
+            // Return the slim author info
+            Ok(Some(AuthorInfo {
+                effective_reputation: data.last_known_effective_reputation,
+                vote_weight: data.vote_weight.clone(),
+                votes_active,
+            }))
         },
-        Ok(None) => Ok(None),
-        Err(e) => Err(e),
+        Err(e) => Err(format!("Failed to decode reputation data: {}", e))
     }
 }
 
@@ -192,22 +224,25 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
     // Overview: This function calculates a normalized vote weight for a user in a specific tag and 
     // stores it in their reputation document. The process involves:
     //
-    // 1. Query Format: We use the new description format for queries:
-    //    - Votes collection: owner=userKey;target=targetUserKey;tag=tagKey;
+    // 1. Query Format: We use a consistent description format for documents:
+    //    - Votes collection: owner=userKey;tag=tagKey;target=targetUserKey;
+    //          -> to query all votes by a user in a tag: `owner=userKey;tag=tagKey;`
+    //          -> to query all votes to a user in a tag: `tag=tagKey;target=userKey;`
     //    - Reputations collection: owner=userKey;tag=tagKey;
     //
-    // 2. Query Process:
-    //    - First query finds all votes by this user in the specified tag
-    //    - Second query finds any existing reputation document for this user-tag combination
-    //    - Both queries use sanitized keys to avoid issues with special characters
-    //
-    // 3. Document Handling:
-    //    - Keys are sanitized to remove special characters
-    //    - This ensures consistent document retrieval regardless of key format
+    // 2. Process Steps:
+    //    - Step 1: Get tag configuration for the specified tag
+    //    - Step 2: Query votes by this user in the specified tag
+    //    - Step 3: Calculate total weighted votes by applying time multipliers
+    //    - Step 4: Calculate individual vote weight (1/total_weighted_votes)
+    //    - Step 5: Query existing reputation document for this user-tag pair
+    //    - Step 6: Prepare reputation data (existing or new)
+    //    - Step 8: Create complete reputation document
+    //    - Step 9: Store the document with proper version handling
     
     log_info(&format!("[calculate_and_store_vote_weight] START calculating vote weight for user={}, tag={}", user_key, tag_key));
     
-    // Step 1: Get Tag Configuration
+    // Step 1: Get Tag Configuration for the specified tag
     // ----------------------------
     log_debug(&format!("[calculate_and_store_vote_weight] Step 1: Getting tag configuration for tag={}", tag_key));
     let tag = get_tag(tag_key).await?;
@@ -217,19 +252,20 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
     // -----------------------
     log_debug(&format!("[calculate_and_store_vote_weight] Step 2: Querying votes by user={} in tag={}", user_key, tag_key));
     
-    // Create properly formatted description using the DocumentDescription helper
+    // Create properly formatted description using the DocumentDescription helper with optimized format
     let mut desc = DocumentDescription::new();
-    desc.add_owner(user_key);  // Only search for owner=user_key
+    desc.add_owner(user_key)
+        .add_field("tag", tag_key);  // Add tag directly to the query instead of filtering afterward
     let description_filter = desc.build();
     
     // Add a debug log to show the exact search pattern being used
     log_info(&format!(
-        "[calculate_and_store_vote_weight] Searching for votes with owner filter: \"{}\"",
+        "[calculate_and_store_vote_weight] Searching for votes with optimized filter: \"{}\"",
         description_filter
     ));
     
-    // Execute the votes query using the description filter
-    let all_user_votes = list_docs(
+    // Execute the votes query using the optimized description filter
+    let user_votes_result = list_docs(
         String::from("votes"),
         ListParams {
             matcher: Some(ListMatcher {
@@ -240,22 +276,8 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
         },
     );
     
-    // Filter the results to only include votes for the specified tag
-    // Instead of trying to create a new ListResults, just filter the items directly
-    let user_votes_for_tag: Vec<_> = all_user_votes.items.into_iter()
-        .filter(|(_, doc)| {
-            // Extract the tag from the description or the data
-            if let Some(desc) = &doc.description {
-                desc.contains(&format!("tag={};", tag_key))
-            } else {
-                // If no description, try to get tag from the data (this should never happen)
-                match decode_doc_data::<VoteData>(&doc.data) {
-                    Ok(vote_data) => vote_data.tag_key == tag_key,
-                    Err(_) => false
-                }
-            }
-        })
-        .collect();
+    // Use the results directly - no need to filter with the optimized query
+    let user_votes_for_tag = user_votes_result.items;
     
     // Get the count of votes
     let user_votes_count = user_votes_for_tag.len();
@@ -401,7 +423,7 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
         ));
         
         // Generate a new document key using our random key generator
-        let new_key = generate_random_doc_key();
+        let new_key = generate_random_doc_key().await;
         log_debug(&format!("[calculate_and_store_vote_weight] Generated new key={} for reputation document", new_key));
         
         (new_key, None, None)
@@ -462,57 +484,95 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
     log_debug(&format!("[calculate_and_store_vote_weight] Step 9: Storing reputation document"));
     match encode_doc_data(&reputation.data) {
         Ok(encoded_data) => {
-            log_debug(&format!("[calculate_and_store_vote_weight] Using original version: {:?}", 
-                version));
-            
-            let doc = SetDoc {
-                data: encoded_data,
-                description: Some(reputation.description),
-                version, // Use the original version from the document, not incremented
-            };
+            // Determine if this is a new document or an update based on version
+            if let Some(v) = version {
+                log_debug(&format!("[calculate_and_store_vote_weight] Using original version: {}", v));
+                
+                // For existing documents, include the version
+                let doc = SetDoc {
+                    data: encoded_data,
+                    description: Some(reputation.description),
+                    version, // Include version for updates
+                };
 
-            // Make explicit double-check of version before storing
-            log_debug(&format!("[calculate_and_store_vote_weight] Storing document with key={}, version={:?}", 
-                reputation.key, doc.version));
+                // Make explicit double-check of version before storing
+                log_debug(&format!("[calculate_and_store_vote_weight] Storing document with key={}, version={:?}", 
+                    reputation.key, doc.version));
 
-            match set_doc_store(
-                ic_cdk::id(),  // Use canister's Principal ID as caller
-                String::from("reputations"),
-                reputation.key.clone(),
-                doc,
-            ) {
-                Ok(_) => {
-                    log_info(&format!(
-                        "[calculate_and_store_vote_weight] SUCCESS: {} reputation document with key={}, version={:?}, vote_weight={}",
-                        if existing_data.is_some() { "Updated" } else { "Created" },
-                        reputation.key, version, vote_weight.value()
-                    ));
-                    Ok(vote_weight.value())
-                },
-                Err(e) => {
-                    // Enhanced error logging for version conflicts
-                    log_error(&format!(
-                        "[calculate_and_store_vote_weight] ERROR: Failed to store reputation document: key={}, attempted_version={:?}, error={}",
-                        reputation.key, version, e
-                    ));
-                    
-                    // Double-check version with direct document retrieval
-                    if let Some(current_doc) = get_doc(String::from("reputations"), reputation.key.clone()) {
-                        log_error(&format!(
-                            "[calculate_and_store_vote_weight] VERIFICATION: Current document in database has version={:?}, we attempted to use version={:?}",
-                            current_doc.version, version
+                match set_doc_store(
+                    ic_cdk::id(),  // Use canister's Principal ID as caller
+                    String::from("reputations"),
+                    reputation.key.clone(),
+                    doc,
+                ) {
+                    Ok(_) => {
+                        log_info(&format!(
+                            "[calculate_and_store_vote_weight] SUCCESS: Updated reputation document with key={}, version={:?}, vote_weight={}",
+                            reputation.key, version, vote_weight.value()
                         ));
-                    } else {
+                        Ok(vote_weight.value())
+                    },
+                    Err(e) => {
+                        // Enhanced error logging for version conflicts
                         log_error(&format!(
-                            "[calculate_and_store_vote_weight] VERIFICATION: Document with key={} not found during verification",
-                            reputation.key
+                            "[calculate_and_store_vote_weight] ERROR: Failed to store reputation document: key={}, attempted_version={:?}, error={}",
+                            reputation.key, version, e
                         ));
+                        
+                        // Double-check version with direct document retrieval
+                        if let Some(current_doc) = get_doc(String::from("reputations"), reputation.key.clone()) {
+                            log_error(&format!(
+                                "[calculate_and_store_vote_weight] VERIFICATION: Current document in database has version={:?}, we attempted to use version={:?}",
+                                current_doc.version, version
+                            ));
+                        } else {
+                            log_error(&format!(
+                                "[calculate_and_store_vote_weight] VERIFICATION: Document with key={} not found during verification",
+                                reputation.key
+                            ));
+                        }
+                        
+                        Err(format!("Failed to store reputation: {}", e))
                     }
-                    
-                    Err(format!("Failed to store reputation: {}", e))
+                }
+            } else {
+                // For new documents, use SetDoc with version: Some(0)
+                log_debug(&format!("[calculate_and_store_vote_weight] Creating new document with version=0"));
+                
+                let doc = SetDoc {
+                    data: encoded_data,
+                    description: Some(reputation.description),
+                    version: Some(0), // Use Some(0) for new documents
+                };
+
+                log_debug(&format!("[calculate_and_store_vote_weight] Storing new document with key={}", 
+                    reputation.key));
+
+                match set_doc_store(
+                    ic_cdk::id(),  // Use canister's Principal ID as caller
+                    String::from("reputations"),
+                    reputation.key.clone(),
+                    doc,
+                ) {
+                    Ok(_) => {
+                        log_info(&format!(
+                            "[calculate_and_store_vote_weight] SUCCESS: Created reputation document with key={}, vote_weight={}",
+                            reputation.key, vote_weight.value()
+                        ));
+                        Ok(vote_weight.value())
+                    },
+                    Err(e) => {
+                        // Enhanced error logging for new document creation
+                        log_error(&format!(
+                            "[calculate_and_store_vote_weight] ERROR: Failed to create reputation document: key={}, error={}",
+                            reputation.key, e
+                        ));
+                        
+                        Err(format!("Failed to create reputation: {}", e))
+                    }
                 }
             }
-        }
+        },
         Err(e) => {
             log_error(&format!(
                 "[calculate_and_store_vote_weight] Error serializing reputation data: user={}, tag={}, error={}",
@@ -546,6 +606,7 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
 ///      - Multiplies by author's weight and reputation (from the index created in step 2)
 ///      - Adds to total (positive votes = +1, negative = -1)
 ///    - Result stored as total_basis_reputation
+///    - If no active authors are found, basis reputation is set to 0.0 but calculation continues
 /// 
 /// 4. **Trust Status Check**
 ///    - Compares total_basis_reputation against tag's minimum threshold
@@ -559,6 +620,7 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
 ///    - For each vote made by user:
 ///      - Calculate reward = tag.vote_reward * time multiplier
 ///    - Sum all rewards to get total_voting_rewards_reputation
+///    - This step always executes even if no basis reputation was calculated
 /// 
 /// 6. **Final Reputation Calculation**
 ///    - If user is trusted OR community is in bootstrap phase:
@@ -586,6 +648,7 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
 /// - Voting rewards are only included for trusted users or in bootstrap phase
 /// - All calculations are tag-specific and don't affect other tags
 /// - Trust status is stored to determine if user's votes are active
+/// - Voting rewards are always calculated even if user has received no votes
 pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<ReputationData, String> {
     // Add start log message
     log_info(&format!("[calculate_user_reputation] START calculating reputation for user={}, tag={}", user_key, tag_key));
@@ -595,16 +658,21 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
 
     // Step 1: Query Votes
     // ----------------------
-    // Query all votes targeted the user under a specified tag
-    // We use the description field to filter votes efficiently
-    
-    // Create properly formatted description using the DocumentDescription helper
+    // Query votes where user is the target
+    // Use optimized query format: tag=tag_key;target=user_key;
     let mut desc = DocumentDescription::new();
-    desc.add_owner(user_key)
-        .add_field("tag", tag_key);
+    desc.add_field("tag", tag_key);  // First filter by tag
+    desc.add_field("target", user_key);  // Then filter by target
     let description_filter = desc.build();
     
-    let votes = list_docs(
+    // Log the search pattern being used
+    log_info(&format!(
+        "[calculate_user_reputation] Searching for votes targeting user with filter: \"{}\"",
+        description_filter
+    ));
+    
+    // Execute the votes query using the optimized description filter
+    let vote_items_result = list_docs(
         String::from("votes"),
         ListParams {
             matcher: Some(ListMatcher {
@@ -614,9 +682,14 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
             ..Default::default()
         },
     );
+    
+    // Use the results directly - no need to filter
+    let vote_items = vote_items_result.items;
 
-    // Store vote items in a vector to avoid multiple moves
-    let vote_items: Vec<_> = votes.items;
+    // Add vote count info log
+    log_info(&format!(
+        "[calculate_user_reputation] VOTES TARGETING USER: Found {} votes where user={} is the target in tag={}",
+        vote_items.len(), user_key, tag_key));
 
     // Convert raw vote documents into VoteData structs
     // This step:
@@ -721,68 +794,65 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
         }
     }
 
-    // If we have no valid authors (all had inactive votes), return early
-    if author_index.is_empty() {
-        return Ok(ReputationData {
-            user_key: user_key.to_string(),
-            tag_key: tag_key.to_string(),
-            total_basis_reputation: 0.0,
-            total_voting_rewards_reputation: 0.0,
-            last_known_effective_reputation: 0.0,
-            last_calculation: ic_cdk::api::time(),
-            vote_weight: VoteWeight::new(0.0)
-                .map_err(|e| format!("Invalid vote weight calculated: {}", e))?,
-            has_voting_power: false,
-        });
-    }
+    // If we have no valid authors (all had inactive votes), set basis reputation to 0
+    // but continue with voting rewards calculation
+    let total_basis_reputation = if author_index.is_empty() {
+        log_info(&format!(
+            "[calculate_user_reputation] No active authors found for user={} in tag={}, setting basis reputation to 0 but continuing with rewards",
+            user_key, tag_key
+        ));
+        0.0
+    } else {
+        // Step 3: Basis Reputation Calculation
+        // -----------------------------------
+        // Calculate total basis reputation from all received votes
+        // For each vote, calculate its contribution by multiplying:
+        // - Base value (+1 for positive, -1 for negative)
+        // - Author's effective reputation
+        // - Author's vote weight
+        // - Time-based multiplier from tag rules
+        // Then sum all vote contributions to get total_basis_reputation
+        let mut basis_rep = 0.0;
 
-    // Step 3: Basis Reputation Calculation
-    // -----------------------------------
-    // Calculate total basis reputation from all received votes
-    // For each vote, calculate its contribution by multiplying:
-    // - Base value (+1 for positive, -1 for negative)
-    // - Author's effective reputation
-    // - Author's vote weight
-    // - Time-based multiplier from tag rules
-    // Then sum all vote contributions to get total_basis_reputation
-    let mut total_basis_reputation = 0.0;
+        // Iterate through all received votes
+        for (_, doc) in &vote_items {
+            let vote_data: VoteData = decode_doc_data(&doc.data)
+                .map_err(|e| format!("Failed to deserialize vote: {}", e))?;
 
-    // Iterate through all received votes
-    for (_, doc) in &vote_items {
-        let vote_data: VoteData = decode_doc_data(&doc.data)
-            .map_err(|e| format!("Failed to deserialize vote: {}", e))?;
+            // Get author's information from our index
+            let author_info = match author_index.get(&vote_data.author_key) {
+                Some(info) => info,
+                None => {
+                    log_warn(&format!(
+                        "[calculate_user_reputation - Iterate Votes] Warning: Author info not found in index to calculate vote, author={}",
+                        vote_data.author_key
+                    ));
+                    continue;
+                }
+            };
 
-        // Get author's information from our index
-        let author_info = match author_index.get(&vote_data.author_key) {
-            Some(info) => info,
-            None => {
-                log_warn(&format!(
-                    "[calculate_user_reputation - Iterate Votes] Warning: Author info not found in index to calculate vote, author={}",
-                    vote_data.author_key
-                ));
-                continue;
-            }
-        };
+            // Get time-based multiplier for this vote using the document's created_at timestamp
+            let time_multiplier = get_period_multiplier(doc.created_at, tag_key).await?;
 
-        // Get time-based multiplier for this vote using the document's created_at timestamp
-        let time_multiplier = get_period_multiplier(doc.created_at, tag_key).await?;
+            // Calculate this vote's contribution:
+            // 1. Base value: Use the vote's value directly
+            let base_value = vote_data.value;
 
-        // Calculate this vote's contribution:
-        // 1. Base value: Use the vote's value directly
-        let base_value = vote_data.value;
+            // 2. Multiply by author's effective reputation
+            let with_reputation = base_value * author_info.effective_reputation;
 
-        // 2. Multiply by author's effective reputation
-        let with_reputation = base_value * author_info.effective_reputation;
+            // 3. Multiply by author's vote weight
+            let with_weight = with_reputation * author_info.vote_weight.value();
 
-        // 3. Multiply by author's vote weight
-        let with_weight = with_reputation * author_info.vote_weight.value();
+            // 4. Finally apply time multiplier
+            let final_contribution = with_weight * time_multiplier;
 
-        // 4. Finally apply time multiplier
-        let final_contribution = with_weight * time_multiplier;
-
-        // Add to total
-        total_basis_reputation += final_contribution;
-    }
+            // Add to total
+            basis_rep += final_contribution;
+        }
+        
+        basis_rep
+    };
 
     // Add info about basis reputation total
     log_info(&format!("[calculate_user_reputation] Calculated total_basis_reputation={} for user={} in tag={}", total_basis_reputation, user_key, tag_key));
@@ -791,7 +861,32 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
     // -------------------------
     // Compare total_basis_reputation against tag's minimum threshold
     // to determine if user has voting power
-    let has_voting_power = total_basis_reputation >= tag.data.reputation_threshold;
+    let meets_threshold = total_basis_reputation >= tag.data.reputation_threshold;
+    
+    // Get active users count for bootstrap phase check
+    let active_users = get_active_users_count(tag_key).await?;
+    let in_bootstrap_phase = active_users < tag.data.min_users_for_threshold;
+    
+    // Determine voting power based on threshold or bootstrap phase
+    let has_voting_power = meets_threshold || in_bootstrap_phase;
+    
+    // Add detailed info about voting power determination
+    if meets_threshold {
+        log_info(&format!(
+            "[calculate_user_reputation] User meets threshold: user={}, reputation={}, threshold={}",
+            user_key, total_basis_reputation, tag.data.reputation_threshold
+        ));
+    } else if in_bootstrap_phase {
+        log_info(&format!(
+            "[calculate_user_reputation] Bootstrap phase active: active_users={} < min_threshold={}, voting rewards active",
+            active_users, tag.data.min_users_for_threshold
+        ));
+    } else {
+        log_info(&format!(
+            "[calculate_user_reputation] User lacks threshold: user={}, reputation={}, threshold={}",
+            user_key, total_basis_reputation, tag.data.reputation_threshold
+        ));
+    }
 
     // Step 5: Voting Rewards Calculation
     // --------------------------------
@@ -801,13 +896,19 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
     // - Calculate reward = tag.vote_reward * time multiplier
     // Sum all rewards to get total_voting_rewards_reputation
     // Query votes where this user is the author
-    // Format is now: "owner=user_key;tag=tag_key;"
+    // New optimized format: "owner=user_key;tag=tag_key;"
     
     // Create properly formatted description using the DocumentDescription helper
     let mut desc = DocumentDescription::new();
     desc.add_owner(user_key)
         .add_field("tag", tag_key);
     let description_filter = desc.build();
+    
+    // Log the search pattern being used
+    log_info(&format!(
+        "[calculate_user_reputation] Searching for votes cast by user with filter: \"{}\"",
+        description_filter
+    ));
 
     let user_votes = list_docs(
         String::from("votes"),
@@ -819,28 +920,53 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
             ..Default::default()
         },
     );
+    
+    // Log the results
+    log_info(&format!(
+        "[calculate_user_reputation] USER VOTES: Found {} votes cast by user={} in tag={}",
+        user_votes.items.len(), user_key, tag_key
+    ));
 
     // Calculate rewards for each vote cast by the user
     let mut total_voting_rewards_reputation = 0.0;
-    for (_, doc) in user_votes.items {
-        // We only need the timestamp, not the vote data itself
-        // Get time-based multiplier for this vote using the document's created_at timestamp
-        let time_multiplier = get_period_multiplier(doc.created_at, tag_key).await?;
+    
+    // If we're in bootstrap phase, rewards are always given regardless of voting power
+    // Otherwise, rewards are only given if user meets threshold or already has rewards from bootstrap
+    
+    // First determine if user should receive voting rewards
+    let should_receive_rewards = in_bootstrap_phase || meets_threshold;
+    
+    if should_receive_rewards {
+        for (_, doc) in user_votes.items {
+            // We only need the timestamp, not the vote data itself
+            // Get time-based multiplier for this vote using the document's created_at timestamp
+            let time_multiplier = get_period_multiplier(doc.created_at, tag_key).await?;
+            
+            let reward = tag.data.vote_reward * time_multiplier;
+            total_voting_rewards_reputation += reward;
+            
+            // Add detailed log for each vote reward calculation
+            log_info(&format!(
+                "[calculate_user_reputation] VOTE_REWARD: author={}, voteR={} (base_reward={} * time_multiplier={}), created_at={}",
+                user_key, reward, tag.data.vote_reward, time_multiplier, doc.created_at
+            ));
+        }
         
-        let reward = tag.data.vote_reward * time_multiplier;
-        total_voting_rewards_reputation += reward;
-        
-        // Add detailed log for each vote reward calculation
+        // Log if rewards were given due to bootstrap phase
+        if in_bootstrap_phase && !meets_threshold && total_voting_rewards_reputation > 0.0 {
+            log_info(&format!(
+                "[calculate_user_reputation] BOOTSTRAP REWARDS: user={} receives voteR={} during bootstrap phase",
+                user_key, total_voting_rewards_reputation
+            ));
+        }
+    } else {
         log_info(&format!(
-            "[calculate_user_reputation] VOTE_REWARD: author={}, voteR={} (base_reward={} * time_multiplier={}), created_at={}",
-            user_key, reward, tag.data.vote_reward, time_multiplier, doc.created_at
+            "[calculate_user_reputation] NO REWARDS: user={} does not receive voting rewards (bootstrap={}, meets_threshold={})",
+            user_key, in_bootstrap_phase, meets_threshold
         ));
     }
 
     // Add info about voting rewards total
-    // Get active users count before using it in any logs
-    let active_users = get_active_users_count(tag_key).await?;
-    
     log_info(&format!(
         "[calculate_user_reputation] SUMMARY: user={}, tag={}, basisR={}, voteR={}, active_users={}",
         user_key, tag_key, total_basis_reputation, total_voting_rewards_reputation, active_users
@@ -848,27 +974,24 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
 
     // Step 6: Final Reputation Calculation
     // ----------------------------------
-    // Calculate final effective reputation based on trust status and bootstrap phase
-    // Active users is already calculated above
-    // Add detailed info about active users count
+    // Calculate final effective reputation
     log_info(&format!(
         "[calculate_user_reputation] Found {} active users in tag={} (min_users_for_threshold={})",
         active_users, tag_key, tag.data.min_users_for_threshold
     ));
 
-    // FIXED: Always include voting rewards in effective reputation
-    // This ensures users can gain reputation by voting even if their votes don't count for others
+    // Always include voting rewards in effective reputation
     let effective_reputation = total_basis_reputation + total_voting_rewards_reputation;
     
     // Log appropriate message based on voting power status
-    if has_voting_power {
+    if meets_threshold {
         log_info(&format!(
-            "[calculate_user_reputation] TRUSTED: user={} has voting power in tag={}",
+            "[calculate_user_reputation] TRUSTED: user={} has voting power by meeting threshold in tag={}",
             user_key, tag_key
         ));
-    } else if active_users < tag.data.min_users_for_threshold {
+    } else if in_bootstrap_phase {
         log_info(&format!(
-            "[calculate_user_reputation] BOOTSTRAP: tag={} is in bootstrap phase ({} < {} users)",
+            "[calculate_user_reputation] BOOTSTRAP: tag={} is in bootstrap phase ({} < {} users), user has voting power",
             tag_key, active_users, tag.data.min_users_for_threshold
         ));
     } else {
@@ -949,7 +1072,10 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
             user_key, tag_key
         ));
         // Generate a new random document key instead of using canister ID
-        (generate_random_doc_key(), None, None)
+        let new_key = generate_random_doc_key().await;
+        log_debug(&format!("[calculate_user_reputation] Generated new key={} for reputation document", new_key));
+        
+        (new_key, None, None)
     };
 
     // Determine vote_weight to use based on existing data
@@ -978,47 +1104,86 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
     // ----------------------
     match encode_doc_data(&reputation_data) {
         Ok(encoded_data) => {
-            // Determine new version (increment if exists)
-            let new_version = version.map(|v| v + 1);
-            
-            let doc = SetDoc {
-                data: encoded_data,
-                description: Some(description_filter),
-                version: new_version,
-            };
+            // Create different SetDoc struct based on whether this is a new document or existing one
+            if existing_data.is_some() {
+                // For existing documents, include the version field
+                let doc = SetDoc {
+                    data: encoded_data,
+                    description: Some(description_filter),
+                    version, // Include version for existing documents
+                };
 
-            // Add log to show what we're about to store
-            log_info(&format!(
-                "[calculate_user_reputation] {}: key={}, basisR={}, voteR={}, totalR={}, vote_weight={}",
-                if existing_data.is_some() { "UPDATING" } else { "CREATING" },
-                doc_key, reputation_data.total_basis_reputation, 
-                reputation_data.total_voting_rewards_reputation,
-                reputation_data.last_known_effective_reputation,
-                vote_weight.value()
-            ));
+                // Add log to show what we're about to store
+                log_info(&format!(
+                    "[calculate_user_reputation] UPDATING: key={}, basisR={}, voteR={}, totalR={}, vote_weight={}",
+                    doc_key, reputation_data.total_basis_reputation, 
+                    reputation_data.total_voting_rewards_reputation,
+                    reputation_data.last_known_effective_reputation,
+                    vote_weight.value()
+                ));
 
-            match set_doc_store(
-                ic_cdk::id(),
-                String::from("reputations"),
-                doc_key.clone(),
-                doc,
-            ) {
-                Ok(_) => {
-                    log_info(&format!(
-                        "[calculate_user_reputation] SUCCESS: {} reputation for user={} in tag={}: basisR={}, voteR={}, totalR={}",
-                        if existing_data.is_some() { "updated" } else { "created" },
-                        user_key, tag_key, total_basis_reputation, total_voting_rewards_reputation, effective_reputation
-                    ));
-                    Ok(reputation_data)
-                },
-                Err(e) => {
-                    log_error(&format!(
-                        "[calculate_user_reputation] Failed to {} reputation document: key={}, error={}",
-                        if existing_data.is_some() { "update" } else { "create" },
-                        doc_key, e
-                    ));
-                    Err(format!("Failed to {} reputation: {}", 
-                        if existing_data.is_some() { "update" } else { "create" }, e))
+                // Store the document with version for updates
+                match set_doc_store(
+                    ic_cdk::id(),
+                    String::from("reputations"),
+                    doc_key.clone(),
+                    doc,
+                ) {
+                    Ok(_) => {
+                        log_info(&format!(
+                            "[calculate_user_reputation] SUCCESS: updated reputation for user={} in tag={}: basisR={}, voteR={}, totalR={}",
+                            user_key, tag_key, total_basis_reputation, total_voting_rewards_reputation, effective_reputation
+                        ));
+                        Ok(reputation_data)
+                    },
+                    Err(e) => {
+                        log_error(&format!(
+                            "[calculate_user_reputation] Failed to update reputation document: key={}, error={}",
+                            doc_key, e
+                        ));
+                        Err(format!("Failed to update reputation: {}", e))
+                    }
+                }
+            } else {
+                // For new documents, use SetDoc with version: Some(0)
+                log_debug(&format!("[calculate_user_reputation] Creating new document with version=0"));
+                
+                let doc = SetDoc {
+                    data: encoded_data,
+                    description: Some(description_filter),
+                    version: Some(0), // Use Some(0) for new documents
+                };
+
+                // Add log to show what we're about to store
+                log_info(&format!(
+                    "[calculate_user_reputation] CREATING: key={}, basisR={}, voteR={}, totalR={}, vote_weight={}",
+                    doc_key, reputation_data.total_basis_reputation, 
+                    reputation_data.total_voting_rewards_reputation,
+                    reputation_data.last_known_effective_reputation,
+                    vote_weight.value()
+                ));
+
+                // Store the document with version: Some(0) for new documents
+                match set_doc_store(
+                    ic_cdk::id(),
+                    String::from("reputations"),
+                    doc_key.clone(),
+                    doc,
+                ) {
+                    Ok(_) => {
+                        log_info(&format!(
+                            "[calculate_user_reputation] SUCCESS: created reputation for user={} in tag={}: basisR={}, voteR={}, totalR={}",
+                            user_key, tag_key, total_basis_reputation, total_voting_rewards_reputation, effective_reputation
+                        ));
+                        Ok(reputation_data)
+                    },
+                    Err(e) => {
+                        log_error(&format!(
+                            "[calculate_user_reputation] Failed to create reputation document: key={}, error={}",
+                            doc_key, e
+                        ));
+                        Err(format!("Failed to create reputation: {}", e))
+                    }
                 }
             }
         },

@@ -15,9 +15,9 @@
  * 
  * Votes Collection:
  * - owner: The document key of the user casting the vote
+ * - tag: The document key of the tag this vote belongs to (note: now tag comes before target)
  * - target: The document key of the user being voted on
- * - tag: The document key of the tag this vote belongs to
- * Format: owner=voterUserKey;target=targetUserKey;tag=tagKey;
+ * Format: owner=voterUserKey;tag=tagKey;target=targetUserKey;
  * 
  * Reputations Collection (backend only):
  * - owner: The document key of the user this reputation belongs to
@@ -84,7 +84,7 @@ export function createTagDescription(user: User | null, documentKey: string, nam
 
 /**
  * Creates a description for a vote document
- * Format: owner=voterUserKey;target=targetUserKey;tag=tagKey;
+ * Format: owner=voterUserKey;tag=tagKey;target=targetUserKey;
  */
 export function createVoteDescription(
     user: User | null,
@@ -99,7 +99,8 @@ export function createVoteDescription(
     const sanitizedTagKey = sanitizeKey(tagKey);
     
     // Note: We use authorKey (the voter's user document key) as owner, NOT the vote's documentKey
-    return `owner=${sanitizedAuthorKey};target=${sanitizedTargetKey};tag=${sanitizedTagKey};`;
+    // Updated order: tag comes before target for optimized querying
+    return `owner=${sanitizedAuthorKey};tag=${sanitizedTagKey};target=${sanitizedTargetKey};`;
 }
 
 /**

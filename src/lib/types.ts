@@ -52,18 +52,14 @@ export interface TagData {
 }
 
 /**
- * Vote data interface
+ * Vote Document
  * 
- * Description field format:
- * owner={author_key};target={target_key};tag={tag_key};
+ * Represents a vote from one user to another in a specific tag context.
  * 
- * Example: "owner=user_123;target=user_456;tag=tag_789;"
+ * Description format:
+ * owner={author_key};tag={tag_key};target={target_key};
  * 
- * This allows querying:
- * - By vote author: owner=user_123;
- * - By target user: target=user_456;
- * - By tag: tag=tag_789;
- * - By combinations: owner=user_123;tag=tag_789;
+ * Example: "owner=user_123;tag=tag_789;target=user_456;"
  */
 export interface VoteData {
     author_key: string;    // User key who cast the vote (references Users collection)

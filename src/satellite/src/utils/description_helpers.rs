@@ -240,16 +240,16 @@ pub fn create_tag_description(tag: &Tag, owner: &Principal, is_playground: bool)
 /// ```
 /// key: String,           // Document's unique identifier
 /// data: {
-///     author_key: String // Reference to Users collection
-///     target_key: String // Reference to Users collection
-///     tag_key: String    // Reference to Tags collection
-///     value: f64,        // Vote value (+1 or -1)
-///     weight: f64,       // Vote weight (0.0 to 1.0)
+///     author_key: String   // Reference to Users collection
+///     target_key: String   // Reference to Users collection
+///     tag_key: String      // Reference to Tags collection
+///     value: f64,         // Vote value (+1 or -1)
+///     weight: f64         // Vote weight (default: 1.0)  
 /// }
 /// ```
 /// 
 /// # Description Format
-/// New format: owner=sanitized_key;target=sanitized_target_key;tag=sanitized_tag_key;
+/// New format: owner=sanitized_key;tag=sanitized_tag_key;target=sanitized_target_key;
 pub fn create_vote_description(vote: &Vote, owner: &Principal, is_playground: bool) -> String {
     let mut desc = DocumentDescription::new();
     let owner_str = if is_playground { 
@@ -261,12 +261,13 @@ pub fn create_vote_description(vote: &Vote, owner: &Principal, is_playground: bo
     };
     
     // Sanitize the target and tag keys
-    let sanitized_target_key = DocumentDescription::sanitize_key(&vote.data.target_key);
     let sanitized_tag_key = DocumentDescription::sanitize_key(&vote.data.tag_key);
+    let sanitized_target_key = DocumentDescription::sanitize_key(&vote.data.target_key);
     
+    // Changed order to put tag before target for optimized querying
     desc.add_owner(&owner_str)
-        .add_field("target", &sanitized_target_key)
-        .add_field("tag", &sanitized_tag_key);
+        .add_field("tag", &sanitized_tag_key)
+        .add_field("target", &sanitized_target_key);
     desc.build()
 }
 
@@ -312,7 +313,7 @@ lazy_static! {
     // Updated regex patterns for the new format
     static ref USER_DESC_PATTERN: Regex = Regex::new(r"owner=([^;]+);username=([^;]+);").unwrap();
     static ref TAG_DESC_PATTERN: Regex = Regex::new(r"owner=([^;]+);name=([^;]+);").unwrap();
-    static ref VOTE_DESC_PATTERN: Regex = Regex::new(r"owner=([^;]+);target=([^;]+);tag=([^;]+);").unwrap();
+    static ref VOTE_DESC_PATTERN: Regex = Regex::new(r"owner=([^;]+);tag=([^;]+);target=([^;]+);").unwrap();
     static ref REP_DESC_PATTERN: Regex = Regex::new(r"owner=([^;]+);tag=([^;]+);").unwrap();
 }
 
@@ -510,14 +511,14 @@ mod tests {
         // Test playground format - should use document key
         let playground_desc = create_vote_description(&vote, &owner, true);
         assert!(playground_desc.contains("owner=vote_123"));   // Check for document key
+        assert!(playground_desc.contains("tag=tag_123"));      // Check for tag key (now comes before target)
         assert!(playground_desc.contains("target=target_789")); // Check for target key
-        assert!(playground_desc.contains("tag=tag_123"));      // Check for tag key
         
         // Test production format - should use Principal ID
         let production_desc = create_vote_description(&vote, &owner, false);
         assert!(production_desc.contains("owner=k2vxsxfae"));  // Check for Principal ID
+        assert!(production_desc.contains("tag=tag_123"));      // Check for tag key (now comes before target)
         assert!(production_desc.contains("target=target_789")); // Check for target key
-        assert!(production_desc.contains("tag=tag_123"));      // Check for tag key
     }
 
     #[test]
@@ -566,9 +567,10 @@ mod tests {
         assert!(TAG_DESC_PATTERN.is_match("owner=user_123;name=tech_skills;"));
         assert!(!TAG_DESC_PATTERN.is_match("owner=user_123;username=john_doe;")); // Wrong field name
         
-        // Test vote description pattern
-        assert!(VOTE_DESC_PATTERN.is_match("owner=user_123;target=user_456;tag=tag_789;"));
-        assert!(!VOTE_DESC_PATTERN.is_match("owner=user_123;target=user_456;")); // Missing tag field
+        // Test vote description pattern with new field order
+        assert!(VOTE_DESC_PATTERN.is_match("owner=user_123;tag=tag_789;target=user_456;"));
+        assert!(!VOTE_DESC_PATTERN.is_match("owner=user_123;target=user_456;tag=tag_789;")); // Old field order
+        assert!(!VOTE_DESC_PATTERN.is_match("owner=user_123;tag=tag_789;")); // Missing target field
         
         // Test reputation description pattern
         assert!(REP_DESC_PATTERN.is_match("owner=user_123;tag=tag_789;"));
