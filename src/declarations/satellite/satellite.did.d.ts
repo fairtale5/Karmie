@@ -5,6 +5,25 @@ import type { Principal } from '@dfinity/principal';
 import type { ActorMethod } from '@dfinity/agent';
 import type { IDL } from '@dfinity/candid';
 
-export interface _SERVICE { 'build_version' : ActorMethod<[], string> }
+export interface ReputationData {
+  'total_voting_rewards_reputation' : number,
+  'last_calculation' : bigint,
+  'user_key' : string,
+  'tag_key' : string,
+  'vote_weight' : number,
+  'last_known_effective_reputation' : number,
+  'has_voting_power' : boolean,
+  'total_basis_reputation' : number,
+}
+export type Result = { 'Ok' : number } |
+  { 'Err' : string };
+export type Result_1 = { 'Ok' : ReputationData } |
+  { 'Err' : string };
+export interface _SERVICE {
+  'build_version' : ActorMethod<[], string>,
+  'get_user_reputation' : ActorMethod<[string, string], Result>,
+  'get_user_reputation_full' : ActorMethod<[string, string], Result_1>,
+  'recalculate_reputation' : ActorMethod<[string, string], Result>,
+}
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

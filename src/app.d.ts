@@ -8,6 +8,12 @@ declare global {
 		// interface PageState {}
 		// interface Platform {}
 	}
+
+	interface Window {
+		ic: {
+			recalculate_reputation: (userKey: string, tagKey: string) => Promise<number>;
+		};
+	}
 }
 
 export {};

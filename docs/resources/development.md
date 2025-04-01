@@ -1,5 +1,113 @@
 # Development Guide
 
+## Getting Started
+
+### Essential Commands
+```bash
+# Start development server with hot reload
+npm run dev
+
+# Build for production
+npm run build
+
+# Build and start Juno development environment
+juno dev build
+juno dev start
+```
+
+### Source Code
+The project is available at: https://github.com/fairtale5/Reputator
+
+### Prerequisites
+- Node.js and npm
+- Rust and Cargo
+- Juno CLI (`npm install -g @junobuild/cli`)
+- Docker (for local development)
+- Git
+
+### Fresh Setup Guide
+
+#### PART 1: Complete Cleanup
+1. **Remove Node.js related files and folders**:
+```bash
+rm -rf node_modules
+rm -rf .svelte-kit
+rm -rf build
+rm package-lock.json
+```
+
+2. **Remove Rust/Cargo build artifacts**:
+```bash
+rm -rf target
+rm -rf src/satellite/target
+```
+
+3. **Remove Docker containers, images, and volumes**:
+```bash
+docker-compose down --rmi all --volumes
+docker system prune -f --volumes  # This removes all unused containers, networks, images, AND volumes
+```
+
+4. **Remove any Juno local development artifacts**:
+```bash
+rm -rf .juno
+```
+
+#### PART 2: Fresh Rebuild
+1. **Install Node.js dependencies**:
+```bash
+npm ci  # Uses package-lock.json for exact dependency versions
+```
+
+2. **Build the SvelteKit application**:
+```bash
+npm run build
+```
+
+3. **Build the satellite WASM module**:
+```bash
+cd src/satellite
+rustup target add wasm32-unknown-unknown  # One-time setup for WebAssembly support
+cargo build --target wasm32-unknown-unknown
+cd ../..
+```
+
+4. **Start Juno development environment**:
+```bash
+juno dev build
+juno dev start
+```
+
+### Project Structure
+```
+├── src/                    # Frontend source code
+│   ├── routes/            # SvelteKit routes
+│   ├── lib/               # Shared components & utilities
+│   └── satellite/         # Backend Rust code
+│       ├── src/
+│       │   └── lib.rs     # Main Rust implementation
+│       └── Cargo.toml     # Rust dependencies
+├── static/                # Static assets
+├── docs/                  # Project documentation
+│   ├── resources/         # Reference documentation
+│   ├── core/             # Core project docs
+│   └── implementation/   # Implementation guides
+├── build/                # Production build output
+├── juno.config.ts        # Main Juno configuration
+├── juno.dev.config.ts    # Development-specific config
+├── package.json          # Node.js dependencies
+├── package-lock.json     # Locked Node.js dependencies
+└── Cargo.toml           # Root Rust configuration
+```
+
+### Important Files
+- `src/satellite/src/lib.rs`: Main backend implementation
+- `src/satellite/Cargo.toml`: Backend dependencies and configuration
+- `juno.config.ts`: Main Juno configuration
+- `juno.dev.config.ts`: Development-specific Juno settings
+- `package.json`: Frontend dependencies and scripts
+- `docs/README.md`: Main project documentation
+
 ## Quick Start Commands
 
 ### Local Development (Testing)
@@ -352,3 +460,47 @@ await signOut();
 - Verify collection permissions
 - Check build size
 - Test on multiple devices 
+
+## Git Commands Reference
+
+### Basic Git Workflow
+```bash
+# Check status of your changes
+git status
+
+# Stage all changes
+git add .
+
+# Stage specific files
+git add file1.ts file2.ts
+
+# Commit changes with a simple message
+git commit -m "Your commit message"
+
+# Commit with a detailed message (opens text editor)
+git commit
+
+# Example of a detailed commit message format:
+Title: Brief summary of changes
+
+- Bullet point of major change 1
+- Bullet point of major change 2
+
+Technical details:
+- Specific implementation detail 1
+- Specific implementation detail 2
+
+# Push changes to remote
+git push origin branch-name
+```
+
+### Git Configuration
+```bash
+# Set your Git identity
+git config --global user.name "Your Name"
+git config --global user.email "your.email@example.com"
+
+# Set identity for single repository (remove --global)
+git config user.name "Your Name"
+git config user.email "your.email@example.com"
+``` 

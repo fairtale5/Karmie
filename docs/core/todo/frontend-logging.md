@@ -1,0 +1,1 @@
+need to add proper logging to the frontend. it already does some, but it was AI generated, i need to check what it is doing exactly and introduce some better standard.

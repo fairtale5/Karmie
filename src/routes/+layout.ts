@@ -1,8 +1,4 @@
-// Enable static prerendering for compatible routes
-export const prerender = true;
-
-// Disable server-side rendering since Juno doesn't support it
-export const ssr = false;
-
-// Enable client-side rendering for SPA behavior
-export const csr = true;
+// Root layout configuration for Juno
+export const prerender = true;  // Enable static generation
+export const ssr = false;       // Disable server-side rendering
+export const csr = true;        // Enable client-side rendering 

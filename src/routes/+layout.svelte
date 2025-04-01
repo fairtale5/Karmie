@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { initSatelliteConnection } from '$lib/junoInit';
+	import { initJuno } from '$lib/juno';
+	import Header from '$lib/Header.svelte';
 
 	onMount(async () => {
-		await initSatelliteConnection();
+		await initJuno();
 	});
 </script>
 
@@ -15,4 +16,7 @@
 	</div>
 {/if}
 
-<slot />
+<Header />
+<main class="container mx-auto px-4 py-8">
+    <slot />
+</main>

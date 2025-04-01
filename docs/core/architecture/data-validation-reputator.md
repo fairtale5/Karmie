@@ -26,6 +26,11 @@ interface ReputationData {
     reputation_score: number; // Current reputation score
     total_votes: number;   // Total number of votes
     weighted_votes: number; // Total weighted votes
+    total_voting_rewards_reputation: number;
+    last_known_effective_reputation: number;
+    last_calculation: number;  // timestamp in nanoseconds
+    vote_weight: number;
+    has_voting_power: boolean;
     calculation_month: string; // "YYYY-MM" format
     created_at: bigint;    // Creation timestamp
     updated_at: bigint;    // Last update timestamp
@@ -57,6 +62,23 @@ function isVoteData(data: unknown): data is VoteData {
         vote.author_key !== vote.target_key // Prevent self-voting
     );
 }
+
+const validateVote = (vote: any): boolean => {
+    return (
+        typeof vote.key === 'string' &&
+        typeof vote.description === 'string' &&
+        typeof vote.owner === 'string' &&
+        typeof vote.created_at === 'bigint' &&
+        typeof vote.updated_at === 'bigint' &&
+        typeof vote.version === 'bigint' &&
+        typeof vote.data === 'object' &&
+        typeof vote.data.author_key === 'string' &&
+        typeof vote.data.target_key === 'string' &&
+        typeof vote.data.tag_key === 'string' &&
+        typeof vote.data.value === 'number' &&
+        typeof vote.data.weight === 'number'
+    );
+};
 ```
 
 ### Reputation Validation
@@ -73,6 +95,12 @@ function isReputationData(data: unknown): data is ReputationData {
         typeof reputation.reputation_score === 'number' &&
         typeof reputation.total_votes === 'number' &&
         typeof reputation.weighted_votes === 'number' &&
+        typeof reputation.total_voting_rewards_reputation === 'number' &&
+        typeof reputation.last_known_effective_reputation === 'number' &&
+        typeof reputation.last_calculation === 'number' &&
+        reputation.last_calculation > 0 &&
+        typeof reputation.vote_weight === 'number' &&
+        typeof reputation.has_voting_power === 'boolean' &&
         typeof reputation.calculation_month === 'string' &&
         /^\d{4}-\d{2}$/.test(reputation.calculation_month) &&
         typeof reputation.created_at === 'bigint' &&
@@ -173,6 +201,55 @@ initJuno({
    - Owner must match user
    - Cannot modify historical data
    - Can only update current month
+
+### Time Period Validation Rules
+
+1. **Structure Validation**
+   ```typescript
+   interface TimePeriod {
+       months: number;    // Duration in months
+       multiplier: number; // Weight multiplier
+   }
+   ```
+
+2. **Months Validation**
+   - Must be a positive integer
+   - First period must be 1 month
+   - Second period must be 2 months
+   - Third period must be 3 months
+   - Fourth period must be 6 months
+   - Following periods must be 12 months
+   - Last period can be 999 (treated as infinity)
+   - Total of first four periods must equal 12 months
+
+3. **Multiplier Validation**
+   - Must be a number between 0.25 and 1.5
+   - Must use 0.05 step increments
+   - First period must be 1.5
+   - Second period must be 1.2
+   - Third period must be 1.1
+   - Fourth period must be 1.0
+   - Following periods must decrease gradually
+   - Last period must be 0.25
+
+4. **Period Count Validation**
+   - Must have exactly 8 periods
+   - Cannot add or remove periods
+   - Periods must be in chronological order
+
+Example Valid Time Periods:
+```typescript
+const validTimePeriods = [
+    { months: 1, multiplier: 1.5 },    // Period 1: First month
+    { months: 2, multiplier: 1.2 },    // Period 2: Months 2-3
+    { months: 3, multiplier: 1.1 },    // Period 3: Months 4-6
+    { months: 6, multiplier: 1.0 },    // Period 4: Months 7-12
+    { months: 12, multiplier: 0.95 },  // Period 5: Months 13-24
+    { months: 12, multiplier: 0.75 },  // Period 6: Months 25-36
+    { months: 12, multiplier: 0.55 },  // Period 7: Months 37-48
+    { months: 999, multiplier: 0.25 }  // Period 8: Months 49+ (treated as infinity)
+];
+```
 
 ## Error Handling
 

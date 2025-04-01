@@ -80,6 +80,12 @@ Additional guidelines:
   - Return values
   - Example usage
 - Reference existing code patterns from the codebase
+- Follow Juno's logging guidelines (`/docs/juno/docs/build/functions/logs.md`):
+  - Use native logging with `ic_cdk::print` for efficiency
+  - Logs persist on blockchain up to 4 KiB
+  - All logs appear as "Error" in Juno Console
+  - Use `ic_cdk::trap` for error conditions
+  - Avoid custom logging unless absolutely necessary
 
 Additional guidelines:
 - Before generating code:
