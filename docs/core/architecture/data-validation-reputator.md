@@ -3,6 +3,7 @@
 ## Data Structures
 
 ### Vote Data
+
 ```typescript
 interface VoteData {
     key: string;           // Unique identifier
@@ -18,6 +19,7 @@ interface VoteData {
 ```
 
 ### Reputation Data
+
 ```typescript
 interface ReputationData {
     key: string;           // Unique identifier
@@ -42,6 +44,7 @@ interface ReputationData {
 ## Validation Functions
 
 ### Vote Validation
+
 ```typescript
 function isVoteData(data: unknown): data is VoteData {
     if (!data || typeof data !== 'object') return false;
@@ -82,6 +85,7 @@ const validateVote = (vote: any): boolean => {
 ```
 
 ### Reputation Validation
+
 ```typescript
 function isReputationData(data: unknown): data is ReputationData {
     if (!data || typeof data !== 'object') return false;
@@ -117,6 +121,7 @@ function isReputationData(data: unknown): data is ReputationData {
 ## Juno Integration
 
 ### Collection Validation
+
 ```typescript
 import { initJuno } from "@junobuild/core";
 
