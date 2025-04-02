@@ -4,6 +4,19 @@
 
 This document outlines the high-level UI/UX decisions and guidelines for the Reputator project. For specific component implementations, refer to the frontend code and its documentation.
 
+## Important Technical Requirements
+
+### No Server-Side Rendering
+- The project uses static site generation with Juno
+- All routes must be pre-rendered at build time
+- Avoid using server-side only features:
+  - No `+layout.server.ts` files
+  - No `+page.server.ts` files
+  - No `+layout.ts` files with server-side logic
+  - No `actions` in forms
+- Use client-side alternatives where possible
+- Import global styles in the root page component (`src/routes/+page.svelte`)
+
 ## Design Principles
 
 ### 1. User Experience
@@ -135,3 +148,25 @@ export const csr = true;        // Enable client-side rendering
 - Never set `prerender = false` as it prevents static generation
 - Always keep `ssr = false` for Juno compatibility
 - Maintain consistent settings across all routes 
+
+## CSS and Styling
+
+### Tailwind Integration
+This project uses Juno's custom Tailwind 4 setup, which differs significantly from standard Tailwind:
+
+1. **Single Entry Point**
+   - CSS must be imported in root page (`src/routes/+page.svelte`)
+   - No global stylesheets in layout files
+   - No CSS imports in `app.html`
+
+2. **Build Process**
+   - Uses Rust-based processing through oxide packages
+   - No runtime CSS processing
+   - No JIT compilation
+
+3. **Configuration**
+   - Minimal PostCSS setup with single plugin
+   - No Tailwind config file needed
+   - Platform-specific optimizations handled automatically
+
+For detailed setup and troubleshooting, see `docs/core/development/tailwind.md`. 

@@ -195,9 +195,9 @@ Here's the sequence of events during a document write operation:
 4. `on_set_doc` hook runs (post-processing)
 5. Operation completes
 
-# When and How to Use Each Approach
+## When and How to Use Each Approach
 
-## Use assert_set_doc Hooks For:
+### Use assert_set_doc Hooks For
 
 - Essential data validation
 - Structure and format verification
@@ -206,7 +206,7 @@ Here's the sequence of events during a document write operation:
 - Uniqueness validation
 - Relationship verification
 
-## Use on_set_doc Hooks For:
+### Use on_set_doc Hooks For:
 
 - Post-processing operations
 - Notifications and logging
@@ -215,7 +215,7 @@ Here's the sequence of events during a document write operation:
 - Cascading updates
 - Analytics and metrics
 
-## Use Custom Endpoints For:
+### Use Custom Endpoints For:
 
 - Complex multi-step workflows
 - User interface integration
@@ -224,7 +224,7 @@ Here's the sequence of events during a document write operation:
 - Batch processing
 - Rate limiting
 
-# Best Practices Summary
+## Best Practices Summary
 
 1. **Use assert_set_doc for Validation**: Always validate data before storage
 2. **Keep Validation Close to Data**: Build validation directly into your data model
@@ -234,11 +234,11 @@ Here's the sequence of events during a document write operation:
 6. **Implement Error Handling**: Provide clear feedback for validation failures
 7. **Maintain Audit Trails**: Log validation events for security analysis
 
-# Production Use-Case Examples
+## Production Use-Case Examples
 
 Below are more detailed, production-ready examples for each validation approach:
 
-## assert_set_doc Example
+### assert_set_doc Example
 
 ```rust
 use junobuild_satellite::{
@@ -437,7 +437,7 @@ fn validate_time_periods(periods: &[TimePeriod]) -> Result<(), String> {
 }
 ```
 
-## on_set_doc Example
+### on_set_doc Example
 
 ```rust
 #[on_set_doc(collections = ["votes"])]
@@ -489,7 +489,7 @@ async fn process_vote(context: &OnSetDocContext) -> Result<(), String> {
 }
 ```
 
-## Custom Endpoint Example
+### Custom Endpoint Example
 
 ```typescript
 // Multi-step voting process with validation and rate limiting

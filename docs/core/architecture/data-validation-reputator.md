@@ -174,35 +174,43 @@ initJuno({
 ## Validation Rules
 
 ### Vote Rules
+
 1. **Basic Validation**
+
    - All required fields must be present
    - Fields must have correct types
    - Description must be ≤ 1024 characters
 
 2. **Business Rules**
+
    - Cannot vote on yourself
    - One vote per user per target per tag
    - Vote weight must be ≤ 1000
    - Created timestamp must be valid
 
 3. **Security Rules**
+
    - Owner must match author
    - Cannot modify vote after creation
    - Cannot delete votes (only mark as deleted)
 
 ### Reputation Rules
+
 1. **Basic Validation**
+
    - All required fields must be present
    - Fields must have correct types
    - Description must be ≤ 1024 characters
 
 2. **Business Rules**
+
    - Score must be ≥ 0
    - Total votes must be ≥ 0
    - Weighted votes must be ≥ 0
    - Calculation month must be valid
 
 3. **Security Rules**
+
    - Owner must match user
    - Cannot modify historical data
    - Can only update current month
@@ -210,6 +218,7 @@ initJuno({
 ### Time Period Validation Rules
 
 1. **Structure Validation**
+
    ```typescript
    interface TimePeriod {
        months: number;    // Duration in months
@@ -218,6 +227,7 @@ initJuno({
    ```
 
 2. **Months Validation**
+
    - Must be a positive integer
    - First period must be 1 month
    - Second period must be 2 months
@@ -228,6 +238,7 @@ initJuno({
    - Total of first four periods must equal 12 months
 
 3. **Multiplier Validation**
+
    - Must be a number between 0.25 and 1.5
    - Must use 0.05 step increments
    - First period must be 1.5
@@ -238,11 +249,13 @@ initJuno({
    - Last period must be 0.25
 
 4. **Period Count Validation**
+
    - Must have exactly 8 periods
    - Cannot add or remove periods
    - Periods must be in chronological order
 
 Example Valid Time Periods:
+
 ```typescript
 const validTimePeriods = [
     { months: 1, multiplier: 1.5 },    // Period 1: First month
@@ -259,6 +272,7 @@ const validTimePeriods = [
 ## Error Handling
 
 ### Validation Errors
+
 ```typescript
 class ValidationError extends Error {
     constructor(
@@ -293,6 +307,7 @@ function validateVote(vote: unknown): VoteData {
 ```
 
 ### Error Recovery
+
 ```typescript
 async function createVote(data: unknown): Promise<VoteData> {
     try {
@@ -317,6 +332,7 @@ async function createVote(data: unknown): Promise<VoteData> {
 ## Testing
 
 ### Validation Tests
+
 ```typescript
 describe('Vote Validation', () => {
     test('validates correct vote data', () => {
@@ -354,6 +370,7 @@ describe('Vote Validation', () => {
 ```
 
 ### Integration Tests
+
 ```typescript
 describe('Vote Creation', () => {
     test('creates valid vote', async () => {
@@ -387,4 +404,4 @@ describe('Vote Creation', () => {
         })).rejects.toThrow('Cannot vote on yourself');
     });
 });
-``` 
+```
