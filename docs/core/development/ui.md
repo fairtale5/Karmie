@@ -169,4 +169,4 @@ This project uses Juno's custom Tailwind 4 setup, which differs significantly fr
    - No Tailwind config file needed
    - Platform-specific optimizations handled automatically
 
-For detailed setup and troubleshooting, see `docs/core/development/tailwind.md`. 
+For detailed setup and troubleshooting, see `docs/core/development/tailwind.md`.
