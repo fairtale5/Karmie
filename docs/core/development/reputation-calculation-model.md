@@ -811,3 +811,264 @@ Result: User receives NO vote rewards
 3. Community size determines phase (bootstrap vs restricted)
 4. Vote rewards help bootstrap new communities
 5. Once community is established, only trusted users get rewards 
+
+# Reputation System Calculation Model
+
+This document outlines the mathematical model and approach for reputation calculations in the Reputator system. It covers the core principles, illustrative examples, and implementation details.
+
+## Core Calculation Principles
+
+### 1. Vote Weight Calculation
+
+Votes are weighted based on several factors:
+- Time multiplier (recency bias)
+- Author's reputation
+- Vote distribution across time periods
+
+The calculation ensures that:
+- More recent votes have more impact
+- Authors with higher reputation have more influence
+- Weighted votes sum to the author's total reputation
+
+### 2. Time-Based Vote Weighting
+
+Each tag defines periods with corresponding multipliers:
+
+```typescript
+time_periods: [
+    { months: 1, multiplier: 1.5 },    // First month: 150% weight
+    { months: 2, multiplier: 1.2 },    // Months 2-3: 120% weight
+    { months: 3, multiplier: 1.1 },    // Months 4-6: 110% weight
+    { months: 6, multiplier: 1.0 },    // Months 7-12: 100% weight
+    { months: 12, multiplier: 0.95 },  // Months 13-24: 95% weight
+    { months: 12, multiplier: 0.75 },  // Months 25-36: 75% weight
+    { months: 12, multiplier: 0.55 },  // Months 37-48: 55% weight
+    { months: 999, multiplier: 0.25 }  // Months 49+: 25% weight
+]
+```
+
+The age of a vote determines which multiplier applies:
+- Only month boundaries are considered (days are ignored)
+- Multipliers create a gradual decay of influence
+
+### 3. Vote Rewards Calculation
+
+Vote rewards are calculated independently from vote weight:
+- Each vote gives a fixed reward (e.g., 0.1 points)
+- Time multiplier is NOT applied to vote rewards
+- Rewards are only given to active/trusted users once threshold is reached
+
+## Example Calculation
+
+Let's compare how vote rewards work with different time multipliers.
+
+### Simplified Example: Same Votes with Different Time Multipliers
+
+We'll trace a simple scenario where User A votes for User B five times:
+
+**Initial conditions:**
+- Both users start with 0 reputation
+- Vote reward is 0.1 per vote
+- We'll compare 1.0x vs 1.5x time multipliers
+
+#### Case 1: With 1.0x Time Multiplier
+
+**Vote 1: User A votes for User B**
+- Total weighted votes: 1 vote × 1.0 = 1
+- Vote weight: 1/1 = 1.0
+- User A's reputation after voting: 0.1 (voting reward)
+- User B's reputation: 0.1 × 1.0 × 1.0 = 0.1
+
+**Vote 2: User A votes for User B 2x**
+- Total weighted votes: 2 votes × 1.0 = 2
+- Vote weight: 1/2 = 0.5
+- User A's reputation: 0.1 + 0.1 = 0.2 (voting rewards)
+- User B's reputation: 0.1 + (0.2 × 0.5 × 1.0) = 0.2
+
+**Vote 3: User A votes for User B 3x**
+- Total weighted votes: 3 votes × 1.0 = 3
+- Vote weight: 1/3 = 0.333
+- User A's reputation: 0.2 + 0.1 = 0.3 (voting rewards)
+- User B's reputation: 0.2 + (0.3 × 0.333 × 1.0) = 0.3
+
+**Vote 4: User A votes for User B 4x**
+- Total weighted votes: 4 votes × 1.0 = 4
+- Vote weight: 1/4 = 0.25
+- User A's reputation: 0.3 + 0.1 = 0.4 (voting rewards)
+- User B's reputation: 0.3 + (0.4 × 0.25 × 1.0) = 0.4
+
+**Vote 5: User A votes for User B 5x**
+- Total weighted votes: 5 votes × 1.0 = 5
+- Vote weight: 1/5 = 0.2
+- User A's reputation: 0.4 + 0.1 = 0.5 (voting rewards)
+- User B's reputation: 0.4 + (0.5 × 0.2 × 1.0) = 0.5
+
+Final results:
+- User A's reputation: 0.5 (from voting rewards)
+- User B's reputation: 0.5 (from received votes)
+
+#### Case 2: With 1.5x Time Multiplier
+
+**Vote 1: User A votes for User B**
+- Total weighted votes: 1 vote × 1.5 = 1.5
+- Vote weight: 1/1.5 = 0.667
+- User A's reputation after voting: 0.1 (voting reward, no multiplier)
+- User B's reputation: 0.1 × 0.667 × 1.5 = 0.1
+
+**Vote 2: User A votes for User B 2x**
+- Total weighted votes: 2 votes × 1.5 = 3
+- Vote weight: 1/3 = 0.333
+- User A's reputation: 0.1 + 0.1 = 0.2 (voting rewards)
+- User B's reputation: 0.1 + (0.2 × 0.333 × 1.5) = 0.2
+
+**Vote 3: User A votes for User B 3x**
+- Total weighted votes: 3 votes × 1.5 = 4.5
+- Vote weight: 1/4.5 = 0.222
+- User A's reputation: 0.2 + 0.1 = 0.3 (voting rewards)
+- User B's reputation: 0.2 + (0.3 × 0.222 × 1.5) = 0.3
+
+**Vote 4: User A votes for User B 4x**
+- Total weighted votes: 4 votes × 1.5 = 6
+- Vote weight: 1/6 = 0.167
+- User A's reputation: 0.3 + 0.1 = 0.4 (voting rewards)
+- User B's reputation: 0.3 + (0.4 × 0.167 × 1.5) = 0.4
+
+**Vote 5: User A votes for User B 5x**
+- Total weighted votes: 5 votes × 1.5 = 7.5
+- Vote weight: 1/7.5 = 0.133
+- User A's reputation: 0.4 + 0.1 = 0.5 (voting rewards)
+- User B's reputation: 0.4 + (0.5 × 0.133 × 1.5) = 0.5
+
+Final results:
+- User A's reputation: 0.5 (from voting rewards)
+- User B's reputation: 0.5 (from received votes)
+
+### Important Observations
+
+1. The final reputation values are identical in both cases, despite different time multipliers.
+2. Time multiplier only affects individual vote weight, not total reputation growth.
+3. Vote rewards (0.1 per vote) are NOT affected by time multipliers.
+4. The reputation system maintains balance regardless of time multiplier settings.
+
+## Why This Matters
+
+In our reputation system:
+1. Each vote gives the author a fixed reward (0.1 points)
+2. Each vote gives the target 0.1 points of reputation
+3. Time multiplier affects vote weight distribution, but not the total reputation awarded
+4. This ensures consistency and predictability in reputation growth
+
+This design prevents problems like:
+- Rapid reputation inflation from time multipliers
+- Unfair advantage for users voting in high-multiplier periods
+- Complex, unpredictable reputation growth patterns
+
+## Implementation Details
+
+### Reputation Calculation Flow
+
+When calculating a user's reputation for a tag:
+
+1. **Collect Votes**
+   - Get all votes where the user is the target for this tag
+   - Create an index of unique authors and their reputations
+
+2. **Calculate Basis Reputation**
+   - For each vote:
+     - Apply time multiplier
+     - Apply author's reputation
+     - Apply vote weight
+   - Sum all contributions
+
+3. **Calculate Voting Rewards**
+   - Count votes cast by the user
+   - Apply fixed reward per vote (no time multiplier)
+   - Add to basis reputation if user is trusted or in bootstrap phase
+
+4. **Store Results**
+   - Update reputation document with:
+     - Basis reputation
+     - Voting rewards reputation
+     - Effective reputation
+     - Trusted status
+
+### Pseudo-code Implementation
+
+```typescript
+function calculateReputation(userId, tagId) {
+  // Get votes where user is target
+  const receivedVotes = getVotesForTarget(userId, tagId);
+  
+  // Get votes where user is author
+  const authoredVotes = getVotesByAuthor(userId, tagId);
+  
+  // Calculate basis reputation from received votes
+  let basisReputation = 0;
+  for (const vote of receivedVotes) {
+    const authorRep = getReputation(vote.authorId, tagId);
+    const timeMultiplier = getTimeMultiplier(vote.timestamp);
+    const voteWeight = calculateVoteWeight(vote.authorId, tagId);
+    
+    basisReputation += vote.value * authorRep * voteWeight * timeMultiplier;
+  }
+  
+  // Calculate voting rewards
+  const votingRewards = authoredVotes.length * TAG_VOTE_REWARD;
+  
+  // Determine if user is trusted
+  const isTrusted = basisReputation >= TAG_THRESHOLD;
+  
+  // Calculate effective reputation
+  let effectiveReputation;
+  if (isTrusted || trustedUsers < TAG_MIN_USERS) {
+    effectiveReputation = basisReputation + votingRewards;
+  } else {
+    effectiveReputation = basisReputation;
+  }
+  
+  return {
+    basisReputation,
+    votingRewards,
+    effectiveReputation,
+    isTrusted
+  };
+}
+```
+
+## Future Development
+
+### Planned Improvements
+
+1. **Performance Optimization**
+   - Implement cached partial calculations
+   - Process votes in batches
+   - Use efficient data structures for large vote counts
+
+2. **Calculation Accuracy**
+   - Add more detailed edge case handling
+   - Improve numerical stability for large reputation values
+   - Add validation to prevent manipulation
+
+3. **Configurability**
+   - Create UI for adjusting time multipliers
+   - Allow per-community customization of thresholds
+   - Support different vote reward models
+
+### Open Questions
+
+1. How should we handle deleted votes?
+2. Should there be a reputation decay over time for inactive users?
+3. What's the optimal threshold for different community sizes?
+
+## Appendix
+
+### Complete Calculation Example
+
+See sections above for detailed calculation examples with 1.0 and 1.5 multipliers.
+
+### Benchmarking
+
+Performance testing with various dataset sizes:
+- 100 users, 1,000 votes: < 1s
+- 1,000 users, 10,000 votes: < 10s
+- 10,000 users, 100,000 votes: To be determined 
