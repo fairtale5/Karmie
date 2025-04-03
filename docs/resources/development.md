@@ -503,4 +503,84 @@ git config --global user.email "your.email@example.com"
 # Set identity for single repository (remove --global)
 git config user.name "Your Name"
 git config user.email "your.email@example.com"
-``` 
+```
+
+## Helper Scripts
+
+The project includes several shell scripts to streamline common development tasks and fix permission issues that can occur when working with WSL.
+
+### Available Scripts
+
+```bash
+# Fix permissions in the project directory
+./fix_permissions.sh
+
+# Complete cleanup of the project (remove build artifacts)
+./force_clean.sh
+
+# Build and start the Juno development environment
+./juno_dev.sh
+
+# Build and start the frontend development server
+./npm_dev.sh
+
+# Set up the environment for the first time
+./setup_environment.sh
+```
+
+### Script Details
+
+1. **fix_permissions.sh**
+   - Fixes ownership and permissions for the entire project
+   - Sets basic permissions (755) for most files
+   - Sets full permissions (777) for build directories (build, .svelte-kit, node_modules, target)
+   - Run this whenever you encounter permission issues
+
+2. **force_clean.sh**
+   - Performs a complete cleanup of the project
+   - Removes Node.js artifacts (node_modules, .svelte-kit, build)
+   - Cleans Rust/Cargo build artifacts
+   - Removes Docker containers and volumes
+   - Removes Juno local development artifacts
+   - Fixes permissions
+
+3. **juno_dev.sh**
+   - Builds and starts the Juno development environment
+   - Fixes permissions first
+   - Runs `juno dev build` to compile Rust code to WebAssembly
+   - Runs `juno dev start` to start the local environment
+
+4. **npm_dev.sh**
+   - Builds and runs the frontend development server
+   - Fixes permissions first
+   - Builds the application with `npm run build`
+   - Starts the development server with `npm run dev`
+
+5. **setup_environment.sh**
+   - Sets up the development environment from scratch
+   - Fixes permissions
+   - Installs Node.js dependencies with `npm ci`
+   - Sets up Rust WebAssembly target (one-time setup)
+   - Builds the Juno satellite
+   - Builds the SvelteKit application
+
+### Common Workflows
+
+```bash
+# First-time setup
+./setup_environment.sh
+
+# Daily development
+./juno_dev.sh
+# (in another terminal)
+./npm_dev.sh
+
+# When things get messy
+./force_clean.sh
+./setup_environment.sh
+
+# When permissions issues occur
+./fix_permissions.sh
+```
+
+The scripts automatically handle common issues with permissions in WSL environments and provide a consistent workflow for all developers. 
