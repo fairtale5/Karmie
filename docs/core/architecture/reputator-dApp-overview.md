@@ -176,3 +176,5 @@ For detailed implementation and calculations, see [Test Calculations](/docs/core
 ## Conclusion
 
 This reputation system is designed to foster a flexible, decentralized, and self-regulating ecosystem that can be integrated across various platforms and applications. By leveraging tag-based reputations, conservative multipliers, and community oversight, the system encourages active participation, quality contributions, and community governance while safeguarding against malicious activities.
+
+Candid: https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.ic0.app/?id=rigfr-siaaa-aaaal-ab4fa-cai

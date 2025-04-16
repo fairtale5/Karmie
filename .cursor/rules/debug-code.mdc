@@ -1,10 +1,10 @@
 ---
-description:
-globs:
-alwaysApply: true
+description: Bug or build issues debugging fix 
+globs: 
+alwaysApply: false
 ---
+1. First compare the build results or bugs to our last attempt, and give me an overview again of what changed. which errors did we solve, which errors are new, what stayed the same.
 
-# Your rule content
+2. Then sort the errors by order of where in the chain of events the thing is. i want to continue fixing data providers first so errors dont cascade down the chain. Prioritize build breaking errors. give me a summary of the build error report including the file path, the error, and an explanation about what the code around it is doing (for ex: "this is part of the functionXX, in this step it should be storing the... it needs this variable to...")
 
-- You can @ files here
-- You can use markdown but dont have to
+3. Only after all that, solve ONLY the top level issue. Make sure to check the documentation, you can find links to all files. Respect our code standards and use our logging solutions. show me the code snippet of the bug before and after your fix, and explain what data we are trying to get, and where that data can be found, and why the fix will solve the issue. Apply your solution. Make sure your solution is still doing what the comments around it say, otherwise also update the comments.

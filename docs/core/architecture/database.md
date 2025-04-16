@@ -397,7 +397,7 @@ Example: `owner=user_123;tag=tag_789;`
 2. **Handling in Collection Hooks**:
    ```rust
    // Example: In on_set_doc hook for votes collection
-   fn on_set_doc_votes(doc: &mut Document) -> Result<(), String> {
+   fn on_set_doc(doc: &mut Document) -> Result<(), String> {
        // Access the data fields directly
        if let Some(data) = doc.data.as_object_mut() {
            // Get fields from the document data

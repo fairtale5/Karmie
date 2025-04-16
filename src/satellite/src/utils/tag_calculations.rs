@@ -40,7 +40,7 @@ use junobuild_satellite::{get_doc, list_docs};
 use junobuild_shared::types::list::{ListMatcher, ListParams, ListResults};
 use junobuild_utils::decode_doc_data;
 use crate::utils::structs::{Tag, ReputationData, TagData};
-use crate::utils::logging::{log_error, log_info, log_with_prefix};
+use crate::utils::logger;
 use crate::utils::description_helpers;
 
 /// Calculates the number of active users for a given tag
@@ -60,7 +60,7 @@ pub async fn get_active_users_count(tag_key: &str) -> Result<u32, String> {
         tag_key.to_string(),       // Document key second
     ).ok_or_else(|| {
         let err_msg = format!("Tag not found: {}", tag_key);
-        log_error(&err_msg); // This is a fatal error - we can't proceed without the tag
+        logger!("error", "[get_active_users_count] {}", err_msg);
         err_msg
     })?;
 
@@ -69,7 +69,7 @@ pub async fn get_active_users_count(tag_key: &str) -> Result<u32, String> {
     let threshold = tag_data.reputation_threshold;
     
     // Log the threshold we're using
-    log_info(&format!("[get_active_users_count] Tag={} has reputation_threshold={}", tag_key, threshold));
+    logger!("info", "[get_active_users_count] Tag={} has reputation_threshold={}", tag_key, threshold);
 
     // Step 2: Get all reputations for this tag
     // Query all reputation documents for this tag with proper description filter
@@ -93,8 +93,8 @@ pub async fn get_active_users_count(tag_key: &str) -> Result<u32, String> {
     );
     
     // Log how many reputation documents we found
-    log_info(&format!("[get_active_users_count] Found {} total reputation documents for tag={}", 
-        reputations.items.len(), tag_key));
+    logger!("info", "[get_active_users_count] Found {} total reputation documents for tag={}", 
+        reputations.items.len(), tag_key);
 
     // Step 3: Count users above threshold
     let mut active_users = 0;
@@ -106,30 +106,28 @@ pub async fn get_active_users_count(tag_key: &str) -> Result<u32, String> {
                 if rep_data.last_known_effective_reputation >= threshold {
                     // Count active user
                     active_users += 1;
-                    log_info(&format!(
-                        "[get_active_users_count] ACTIVE: user={}, rep={}, threshold={}",
-                        rep_data.user_key, rep_data.last_known_effective_reputation, threshold
-                    ));
+                    logger!("info", "[get_active_users_count] ACTIVE: user={}, rep={}, threshold={}",
+                        rep_data.user_key, rep_data.last_known_effective_reputation, threshold);
                 } else {
                     // Count inactive user
                     inactive_users += 1;
-                    log_info(&format!(
-                        "[get_active_users_count] INACTIVE: user={}, rep={}, threshold={}",
-                        rep_data.user_key, rep_data.last_known_effective_reputation, threshold
-                    ));
+                    logger!("info", "[get_active_users_count] INACTIVE: user={}, rep={}, threshold={}",
+                        rep_data.user_key, rep_data.last_known_effective_reputation, threshold);
                 }
             },
             Err(e) => {
-                // Use log_with_prefix for non-fatal errors - we can continue processing other documents
-                log_with_prefix("ERROR", &format!("Failed to decode reputation data for document {}: {}", doc_key, e));
+                // Log error but continue processing other documents - non-fatal error
+                logger!("error", "Failed to decode reputation data for document: {} | Error: {}", doc_key, e);
             }
         }
     }
 
-    log_info(&format!(
-        "[get_active_users_count] RESULT: tag={} has {} active users, {} inactive users (threshold={})",
-        tag_key, active_users, inactive_users, threshold
-    ));
+    logger!("info", "[get_active_users_count] RESULT: tag={} has {} active users, {} inactive users (threshold={})",
+        tag_key,
+        active_users,
+        inactive_users,
+        threshold
+    );
     
     Ok(active_users)
 } 

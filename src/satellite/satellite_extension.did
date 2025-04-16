@@ -13,9 +13,11 @@ type ReputationData = record {
 };
 type Result = variant { Ok : float64; Err : text };
 type Result_1 = variant { Ok : ReputationData; Err : text };
+type Result_2 = variant { Ok; Err : text };
 service : {
   build_version : () -> (text) query;
   get_user_reputation : (text, text) -> (Result) query;
   get_user_reputation_full : (text, text) -> (Result_1) query;
   recalculate_reputation : (text, text) -> (Result);
+  test_logging_exposed : () -> (Result_2);
 }

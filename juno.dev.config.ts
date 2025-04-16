@@ -55,7 +55,7 @@ export default defineDevConfig(() => ({
 				{
 					collection: "votes",
 					read: "public" as PermissionText,
-					write: "private" as PermissionText,
+					write: "public" as PermissionText,
 					memory: "stable" as MemoryText,
 					mutablePermissions: true
 				},

@@ -71,6 +71,10 @@ rustup target add wasm32-unknown-unknown  # One-time setup for WebAssembly suppo
 cargo build --target wasm32-unknown-unknown
 cd ../..
 ```
+Now to check if wasm32-unknown-unknown is installed:
+```bash
+rustup target list | grep wasm32-unknown-unknown
+```
 
 4. **Start Juno development environment**:
 ```bash
@@ -270,10 +274,34 @@ juno upgrade
 ## Command Explanations
 
 ### Development Commands
-- `npm run dev`: Starts development server at localhost:5173 with hot module reloading
+- `npm run dev`: Starts development server at localhost:5173 with hot module reloading (and connected to the local emulator)
 - `npm run build`: Creates production build in ./build directory
-- `npm run preview`: Serves production build locally for testing
-- `juno deploy`: Deploys your app to your satellite on the Internet Computer
+- `npm run preview`: Serves production build locally for testing (and connected to live satellite)
+
+### Deployment Commands
+- `juno deploy`: Deploys your frontend application (static assets, HTML, CSS, JS files) to your satellite
+  - Use after `npm run build`
+  - Only uploads new or changed files
+  - For regular application updates and deployments
+
+- `juno upgrade -t s -s ./target/deploy/satellite.wasm.gz`: Upgrades the satellite's WebAssembly module
+  - Use after modifying Rust code (serverless functions, hooks, etc.)
+  - Creates automatic backup before upgrading
+  - The `-t s` specifies upgrading a satellite
+  - The `-s` flag specifies the path to your compiled WASM file
+  - Requires stable internet connection
+  - Always upgrade sequentially through versions
+
+Typical workflow:
+```bash
+# For frontend changes:
+npm run build
+juno deploy
+
+# For backend/Rust changes:
+juno dev build  # Compiles your Rust code to WASM
+juno upgrade -t s -s ./target/deploy/satellite.wasm.gz  # Upgrades the satellite
+```
 
 ### Docker Commands
 - `juno dev start`: Launches local development environment with Docker
@@ -584,3 +612,13 @@ The project includes several shell scripts to streamline common development task
 ```
 
 The scripts automatically handle common issues with permissions in WSL environments and provide a consistent workflow for all developers. 
+
+## Candid URL Format
+
+To access the Candid interface for your project, use the following URL format:
+
+```
+https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.ic0.app/?id=[the project's ID]
+```
+
+Replace `[the project's ID]` with your actual project ID to access the Candid interface. 

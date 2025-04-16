@@ -19,11 +19,14 @@ export type Result = { 'Ok' : number } |
   { 'Err' : string };
 export type Result_1 = { 'Ok' : ReputationData } |
   { 'Err' : string };
+export type Result_2 = { 'Ok' : null } |
+  { 'Err' : string };
 export interface _SERVICE {
   'build_version' : ActorMethod<[], string>,
   'get_user_reputation' : ActorMethod<[string, string], Result>,
   'get_user_reputation_full' : ActorMethod<[string, string], Result_1>,
   'recalculate_reputation' : ActorMethod<[string, string], Result>,
+  'test_logging_exposed' : ActorMethod<[], Result_2>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

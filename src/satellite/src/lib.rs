@@ -196,7 +196,7 @@ use crate::utils::{
         calculate_and_store_vote_weight,
         get_period_multiplier,
     },
-    logging::{log_error, log_warn, log_info, log_debug},
+    logger,  // Just import the module, we use the macro
     description_helpers::{DocumentDescription, create_vote_description, validate_description}
 };
 
@@ -220,20 +220,24 @@ mod utils;
 /// Note: This function does NOT handle validation. All validation is done in assert_set_doc
 /// which runs BEFORE document creation.
 #[on_set_doc(collections = ["users", "votes", "tags"])]
+
 async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
+    logger!("debug", "[on_set_doc] on_set_doc triggered");
+    
     match context.data.collection.as_str() {
         "votes" => {
-            log_debug("[on_set_doc - Votes] Processing new vote");
+            logger!("debug", "[on_set_doc - Votes] Processing New Vote");
             process_vote(&context).await
         },
         "users" | "tags" => {
             // No side effects needed for users or tags
-            log_debug(&format!("[on_set_doc] No hooks defined for collection: {}", context.data.collection));
+            logger!("debug", "No hooks defined for collection: {}", context.data.collection);
             Ok(())
         }
         _ => {
-            log_error(&format!("[on_set_doc] Unknown collection: {}", context.data.collection));
-            Err(format!("Unknown collection: {}", context.data.collection))
+            let err_msg = format!("Unknown collection: {}", context.data.collection);
+            logger!("error", "{}", err_msg);
+            Err(err_msg)
         }
     }
 }
@@ -246,71 +250,71 @@ async fn process_vote(context: &OnSetDocContext) -> Result<(), String> {
     // Only decode the inner data field when needed
     let vote_data: VoteData = decode_doc_data(&vote_doc.data)
         .map_err(|e| {
-            log_error(&format!("[process_vote] Failed to decode vote data: {}", e));
+            logger!("error", "[process_vote] Failed to decode vote data: {}", e);
             e.to_string()
         })?;
     
     // Log the vote details in a human-readable format
-    log_info(&format!(
-        "[process_vote] Processing new vote: author={} voted {} on target={} in tag={}",
+    logger!("info", "[process_vote] Processing new vote: author={} voted {} on target={} in tag={}",
         vote_data.author_key,
         vote_data.value,
         vote_data.target_key,
         vote_data.tag_key
-    ));
+    );
     
     // Ensure tag_key is not empty - this is critical to prevent later errors
     if vote_data.tag_key.is_empty() {
         let err_msg = "Tag key cannot be empty";
-        log_error(&format!("[process_vote] {}", err_msg));
+        logger!("error", "[process_vote] {}", err_msg);
         return Err(err_msg.to_string());
     }
     
     // Step 1: Calculate and store the voting user's vote weight
-    log_info(&format!("[process_vote] Step 1/3: Calculating vote weight for author: {}", vote_data.author_key));
+    logger!("info", "Step 1/3: Calculating vote weight for author: {}", vote_data.author_key);
     let vote_weight = calculate_and_store_vote_weight(&vote_data.author_key, &vote_data.tag_key).await
         .map_err(|e| {
-            log_error(&format!("[process_vote] Failed to calculate vote weight: {}", e));
+            logger!("error", "[process_vote] Failed to calculate vote weight: {}", e);
             e.to_string()
         })?;
-    log_info(&format!("[process_vote] Step 1/3 COMPLETE: Vote weight for author={}: {}", vote_data.author_key, vote_weight));
+    logger!("info", "[process_vote] Step 1/3 COMPLETE: Vote weight for author={}: {}", vote_data.author_key, vote_weight);
     
     // Step 2: Calculate reputation for the voting user (author)
-    log_info(&format!("[process_vote] Step 2/3: Calculating reputation for author: {}", vote_data.author_key));
+    logger!("info", "[process_vote] Step 2/3: Calculating reputation for author: {}", vote_data.author_key);
     let author_rep = calculate_user_reputation(&vote_data.author_key, &vote_data.tag_key).await
         .map_err(|e| {
-            log_error(&format!("[process_vote] Failed to calculate author reputation: {}", e));
+            logger!("error", "[process_vote] Failed to calculate author reputation: {}", e);
             e.to_string()
         })?;
-    log_info(&format!(
-        "[process_vote] Step 2/3 COMPLETE: Author={}: basisR={}, voteR={}, totalR={}, voting_power={}",
+    logger!("info", "[process_vote] Step 2/3 COMPLETE: Author={}: basisR={}, voteR={}, totalR={}, voting_power={}",
         vote_data.author_key, 
         author_rep.total_basis_reputation,
         author_rep.total_voting_rewards_reputation,
         author_rep.last_known_effective_reputation,
         author_rep.has_voting_power
-    ));
+    );
     
     // Step 3: Calculate reputation for the target user
-    log_info(&format!("[process_vote] Step 3/3: Calculating reputation for target: {}", vote_data.target_key));
+    logger!("info", "[process_vote] Step 3/3: Calculating reputation for target: {}", vote_data.target_key);
     let target_rep = calculate_user_reputation(&vote_data.target_key, &vote_data.tag_key).await
         .map_err(|e| {
-            log_error(&format!("[process_vote] Failed to calculate target reputation: {}", e));
+            logger!("error", "[process_vote] Failed to calculate target reputation: {}", e);
             e.to_string()
         })?;
-    log_info(&format!(
-        "[process_vote] Step 3/3 COMPLETE: Target={}: basisR={}, voteR={}, totalR={}, voting_power={}",
+    logger!("info", "[process_vote] Step 3/3 COMPLETE: Target={}: basisR={}, voteR={}, totalR={}, voting_power={}",
         vote_data.target_key, 
         target_rep.total_basis_reputation,
         target_rep.total_voting_rewards_reputation,
         target_rep.last_known_effective_reputation,
         target_rep.has_voting_power
-    ));
+    );
 
-    log_info(&format!(
-        "[process_vote] SUCCESS: Vote processed - author={}, target={}, tag={}, vote_value={}, vote_weight={}",
-        vote_data.author_key, vote_data.target_key, vote_data.tag_key, vote_data.value, vote_weight
-    ));
+    logger!("info", "[process_vote] Completed - author={}, target={}, tag={}, vote_value={}, vote_weight={}",
+        vote_data.author_key, 
+        vote_data.target_key, 
+        vote_data.tag_key, 
+        vote_data.value, 
+        vote_weight
+    );
     
     Ok(())
 }
@@ -344,46 +348,33 @@ pub const IS_PLAYGROUND: bool = true;  // Set to false for production
 fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
     let result = match context.data.collection.as_str() {
         "users" => {
-            log_debug(&format!(
-                "[assert_set_doc] Validating user document: key={}",
-                context.data.key
-            ));
+            logger!("debug", "[assert_set_doc] Validating user document: key={}", context.data.key);
             validate_user_document(&context)
         },
         "votes" => {
-            log_debug(&format!(
-                "[assert_set_doc] Validating vote document: key={}",
-                context.data.key
-            ));
+            logger!("debug", "[assert_set_doc] Validating vote document: key={}", context.data.key);
             validate_vote_document(&context)
         },
         "tags" => {
-            log_debug(&format!(
-                "[assert_set_doc] Validating tag document: key={}",
-                context.data.key
-            ));
+            logger!("debug", "[assert_set_doc] Validating tag document: key={}", context.data.key);
             validate_tag_document(&context)
         },
         "reputations" => {
-            log_debug(&format!(
-                "[assert_set_doc] Validating reputation document: key={}",
-                context.data.key
-            ));
+            logger!("debug", "[assert_set_doc] Validating reputation document: key={}", context.data.key);
             validate_reputation_document(&context)
         },
         _ => {
             // This should never happen because we're specifying collections in the decorator
             let err_msg = format!("Unexpected collection reached validation: {}", context.data.collection);
-            ic_cdk::println!("[CRITICAL DEBUG] {}", err_msg);
-            log_error(&format!("[assert_set_doc] {}", err_msg));
+            logger!("error", "[assert_set_doc] {}", err_msg);
             Err(err_msg)
         }
     };
     
-    if result.is_err() {
-        ic_cdk::println!("[CRITICAL DEBUG] assert_set_doc FAILED with error: {:?}", result.as_ref().err());
-    } else {
-        ic_cdk::println!("[CRITICAL DEBUG] assert_set_doc PASSED validation");
+    // Log the validation result
+    match &result {
+        Ok(_) => logger!("info", "[assert_set_doc] Validation passed for {}", context.data.key),
+        Err(e) => logger!("error", "[assert_set_doc] Validation failed for {}: {}", context.data.key, e),
     }
     
     result
@@ -415,7 +406,7 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
         .map_err(|e| {
             let err_msg = format!("[assert_set_doc] Failed to decode user data: key={}, error={}", 
                 context.data.key, e);
-            log_error(&err_msg);
+            logger!("error", &err_msg);
             format!("Invalid user data format: {}", e)
         })?;
     
@@ -423,7 +414,7 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
     validate_username(&user_data.username)
         .map_err(|e| {
             let err_msg = format!("[assert_set_doc] Username validation failed: {}", e);
-            log_error(&err_msg);
+            logger!("error", &err_msg);
             e
         })?;
 
@@ -431,7 +422,7 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
     validate_display_name(&user_data.display_name)
         .map_err(|e| {
             let err_msg = format!("[assert_set_doc] Display name validation failed: {}", e);
-            log_error(&err_msg);
+            logger!("error", &err_msg);
             e
         })?;
 
@@ -453,12 +444,12 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
                 "Invalid description format. Expected: {}, Got: {}",
                 expected_description, description
             );
-            log_error(&format!("[assert_set_doc] {}", err_msg));
+            logger!("error", "[assert_set_doc] {}", err_msg);
             return Err(err_msg);
         }
     } else {
         let err_msg = "Description field is required for user documents";
-        log_error(&format!("[assert_set_doc] {} key={}", err_msg, context.data.key));
+        logger!("error", "[assert_set_doc] {} key={}", err_msg, context.data.key);
         return Err(err_msg.to_string());
     }
 
@@ -472,7 +463,7 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
     // Build the search query to find any document with this username using the new format
     // The pattern will match username=name; in the description string
     let search_pattern = format!("username={};", sanitized_username);
-    ic_cdk::println!("[CRITICAL DEBUG] Searching for username with pattern: {}", search_pattern);
+    logger!("debug", "[validate_user_document] Searching for username with pattern: {}", search_pattern);
     
     let params = ListParams {
         matcher: Some(ListMatcher {
@@ -484,20 +475,21 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
 
     // Call list_docs and handle potential errors
     let existing_users = list_docs(String::from("users"), params);
-    ic_cdk::println!("[CRITICAL DEBUG] Found {} existing users with this username", existing_users.items.len());
+    logger!("info", "[validate_user_document] Found {} existing users with this username", existing_users.items.len());
     
-    // Check if we found any existing users with this normalized username
-    // For new users (no key), we check all documents
-    // For updates (has key), we exclude the current document
+    // When checking username uniqueness, we need to handle two cases:
+    // 1. New user: Check that NO existing document has this username
+    // 2. User update: Check that no OTHER document (except current) has this username
     let is_update = context.data.data.current.is_some();
-    ic_cdk::println!("[CRITICAL DEBUG] Is this an update? {}", is_update);
+    logger!("debug", "[validate_user_document] Document type: {}", if is_update { "updating existing user" } else { "creating new user" });
     
     for (doc_key, doc) in existing_users.items {
-        ic_cdk::println!("[CRITICAL DEBUG] Checking document: key={}, description={:?}", doc_key, doc.description);
+        logger!("debug", "[validate_user_document] Checking username uniqueness against document: key={}, description={:?}", doc_key, doc.description);
         
-        // If this is an update and the document key matches, skip it
+        // When updating an existing user, their current document will be in the results
+        // Skip comparing against their own document to allow them to keep their username
         if is_update && doc_key == context.data.key {
-            ic_cdk::println!("[CRITICAL DEBUG] Skipping current document during update");
+            logger!("debug", "[validate_user_document] Skipping user's current document in username uniqueness check");
             continue;
         }
         
@@ -512,7 +504,7 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
                             "Username '{}' is already taken. Please choose a different username.",
                             user_data.username
                         );
-                        log_error(&format!("[assert_set_doc] {} key={}, username={}", err_msg, context.data.key, user_data.username));
+                        logger!("error", "[assert_set_doc] {} key={}, username={}", err_msg, context.data.key, user_data.username);
                         return Err(err_msg);
                     }
                 }
@@ -542,7 +534,7 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
         for (doc_key, _) in existing_docs.items {
             if doc_key != context.data.key {
                 let err_msg = "Users can only have one account in production mode";
-                log_error(&format!("[assert_set_doc] {} key={}", err_msg, context.data.key));
+                logger!("error", "[assert_set_doc] {} key={}", err_msg, context.data.key);
                 return Err(err_msg.to_string());
             }
         }
@@ -567,10 +559,7 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
 /// # Returns
 /// * `Result<(), String>` - Ok if validation passes, Err with detailed message if it fails
 fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
-    log_debug(&format!(
-        "[validate_vote_document] Starting vote validation: key={}",
-        context.data.key
-    ));
+    logger!("debug", "[validate_vote_document] Starting vote validation: key={}", context.data.key);
 
     // Step 1: Access the full document structure and prepare it
     
@@ -578,10 +567,7 @@ fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
     let vote_doc = &context.data.data.proposed;
     let vote_data: VoteData = decode_doc_data(&context.data.data.proposed.data)
         .map_err(|e| {
-            log_error(&format!(
-                "[validate_vote_document] Failed to decode vote data: key={}, error={}",
-                context.data.key, e
-            ));
+            logger!("error", "[validate_vote_document] Failed to decode vote data: key={}, error={}", context.data.key, e);
             format!("Invalid vote data format: {}", e)
         })?;
 
@@ -597,7 +583,7 @@ fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
             "Vote value must be -1, 0, or 1 (got: {})",
             vote_data.value
         );
-        log_error(&format!("[validate_vote_document] {}", err_msg));
+        logger!("error", "[validate_vote_document] {}", err_msg);
         return Err(err_msg);
     }
 
@@ -617,20 +603,17 @@ fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
             "Vote weight must be between 0.0 and 1.0 (got: {})",
             vote_data.weight
         );
-        log_error(&format!("[validate_vote_document] {}", err_msg));
+        logger!("error", "[validate_vote_document] {}", err_msg);
         return Err(err_msg);
     }
 
     // Step 4: Validate tag exists
-    log_debug(&format!(
-        "[validate_vote_document] Verifying tag exists: {}",
-        vote_data.tag_key
-    ));
+    logger!("debug", "[validate_vote_document] Verifying tag exists: {}", vote_data.tag_key);
     
     // First validate that tag_key is not empty
     if vote_data.tag_key.trim().is_empty() {
         let err_msg = "Tag key cannot be empty";
-        log_error(&format!("[validate_vote_document] {}", err_msg));
+        logger!("error", "[validate_vote_document] {}", err_msg);
         return Err(err_msg.to_string());
     }
     
@@ -646,29 +629,25 @@ fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
     let existing_tags = list_docs(String::from("tags"), params);
     if existing_tags.items.is_empty() {
         let err_msg = format!("Tag not found: {}", vote_data.tag_key);
-        log_error(&format!("[validate_vote_document] {}", err_msg));
+        logger!("error", &format!("[validate_vote_document] {}", err_msg));
         return Err(err_msg);
     }
     
-    log_debug(&format!(
-        "[validate_vote_document] Found tag: {}",
-        vote_data.tag_key
-    ));
+    logger!("debug", "[validate_vote_document] Found tag: {}", vote_data.tag_key);
 
     // Step 5: Validate no self-voting
     if vote_data.author_key == vote_data.target_key {
         let err_msg = "Users cannot vote on themselves";
-        log_error(&format!("[validate_vote_document] {}", err_msg));
+        logger!("error","[validate_vote_document] {}", err_msg);
         return Err(err_msg.to_string());
     }
 
-    log_info(&format!(
-        "[validate_vote_document] Vote validation passed: author={} voted {} on target={} in tag={}",
+    logger!("info", "[validate_vote_document] Vote validation passed: author={} voted {} on target={} in tag={}",
         vote_data.author_key,
         vote_data.value,
         vote_data.target_key,
         vote_data.tag_key
-    ));
+    );
 
     Ok(())
 }
@@ -695,8 +674,7 @@ fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
     // Step 1: Decode and validate the basic tag data structure
     let tag_data: TagData = decode_doc_data(&context.data.data.proposed.data)
         .map_err(|e| {
-            log_error(&format!("[assert_set_doc] Failed to decode tag data: key={}, error={}", 
-                context.data.key, e));
+            logger!("error", "[assert_set_doc] Failed to decode tag data: key={}, error={}", context.data.key, e);
             format!("Invalid tag data format: {}", e)
         })?;
     
@@ -712,7 +690,7 @@ fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
     // Build the search query to find any document with this tag name using the new format
     // The pattern will match name=tag_name; in the description string
     let search_pattern = format!("name={};", sanitized_name);
-    ic_cdk::println!("[CRITICAL DEBUG] Searching for tag name with pattern: {}", search_pattern);
+    logger!("debug", "[validate_tag_document] Searching for tag name with pattern: {}", search_pattern);
     
     let params = ListParams {
         matcher: Some(ListMatcher {
@@ -724,20 +702,20 @@ fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
 
     // Call list_docs and handle potential errors
     let existing_tags = list_docs(String::from("tags"), params);
-    ic_cdk::println!("[CRITICAL DEBUG] Found {} existing tags with this name", existing_tags.items.len());
+    logger!("info", "[validate_tag_document] Found {} existing tags with this name", existing_tags.items.len());
     
     // Check if we found any existing tags with this normalized name
     // For new tags (no key), we check all documents
     // For updates (has key), we exclude the current document
     let is_update = context.data.data.current.is_some();
-    ic_cdk::println!("[CRITICAL DEBUG] Is this an update? {}", is_update);
+    logger!("debug", "[validate_tag_document] Is this an update? {}", is_update);
     
     for (doc_key, doc) in existing_tags.items {
-        ic_cdk::println!("[CRITICAL DEBUG] Checking document: key={}, description={:?}", doc_key, doc.description);
+        logger!("debug", "[validate_tag_document] Checking document: key={}, description={:?}", doc_key, doc.description);
         
         // If this is an update and the document key matches, skip it
         if is_update && doc_key == context.data.key {
-            ic_cdk::println!("[CRITICAL DEBUG] Skipping current document during update");
+            logger!("debug", "[validate_tag_document] Skipping current document during update");
             continue;
         }
         
@@ -752,7 +730,7 @@ fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
                             "Tag name '{}' is already taken (case-insensitive comparison)",
                             tag_data.name
                         );
-                        log_error(&format!("[assert_set_doc] {} key={}", err_msg, context.data.key));
+                        logger!("error", "[assert_set_doc] {} key={}", err_msg, context.data.key);
                         return Err(err_msg);
                     }
                 }
@@ -766,7 +744,7 @@ fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
             "Tag description cannot exceed 1024 characters (current length: {})",
             tag_data.description.len()
         );
-        log_error(&format!("[validate_tag_document] {}", err_msg));
+        logger!("error", "[validate_tag_document] {}", err_msg);
         return Err(err_msg);
     }
 
@@ -779,7 +757,7 @@ fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
             "Vote reward must be between 0.0 and 1.0 (got: {})",
             tag_data.vote_reward
         );
-        log_error(&format!("[validate_tag_document] {}", err_msg));
+        logger!("error", "[validate_tag_document] {}", err_msg);
         return Err(err_msg);
     }
 
@@ -789,7 +767,7 @@ fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
             "Minimum users must be greater than 0 (got: {})",
             tag_data.min_users_for_threshold
         );
-        log_error(&format!("[validate_tag_document] {}", err_msg));
+        logger!("error", "[validate_tag_document] {}", err_msg);
         return Err(err_msg);
     }
 
@@ -822,24 +800,18 @@ fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), Str
             "Invalid collection: expected 'reputations', got '{}'",
             context.data.collection
         );
-        log_error(&format!("[validate_reputation_document] {}", err_msg));
+        logger!("error", "[validate_reputation_document] {}", err_msg);
         return Err(err_msg);
     }
 
-    log_debug(&format!(
-        "[validate_reputation_document] Validating reputation document: key={}",
-        context.data.key
-    ));
+    logger!("debug", "[validate_reputation_document] Validating reputation document: key={}", context.data.key );
 
     // Step 2: Decode and validate the basic reputation data structure
     // This ensures the document contains all required fields in the correct format
     // and that we can properly access the reputation data for further validation
     let rep_data: ReputationData = decode_doc_data(&context.data.data.proposed.data)
         .map_err(|e| {
-            log_error(&format!(
-                "[validate_reputation_document] Failed to decode reputation data: {}",
-                e
-            ));
+            logger!("error", "[validate_reputation_document] Failed to decode reputation data: {}", e);
             format!("Failed to decode reputation data: {}", e)
         })?;
 
@@ -865,12 +837,12 @@ fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), Str
                 "Invalid description format. Expected: {}, Got: {}",
                 expected_description, actual_description
             );
-            log_error(&format!("[validate_reputation_document] {}", err_msg));
+            logger!("error", "[validate_reputation_document] {}", err_msg);
             return Err(err_msg);
         }
     } else {
         let err_msg = "Description field is required for reputation documents";
-        log_error(&format!("[validate_reputation_document] {}", err_msg));
+        logger!("error", "[validate_reputation_document] {}", err_msg);
         return Err(err_msg.to_string());
     }
 
@@ -878,10 +850,7 @@ fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), Str
     // Check that the values are within acceptable ranges
 
     // 4.1: Log total_basis_reputation (can be negative or positive)
-    log_debug(&format!(
-        "[validate_reputation_document] Total basis reputation: {}",
-        rep_data.total_basis_reputation
-    ));
+    logger!("debug", "[validate_reputation_document] Total basis reputation: {}", rep_data.total_basis_reputation );
 
     // 4.2: Validate voting rewards (must be non-negative)
     if rep_data.total_voting_rewards_reputation < 0.0 {
@@ -889,7 +858,7 @@ fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), Str
             "Total voting rewards reputation cannot be negative (got: {})",
             rep_data.total_voting_rewards_reputation
         );
-        log_error(&format!("[validate_reputation_document] {}", err_msg));
+        logger!("error", "[validate_reputation_document] {}", err_msg);
         return Err(err_msg);
     }
 
@@ -899,14 +868,11 @@ fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), Str
             "Vote weight must be between 0.0 and 1.0 (got: {})",
             rep_data.vote_weight.value()
         );
-        log_error(&format!("[validate_reputation_document] {}", err_msg));
+        logger!("error", "[validate_reputation_document] {}", err_msg);
         return Err(err_msg);
     }
 
-    log_info(&format!(
-        "[validate_reputation_document] Successfully validated reputation document: key={}",
-        context.data.key
-    ));
+    logger!("info", "[validate_reputation_document] Successfully validated reputation document: key={}", context.data.key );
 
     Ok(())
 }
@@ -959,7 +925,7 @@ fn validate_time_periods(periods: &[TimePeriod]) -> Result<(), String> {
                 "Multiplier for period {} must be between 0.05 and 10.0 (got: {})",
                 i + 1, period.multiplier
             );
-            log_error(&format!("[validate_time_periods] {}", err_msg));
+            logger!("error", "[validate_time_periods] {}", err_msg);
             return Err(err_msg);
         }
 
@@ -972,7 +938,7 @@ fn validate_time_periods(periods: &[TimePeriod]) -> Result<(), String> {
                 "Multiplier for period {} must use 0.05 step increments (got: {})",
                 i + 1, period.multiplier
             );
-            log_error(&format!("[validate_time_periods] {}", err_msg));
+            logger!("error", "[validate_time_periods] {}", err_msg);
             return Err(err_msg);
         }
 
@@ -982,7 +948,7 @@ fn validate_time_periods(periods: &[TimePeriod]) -> Result<(), String> {
                 "Months for period {} must be greater than 0 (got: {})",
                 i + 1, period.months
             );
-            log_error(&format!("[validate_time_periods] {}", err_msg));
+            logger!("error", "[validate_time_periods] {}", err_msg);
             return Err(err_msg);
         }
     }
@@ -996,7 +962,7 @@ fn validate_time_periods(periods: &[TimePeriod]) -> Result<(), String> {
 // These hooks and assertions are available but not currently used.
 // They are kept as reference for future implementation.
 
-/*
+
 // Document Management Hooks
 // ------------------------
 
@@ -1060,7 +1026,7 @@ fn assert_upload_asset(_context: AssertUploadAssetContext) -> Result<(), String>
 fn assert_delete_asset(_context: AssertDeleteAssetContext) -> Result<(), String> {
     Ok(())
 }
-*/
+
 
 // =============================================================================
 // Satellite Integration
@@ -1090,17 +1056,17 @@ fn assert_delete_asset(_context: AssertDeleteAssetContext) -> Result<(), String>
 
 #[query]
 async fn get_user_reputation(user_key: String, tag_key: String) -> Result<f64, String> {
-    log_debug(&format!("[get_user_reputation] Fetching reputation for user={}, tag={}", user_key, tag_key));
+    logger!("debug", "[get_user_reputation] Fetching reputation for user={}, tag={}", user_key, tag_key);
     
     // Input validation
     if user_key.is_empty() {
         let err_msg = "User key cannot be empty";
-        log_error(&format!("[get_user_reputation] {}", err_msg));
+        logger!("error", "[get_user_reputation] {}", err_msg);
         return Err(err_msg.to_string());
     }
     if tag_key.is_empty() {
         let err_msg = "Tag key cannot be empty";
-        log_error(&format!("[get_user_reputation] {}", err_msg));
+        logger!("error", "[get_user_reputation] {}", err_msg);
         return Err(err_msg.to_string());
     }
 
@@ -1117,14 +1083,14 @@ async fn get_user_reputation(user_key: String, tag_key: String) -> Result<f64, S
             let reputation_data: ReputationData = decode_doc_data(&doc.data)
                 .map_err(|e| format!("Failed to decode reputation data: {}", e))?;
     
-            log_info(&format!("[get_user_reputation] Successfully retrieved reputation: user={}, tag={}, value={}", 
-                user_key, tag_key, reputation_data.last_known_effective_reputation));
+            logger!("info", "[get_user_reputation] Successfully retrieved reputation: user={}, tag={}, value={}", 
+                user_key, tag_key, reputation_data.last_known_effective_reputation);
     
             Ok(reputation_data.last_known_effective_reputation)
         },
         None => {
             let err_msg = format!("User {} has no reputation in tag {}", user_key, tag_key);
-            log_error(&format!("[get_user_reputation] {}", err_msg));
+            logger!("error", "[get_user_reputation] {}", err_msg);
             Err(err_msg)
         }
     }
@@ -1151,17 +1117,17 @@ async fn get_user_reputation(user_key: String, tag_key: String) -> Result<f64, S
 /// - Returns error if user has no reputation in this tag
 #[query]
 async fn get_user_reputation_full(user_key: String, tag_key: String) -> Result<ReputationData, String> {
-    log_debug(&format!("[get_user_reputation_full] Fetching complete reputation data for user={}, tag={}", user_key, tag_key));
+    logger!("debug", "[get_user_reputation_full] Fetching complete reputation data for user={}, tag={}", user_key, tag_key);
     
     // Input validation
     if user_key.is_empty() {
         let err_msg = "User key cannot be empty";
-        log_error(&format!("[get_user_reputation_full] {}", err_msg));
+        logger!("error", "[get_user_reputation_full] {}", err_msg);
         return Err(err_msg.to_string());
     }
     if tag_key.is_empty() {
         let err_msg = "Tag key cannot be empty";
-        log_error(&format!("[get_user_reputation_full] {}", err_msg));
+        logger!("error", "[get_user_reputation_full] {}", err_msg);
         return Err(err_msg.to_string());
     }
 
@@ -1178,14 +1144,13 @@ async fn get_user_reputation_full(user_key: String, tag_key: String) -> Result<R
             let reputation_data: ReputationData = decode_doc_data(&doc.data)
                 .map_err(|e| format!("Failed to decode reputation data: {}", e))?;
     
-            log_info(&format!("[get_user_reputation_full] Successfully retrieved complete reputation data: user={}, tag={}", 
-                user_key, tag_key));
+            logger!("info", "[get_user_reputation_full] Successfully retrieved complete reputation data: user={}, tag={}", user_key, tag_key);
     
             Ok(reputation_data)
         },
         None => {
             let err_msg = format!("User {} has no reputation in tag {}", user_key, tag_key);
-            log_error(&format!("[get_user_reputation_full] {}", err_msg));
+            logger!("error", "[get_user_reputation_full] {}", err_msg);
             Err(err_msg)
         }
     }
@@ -1223,17 +1188,17 @@ async fn get_user_reputation_full(user_key: String, tag_key: String) -> Result<R
 #[ic_cdk::update]
 #[candid::candid_method(update)]
 pub async fn recalculate_reputation(user_key: String, tag_key: String) -> Result<f64, String> {
-    log_debug(&format!("[recalculate_reputation] Starting recalculation for user={}, tag={}", user_key, tag_key));
+    logger!("debug", "[recalculate_reputation] Starting recalculation for user={}, tag={}", user_key, tag_key);
     
     // Input validation
     if user_key.is_empty() {
         let err_msg = "User key cannot be empty";
-        log_error(&format!("[recalculate_reputation] {}", err_msg));
+        logger!("error", "[recalculate_reputation] {}", err_msg);
         return Err(err_msg.to_string());
     }
     if tag_key.is_empty() {
         let err_msg = "Tag key cannot be empty";
-        log_error(&format!("[recalculate_reputation] {}", err_msg));
+        logger!("error", "[recalculate_reputation] {}", err_msg);
         return Err(err_msg.to_string());
     }
 
@@ -1241,12 +1206,15 @@ pub async fn recalculate_reputation(user_key: String, tag_key: String) -> Result
     let reputation_data = calculate_user_reputation(&user_key, &tag_key).await
         .map_err(|e| {
             let err_msg = format!("Failed to calculate reputation: {}", e);
-            log_error(&format!("[recalculate_reputation] {}: user={}, tag={}", err_msg, user_key, tag_key));
+            logger!("error", "[recalculate_reputation] {}: user={}, tag={}", err_msg, user_key, tag_key);
             err_msg
         })?;
     
-    log_info(&format!("[recalculate_reputation] Successfully recalculated reputation: user={}, tag={}, value={}", 
-        user_key, tag_key, reputation_data.last_known_effective_reputation));
+    logger!("info", "[recalculate_reputation] Successfully recalculated reputation: user={}, tag={}, value={}", 
+        user_key, 
+        tag_key, 
+        reputation_data.last_known_effective_reputation
+    );
     
     Ok(reputation_data.last_known_effective_reputation)
 }

@@ -6,7 +6,7 @@
  */
 
 // Export utility modules
-pub mod logging;
+pub mod logger;
 pub mod normalize;
 pub mod reputation_calculations;
 pub mod structs;

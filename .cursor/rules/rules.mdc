@@ -1,0 +1,506 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# AI Assistant Rules for Reputator Project
+
+## Primary Information Source
+- Use docs/README.md as the main source of truth for all project information
+- Reference specific sections using docs/README.md#section-name
+- Keep documentation in sync with docs/README.md
+
+Additional guidelines:
+- Before making assumptions about project structure:
+  1. Ask user to confirm documentation locations
+  2. Verify if any documentation has been updated recently
+  3. Check if user has specific sections they want you to focus on
+
+## Development Environment
+- Use WSL (Windows Subsystem for Linux) for development
+- Required WSL setup:
+  1. WSL 2 installed and running
+  2. Node.js installed in WSL
+  3. Project directory mounted in WSL at /mnt/c/Users/Fairtale/Documents/Code/Reputator
+
+Additional guidelines:
+- Before suggesting environment changes:
+  1. Ask about current development setup
+  2. Verify if user is using WSL or different setup
+  3. Confirm if any special environment considerations exist
+
+## Command Explanation Requirements
+- Before executing ANY command:
+  1. Explain what the command does
+  2. Explain why it's necessary
+  3. List potential risks or issues
+  4. Describe expected outcomes
+- Example format:
+  ```bash
+  Command: npm install @junobuild/core
+  Purpose: Installs the Juno runtime library
+  Why: Required for Juno Satellite integration
+  Risks: May conflict with existing versions
+  Outcome: Enables Juno functionality in the project
+  ```
+
+Additional guidelines:
+- Before proposing any command:
+  1. Ask if user has specific preferences for implementation
+  2. Present alternatives if available
+  3. Wait for user confirmation before proceeding
+  4. Discuss potential impact on existing system
+
+## Documentation Priority
+1. First check docs/README.md for information
+2. Then check docs/core/ for project-specific docs
+3. Finally reference docs/juno/docs/ for Juno-specific details
+
+Additional guidelines:
+- Before checking documentation:
+  1. Ask user which documentation is most relevant
+  2. Share what documentation you plan to check
+  3. Confirm if this aligns with user's expectations
+  4. Ask if there are any recent changes not yet documented
+
+## Response Structure
+1. Always start with explaining what you'm going to do
+2. Reference relevant sections from docs/README.md
+3. Explain commands before executing them
+4. Provide context for any code changes
+5. Link to relevant documentation
+
+Additional guidelines:
+- Before implementing solutions:
+  1. Break down the proposed approach into clear steps
+  2. Ask for validation on each major step
+  3. Present alternative approaches when available
+  4. Check if user has preferences about implementation order
+
+## Code Generation Guidelines
+- Follow patterns from docs/README.md#coding-standards
+- Include JSDoc comments explaining:
+  - Purpose
+  - Parameters
+  - Return values
+  - Example usage
+- Reference existing code patterns from the codebase
+- Follow Juno's logging guidelines (`/docs/juno/docs/build/functions/logs.md`):
+  - Use native logging with `ic_cdk::print` for efficiency
+  - Logs persist on blockchain up to 4 KiB
+  - All logs appear as "Error" in Juno Console
+  - Use `ic_cdk::trap` for error conditions
+  - Avoid custom logging unless absolutely necessary
+
+Additional guidelines:
+- Before generating code:
+  1. Ask about preferred patterns or existing examples
+  2. Verify naming conventions and style preferences
+  3. Confirm if certain patterns should be avoided
+  4. Check if there are similar implementations to reference
+
+## Error Handling
+- For any error:
+  1. Explain what caused it
+  2. Why it matters
+  3. How to fix it
+  4. How to prevent it
+- Reference docs/README.md#troubleshooting for common issues
+
+Additional guidelines:
+- When encountering errors:
+  1. Share your understanding of the error
+  2. Ask if user has seen this error before
+  3. Present multiple potential solutions
+  4. Ask which approach they'd prefer to try first
+  5. Discuss potential side effects of each solution
+
+## Context Management
+- Always maintain awareness of:
+  - Current project state
+  - Recent changes
+  - Active development context
+- Use docs/README.md to verify current project status
+
+Additional guidelines:
+- Before proceeding with any task:
+  1. Summarize your understanding of the current context
+  2. Ask if any important context is missing
+  3. Verify assumptions about project state
+  4. Check if recent changes affect the current task
+
+## Learning From Mistakes
+- When an approach proves incorrect:
+  1. Acknowledge the misunderstanding
+  2. Ask for clarification on where the assumption went wrong
+  3. Document the correct approach for future reference
+  4. Verify new understanding before proceeding
+
+## Incremental Progress
+- Make smaller, verifiable steps
+- After each step:
+  1. Show what was done
+  2. Ask if it aligns with expectations
+  3. Request guidance for next step
+  4. Highlight any concerns or questions
+  5. Discuss potential implications for future steps
+
+## Code Review and Validation
+- Before considering a task complete:
+  1. Ask user to review changes
+  2. Present potential areas of concern
+  3. Discuss any necessary follow-up tasks
+  4. Verify if additional documentation is needed
+  5. Check if similar changes are needed elsewhere 
+
+
+  ## Directory Structure
+
+### `/docs`
+Main documentation directory containing all project documentation:
+
+#### `/docs/resources`
+Core reference documentation:
+- `ic_and_juno_api_reference.md` (`/docs/resources/ic_and_juno_api_reference.md`) - Complete API reference for Internet Computer and Juno
+- `juno_index.md` (`/docs/resources/juno_index.md`) - Quick reference guide for Juno integration, setup, and development
+
+#### `/docs/core`
+Core project documentation:
+- `data-validation.md` (`/docs/core/data-validation.md`) - Data validation patterns and security measures
+- `resources.md` (`/docs/core/resources.md`) - External resources and links
+- `skeleton_ui_integration.md` (`/docs/core/skeleton_ui_integration.md`) - Skeleton UI v2 setup, configuration, and component usage
+
+Key aspects:
+- Security patterns (`/docs/core/data-validation.md#security`)
+- UI setup and component patterns (`/docs/core/skeleton_ui_integration.md`)
+
+#### `/docs/implementation`
+Implementation-specific documentation:
+- `reputation.md` (`/docs/implementation/reputation.md`) - Reputation system guide
+- `juno_integration.md` (`/docs/implementation/juno_integration.md`) - Integration patterns
+
+Important considerations:
+- Business logic (`/docs/implementation/reputation.md#core-logic`)
+- Integration patterns (`/docs/implementation/juno_integration.md#patterns`)
+- Data structures (`/docs/implementation/reputation.md#data-structures`)
+
+#### `/docs/juno`
+Official Juno documentation and guides, with key sections:
+
+##### Build Features (`/docs/juno/docs/build/`)
+- **Functions** (`/docs/juno/docs/build/functions/`): 
+  - Event-driven functions (`development.md#hooks`)
+  - Lifecycle hooks (`development.md#on_init`)
+  - Assertions (`development.md#assertions`)
+  - Logic execution (`development.md#implementation`)
+  - Initialization (`development.md#on_init`)
+  - Collection handlers (`development.md#on_set_doc`)
+
+- **Storage** (`/docs/juno/docs/build/storage/`): 
+  - File upload (`development.md#upload-asset`)
+  - Protected assets (`development.md#protected-asset`)
+  - Collections (`collections.md`)
+  - Filtering (`development.md#list-assets`)
+  - Metadata (`development.md#description`)
+  - Access control (`development.md#security`)
+
+- **Analytics** (`/docs/juno/docs/build/analytics/`): 
+  - Page tracking (`development.md#page-views`)
+  - Event tracking (`development.md#track-custom-events`)
+  - Web Vitals (`development.md#performance-metrics-with-web-vitals`)
+  - Performance (`development.md#key-metrics`)
+  - User analysis (`development.md#custom-events`)
+  - Privacy (`development.md#data-collection`)
+
+- **Components** (`/docs/juno/docs/components/`):
+  - Core utilities (`core.mdx`)
+  - Bash helpers (`bash.mdx`)
+  - Subnet tools (`subnets.md`)
+
+##### SvelteKit Integration (`/docs/juno/docs/guides/sveltekit.mdx`)
+Essential integration points:
+- Project initialization
+- Static site generation setup
+- Local development configuration
+- Production deployment
+- Data management patterns
+- Authentication flows
+- Component integration
+
+##### Development Guides
+- **Local Development** (`/docs/juno/docs/guides/local-development.md`):
+  - Setup workflow (`#setup`)
+  - Environment config (`#configuration`)
+  - Testing (`#testing`)
+  - Debugging (`#debugging`)
+
+- **Deployment** (`/docs/juno/docs/guides/manual-deployment.mdx`):
+  - Build process (`#build`)
+  - Configuration (`#config`)
+  - Verification (`#verify`)
+  - Monitoring (`#monitor`)
+
+- **Component Patterns** (`/docs/juno/docs/guides/components/`):
+  - Build patterns (`build.mdx`)
+  - Choice patterns (`choice.mdx`)
+  - CLI usage (`cli.mdx`)
+  - Deployment patterns (`deploy.mdx`)
+
+## Documentation Updates
+
+When updating documentation:
+1. Core API changes in `ic_and_juno_api_reference.md` (`/docs/resources/ic_and_juno_api_reference.md`)
+2. Implementation changes in respective files (`/docs/implementation/`)
+3. External resource links in `resources.md` (`/docs/core/resources.md`)
+4. Cross-references validation (`/docs/README.md`)
+
+## Best Practices (`/juno/docs/miscellaneous/best-practices.md`)
+
+1. **Version Control** (`#version-control`):
+   - Commit messages
+   - Change tracking
+   - Version tagging
+   - History maintenance
+
+2. **Cross-References** (`#documentation`):
+   - Relative links
+   - Path validation
+   - Link maintenance
+   - Reference checking
+
+3. **Code Examples** (`#code-examples`):
+   - Up-to-date code
+   - Tested snippets
+   - Clear comments
+   - Error handling
+
+4. **API Documentation** (`#api-documentation`):
+   - Complete coverage
+   - Example usage
+   - Parameter details
+   - Return values
+
+5. **Formatting** (`#formatting`):
+   - Markdown standards
+   - Consistent style
+   - Clear structure
+   - Readable layout
+
+6. **Security Headers** (`#content-security-policy-csp`): 
+   - CSP implementation
+   - HTTP headers
+   - iframe protection
+   - Transport security
+
+## Memory Management Guidelines (`/juno/docs/miscellaneous/memory.md`)
+
+1. **Memory Types**:
+   - Heap Memory (1GB max)
+     - Fast read/write operations
+     - Best for small datasets
+     - Requires serialization during upgrades
+     - Used for app bundles and assets
+   - Stable Memory (400GB max)
+     - Larger storage capacity
+     - Slower but more resilient
+     - Persists through upgrades
+     - Used for user data and analytics
+
+2. **Usage Patterns** (`/juno/docs/miscellaneous/memory.md#recommendations`):
+   - Choose heap for frequently accessed data
+   - Use stable for large datasets
+   - Consider upgrade implications
+   - Monitor memory consumption
+
+3. **Performance Optimization** (`/juno/docs/miscellaneous/memory.md#in-a-nutshell`):
+   - Balance memory types
+   - Implement efficient data structures
+   - Monitor memory limits
+   - Plan for scalability
+
+4. **Upgrade Considerations** (`/juno/docs/miscellaneous/memory.md#default-usage`):
+   - Handle serialization properly
+   - Test memory migration
+   - Monitor upgrade impact
+   - Plan for data growth
+
+## SvelteKit-Specific Guidelines (`/juno/docs/guides/sveltekit.mdx`)
+
+1. **Static Generation** (`/juno/docs/guides/sveltekit.mdx#static-site-generation`):
+   - Use `@sveltejs/adapter-static` for deployment
+   - Configure prerendering in `+layout.js`
+   - Avoid server-side rendering dependencies
+
+2. **Data Management** (`/juno/docs/build/datastore/development.md`):
+   - Use atomic operations for data consistency
+   - Implement version control for updates
+   - Handle concurrent modifications
+   - Use batch operations when appropriate
+
+3. **Authentication Flow** (`/juno/docs/build/authentication/development.md`):
+   - Implement proper error handling
+   - Use state subscription for user management
+   - Configure session timeouts appropriately
+   - Handle authentication interruptions gracefully
+
+4. **Performance Considerations** (`/juno/docs/build/datastore/development.md#set-multiple-documents`):
+   - Use batch operations for multiple documents
+   - Implement proper filtering and pagination
+   - Optimize data queries and updates
+   - Handle state management efficiently
+
+## Serverless Functions Guidelines (`/juno/docs/build/functions/development.md`)
+
+1. **Event Hooks** (`/juno/docs/build/functions/development.md#hooks`):
+   - Document lifecycle events (create, update, delete)
+   - Asset management events
+   - Batch operation handlers
+   - Initialization and upgrade hooks
+
+2. **Assertions and Validation** (`/juno/docs/build/functions/development.md#assertions`):
+   - Pre-operation validation
+   - Custom business logic checks
+   - Security constraints
+   - Data integrity rules
+
+3. **Implementation Patterns** (`/juno/docs/build/functions/development.md#on_set_doc`):
+   - Collection-scoped handlers
+   - Error handling and logging
+   - Asynchronous operations
+   - State management
+
+4. **Development Workflow** (`/juno/docs/build/functions/lifecycle.md`):
+   - Local testing with emulator
+   - Function deployment
+   - Version management
+   - Debugging and monitoring
+
+## Storage Management Guidelines (`/juno/docs/build/storage/development.md`)
+
+1. **Asset Organization** (`/juno/docs/build/storage/collections.md`):
+   - Collection-based file structure
+   - Filename and path conventions
+   - Protected vs public assets
+   - Token-based access control
+
+2. **Upload Patterns** (`/juno/docs/build/storage/development.md#upload-asset`):
+   - File type handling
+   - Custom headers and encoding
+   - Overwrite protection
+   - Error handling
+
+3. **Asset Retrieval** (`/juno/docs/build/storage/development.md#list-assets`):
+   - Filtering and pagination
+   - Timestamp-based queries
+   - Owner-based filtering
+   - Sorting and ordering
+
+4. **Security Considerations** (`/juno/docs/build/storage/development.md#protected-asset`):
+   - Token generation and management
+   - Access control implementation
+   - URL handling and encoding
+   - Asset protection strategies
+
+## Analytics Guidelines (`/juno/docs/build/analytics/development.md`)
+
+1. **Page View Tracking** (`#page-views`):
+   - Automatic setup (`#automatic-tracking`)
+   - Navigation monitoring (`#navigation-events`)
+   - Journey analysis (`#user-journey`)
+   - Privacy settings (`#privacy`)
+
+2. **Custom Events** (`#track-custom-events`):
+   - Event naming (`#event-names`)
+   - Metadata structure (`#metadata`)
+   - Size limits (`#limitations`)
+   - Validation rules (`#validation`)
+
+3. **Performance Monitoring** (`#performance-metrics-with-web-vitals`):
+   - Web Vitals setup (`#key-metrics`)
+   - TTFB metrics (`#time-to-first-byte`)
+   - Layout analysis (`#cumulative-layout-shift`)
+   - Latency tracking (`#interaction-to-next-paint`)
+
+4. **Configuration Options** (`/juno/docs/build/analytics/setup.mdx`):
+   - Initialization (`#init`)
+   - Opt-out settings (`#opting-out`)
+   - Data rules (`#data-collection`)
+   - Customization (`#configuration`)
+
+## Configuration Guidelines (`/juno/docs/miscellaneous/configuration.mdx`)
+
+1. **Project Setup** (`#satellite-configuration`):
+   - File structure (`#config-file`)
+   - Environment setup (`#environments`)
+   - Deploy config (`#deployment`)
+   - Resource setup (`#resources`)
+
+2. **Satellite Configuration** (`#id-or-ids`):
+   - ID setup (`#satellite-id`)
+   - Source config (`#source`)
+   - File handling (`#file-handling`)
+   - Memory config (`#memory-limits`)
+
+3. **Build Settings** (`#predeploy`):
+   - Deploy hooks (`#hooks`)
+   - Asset building (`#assets`)
+   - Test setup (`#testing`)
+   - Environment vars (`#environment-variables`)
+
+4. **Resource Management** (`#maximum-memory-size`):
+   - Memory setup (`#memory-allocation`)
+   - Compute config (`#compute-resources`)
+   - Storage setup (`#storage-limits`)
+   - Auth settings (`#authentication`)
+
+## Collaboration Guidelines (`/juno/docs/miscellaneous/workarounds.md`)
+
+1. **Satellite Transfer** (`#transferring-a-satellite-to-another-account`):
+   - Controller setup (`#add-the-new-controllers`)
+   - Permission config (`#permissions`)
+   - Account setup (`#account-setup`)
+   - Access checks (`#verify-access`)
+
+2. **Team Collaboration** (`#how-to-collaborate-on-the-same-project`):
+   - Identity config (`#create-a-new-identity`)
+   - Controller setup (`#controller-setup`)
+   - Access rules (`#access-management`)
+   - Permission types (`#permission-levels`)
+
+3. **Security Considerations** (`/juno/docs/miscellaneous/best-practices.md#security`):
+   - ID verification (`#identity-verification`)
+   - Controller checks (`#controller-validation`)
+   - Access removal (`#access-revocation`)
+   - Audit setup (`#audit-logging`)
+
+4. **Best Practices** (`#collaboration-best-practices`):
+   - Communication (`#communication`)
+   - Documentation (`#documentation`)
+   - Planning (`#transition-planning`)
+   - Backups (`#backup-procedures`)
+
+## Common Workarounds (`/juno/docs/miscellaneous/workarounds.md`)
+
+1. **Satellite Management** (`#satellite-management`):
+   - Account transfer (`#transferring-a-satellite`)
+   - Controller setup (`#controller-configuration`)
+   - Mission setup (`#mission-control-setup`)
+   - Detachment (`#detachment`)
+
+2. **Identity Sharing** (`#identity-sharing`):
+   - II setup (`#internet-identity-setup`)
+   - Passkey config (`#passkey-management`)
+   - Device setup (`#device-registration`)
+   - Access sync (`#access-coordination`)
+
+3. **Access Control** (`/juno/docs/miscellaneous/controllers.md`):
+   - Permission setup (`#permission-setup`)
+   - Controller config (`#controller-config`)
+   - ID checks (`#identity-checks`)
+   - Security rules (`#security-rules`)
+
+4. **Transition Planning** (`#transition`):
+   - Handover steps (`#handover`)
+   - Access checks (`#access-checks`)
+   - Backup plan (`#backup-plan`)
+   - Doc updates (`#documentation-updates`)
