@@ -1,12 +1,12 @@
-use ic_cdk;
-use junobuild_satellite::{list_docs, set_doc_store, get_doc, list_docs_store};
-use junobuild_satellite::SetDoc;
-use junobuild_shared::types::list::{ListMatcher, ListParams};
-use std::collections::HashMap;
-use junobuild_utils::{encode_doc_data, decode_doc_data};
-use crate::logger;
-use crate::utils::time::calculate_months_between;
-use crate::utils::description_helpers::DocumentDescription;
+use ic_cdk; // Import ic_cdk
+use junobuild_satellite::{list_docs, set_doc_store, get_doc, list_docs_store}; // Import junobuild_satellite functions
+use junobuild_satellite::SetDoc; // why is this not in the previous import?
+use junobuild_shared::types::list::{ListMatcher, ListParams}; // Import junobuild_shared types
+use std::collections::HashMap; // Import std::collections::HashMap
+use junobuild_utils::{encode_doc_data, decode_doc_data}; // Import junobuild_utils functions
+use crate::logger; // Import our logger from the utils module 
+use crate::utils::time::calculate_months_between; // Import time calculations
+use crate::utils::description_helpers::DocumentDescription; // Import DocumentDescription helper
 
 // Import our data structures
 use crate::utils::structs::{

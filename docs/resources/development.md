@@ -3,17 +3,32 @@
 ## Getting Started
 
 ### Essential Commands
+
+#### Deploying
 ```bash
-# Start development server with hot reload
+# For frontend changes:
+npm run build # Builds the project frontend for production
+juno deploy # Deploys your frontend application (static assets, HTML, CSS, JS files) to your satellite
+
+# For backend/Rust changes:
+juno dev build  # Compiles your Rust code to WASM
+juno upgrade -t s -s ./target/deploy/satellite.wasm.gz  # Upgrades+deploys the satellite
+```
+
+#### Local Development
+```bash
+# Start local development server with hot reload
 npm run dev
 
-# Build for production
+# Build frontend for production
 npm run build
 
-# Build and start Juno development environment
+# Build and start Juno local development emulator (emulator is local blockchain + local II + local satellite)
 juno dev build
 juno dev start
 ```
+
+
 
 ### Source Code
 The project is available at: https://github.com/fairtale5/Reputator
@@ -292,16 +307,7 @@ juno upgrade
   - Requires stable internet connection
   - Always upgrade sequentially through versions
 
-Typical workflow:
-```bash
-# For frontend changes:
-npm run build
-juno deploy
 
-# For backend/Rust changes:
-juno dev build  # Compiles your Rust code to WASM
-juno upgrade -t s -s ./target/deploy/satellite.wasm.gz  # Upgrades the satellite
-```
 
 ### Docker Commands
 - `juno dev start`: Launches local development environment with Docker
