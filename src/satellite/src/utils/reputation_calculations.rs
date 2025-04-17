@@ -1,12 +1,12 @@
+use ic_cdk;
 use junobuild_satellite::{list_docs, set_doc_store, get_doc, list_docs_store};
+use junobuild_satellite::SetDoc;
 use junobuild_shared::types::list::{ListMatcher, ListParams};
 use std::collections::HashMap;
 use junobuild_utils::{encode_doc_data, decode_doc_data};
-use junobuild_satellite::SetDoc;
-use crate::utils::logger;
+use crate::logger;
 use crate::utils::time::calculate_months_between;
 use crate::utils::description_helpers::DocumentDescription;
-use ic_cdk;
 
 // Import our data structures
 use crate::utils::structs::{

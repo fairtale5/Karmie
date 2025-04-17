@@ -40,7 +40,7 @@ use junobuild_satellite::{get_doc, list_docs};
 use junobuild_shared::types::list::{ListMatcher, ListParams, ListResults};
 use junobuild_utils::decode_doc_data;
 use crate::utils::structs::{Tag, ReputationData, TagData};
-use crate::utils::logger;
+use crate::logger;
 use crate::utils::description_helpers;
 
 /// Calculates the number of active users for a given tag

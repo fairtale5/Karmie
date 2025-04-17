@@ -183,7 +183,7 @@ use ic_cdk_macros::*;
 // Utility Imports
 // ===========================================================================
 
-#[allow(unused_imports)]
+
 use junobuild_utils::{decode_doc_data, encode_doc_data};
 
 // Import our utility modules
@@ -196,7 +196,6 @@ use crate::utils::{
         calculate_and_store_vote_weight,
         get_period_multiplier,
     },
-    logger,  // Just import the module, we use the macro
     description_helpers::{DocumentDescription, create_vote_description, validate_description}
 };
 
@@ -406,7 +405,7 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
         .map_err(|e| {
             let err_msg = format!("[assert_set_doc] Failed to decode user data: key={}, error={}", 
                 context.data.key, e);
-            logger!("error", &err_msg);
+            logger!("error", "{}", err_msg);
             format!("Invalid user data format: {}", e)
         })?;
     
@@ -414,7 +413,7 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
     validate_username(&user_data.username)
         .map_err(|e| {
             let err_msg = format!("[assert_set_doc] Username validation failed: {}", e);
-            logger!("error", &err_msg);
+            logger!("error", "{}", err_msg);
             e
         })?;
 
@@ -422,7 +421,7 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
     validate_display_name(&user_data.display_name)
         .map_err(|e| {
             let err_msg = format!("[assert_set_doc] Display name validation failed: {}", e);
-            logger!("error", &err_msg);
+            logger!("error", "{}", err_msg);
             e
         })?;
 
@@ -501,10 +500,10 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
                     // Now compare the sanitized username values
                     if existing_username == sanitized_username {
                         let err_msg = format!(
-                            "Username '{}' is already taken. Please choose a different username.",
+                            "[assert_set_doc] Username '{}' is already taken. Please choose a different username.",
                             user_data.username
                         );
-                        logger!("error", "[assert_set_doc] {} key={}, username={}", err_msg, context.data.key, user_data.username);
+                        logger!("error", "{}", err_msg);
                         return Err(err_msg);
                     }
                 }
@@ -533,8 +532,8 @@ fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
         // Exclude the current document if we're updating
         for (doc_key, _) in existing_docs.items {
             if doc_key != context.data.key {
-                let err_msg = "Users can only have one account in production mode";
-                logger!("error", "[assert_set_doc] {} key={}", err_msg, context.data.key);
+                let err_msg = format!("[validate_user_document] Users can only have one account in production mode. key={}", context.data.key);
+                logger!("error", "{}", err_msg);
                 return Err(err_msg.to_string());
             }
         }
@@ -580,10 +579,10 @@ fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
     // - Enable clear upvote/downvote UI representation
     if vote_data.value < -1.0 || vote_data.value > 1.0 {
         let err_msg = format!(
-            "Vote value must be -1, 0, or 1 (got: {})",
+            "[validate_vote_document] Vote value must be -1, 0, or 1 (got: {})",
             vote_data.value
         );
-        logger!("error", "[validate_vote_document] {}", err_msg);
+        logger!("error", "{}", err_msg);
         return Err(err_msg);
     }
 
@@ -600,10 +599,10 @@ fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
     // - Age of previous votes
     if vote_data.weight < 0.0 || vote_data.weight > 1.0 {
         let err_msg = format!(
-            "Vote weight must be between 0.0 and 1.0 (got: {})",
+            "[validate_vote_document] Vote weight must be between 0.0 and 1.0 (got: {})",
             vote_data.weight
         );
-        logger!("error", "[validate_vote_document] {}", err_msg);
+        logger!("error", "{}", err_msg);
         return Err(err_msg);
     }
 
@@ -612,8 +611,8 @@ fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
     
     // First validate that tag_key is not empty
     if vote_data.tag_key.trim().is_empty() {
-        let err_msg = "Tag key cannot be empty";
-        logger!("error", "[validate_vote_document] {}", err_msg);
+        let err_msg = "[validate_vote_document]Tag key cannot be empty";
+        logger!("error", "{}", err_msg);
         return Err(err_msg.to_string());
     }
     
@@ -628,8 +627,8 @@ fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
     // Search for the tag in the tags collection
     let existing_tags = list_docs(String::from("tags"), params);
     if existing_tags.items.is_empty() {
-        let err_msg = format!("Tag not found: {}", vote_data.tag_key);
-        logger!("error", &format!("[validate_vote_document] {}", err_msg));
+        let err_msg = format!("[validate_vote_document] Tag not found: {}", vote_data.tag_key);
+        logger!("error", "{}", err_msg);
         return Err(err_msg);
     }
     
@@ -637,8 +636,8 @@ fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
 
     // Step 5: Validate no self-voting
     if vote_data.author_key == vote_data.target_key {
-        let err_msg = "Users cannot vote on themselves";
-        logger!("error","[validate_vote_document] {}", err_msg);
+        let err_msg = "[validate_vote_document]Users cannot vote on themselves";
+        logger!("error", "{}", err_msg);
         return Err(err_msg.to_string());
     }
 
@@ -727,10 +726,10 @@ fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
                     // Now compare the sanitized name values
                     if existing_name == sanitized_name {
                         let err_msg = format!(
-                            "Tag name '{}' is already taken (case-insensitive comparison)",
+                            "[assert_set_doc] Tag name '{}' is already taken (case-insensitive comparison)",
                             tag_data.name
                         );
-                        logger!("error", "[assert_set_doc] {} key={}", err_msg, context.data.key);
+                        logger!("error", "{}", err_msg);
                         return Err(err_msg);
                     }
                 }
@@ -741,10 +740,10 @@ fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
     // Step 3: Validate description length
     if tag_data.description.len() > 1024 {
         let err_msg = format!(
-            "Tag description cannot exceed 1024 characters (current length: {})",
+            "[validate_tag_document]Tag description cannot exceed 1024 characters (current length: {})",
             tag_data.description.len()
         );
-        logger!("error", "[validate_tag_document] {}", err_msg);
+        logger!("error", "{}", err_msg);
         return Err(err_msg);
     }
 
@@ -754,20 +753,20 @@ fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
     // Step 5: Validate vote reward (0.0 to 1.0)
     if tag_data.vote_reward < 0.0 || tag_data.vote_reward > 1.0 {
         let err_msg = format!(
-            "Vote reward must be between 0.0 and 1.0 (got: {})",
+            "[validate_tag_document] Vote reward must be between 0.0 and 1.0 (got: {})",
             tag_data.vote_reward
         );
-        logger!("error", "[validate_tag_document] {}", err_msg);
+        logger!("error", "{}", err_msg);
         return Err(err_msg);
     }
 
     // Step 6: Validate minimum users (must be greater than 0)
     if tag_data.min_users_for_threshold == 0 {
         let err_msg = format!(
-            "Minimum users must be greater than 0 (got: {})",
+            "[validate_tag_document] Minimum users must be greater than 0 (got: {})",
             tag_data.min_users_for_threshold
         );
-        logger!("error", "[validate_tag_document] {}", err_msg);
+        logger!("error", "{}", err_msg);
         return Err(err_msg);
     }
 
@@ -797,10 +796,10 @@ fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), Str
     // This ensures we're only validating documents in the correct collection
     if context.data.collection != "reputations" {
         let err_msg = format!(
-            "Invalid collection: expected 'reputations', got '{}'",
+            "[validate_reputation_document] Invalid collection: expected 'reputations', got '{}'",
             context.data.collection
         );
-        logger!("error", "[validate_reputation_document] {}", err_msg);
+        logger!("error", "{}", err_msg);
         return Err(err_msg);
     }
 
@@ -834,15 +833,15 @@ fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), Str
     if let Some(actual_description) = &context.data.data.proposed.description {
         if actual_description != &expected_description {
             let err_msg = format!(
-                "Invalid description format. Expected: {}, Got: {}",
+                "[validate_reputation_document] Invalid description format. Expected: {}, Got: {}",
                 expected_description, actual_description
             );
-            logger!("error", "[validate_reputation_document] {}", err_msg);
+            logger!("error", "{}", err_msg);
             return Err(err_msg);
         }
     } else {
-        let err_msg = "Description field is required for reputation documents";
-        logger!("error", "[validate_reputation_document] {}", err_msg);
+        let err_msg = "[validate_reputation_document] Description field is required for reputation documents";
+        logger!("error", "{}", err_msg);
         return Err(err_msg.to_string());
     }
 
@@ -855,20 +854,20 @@ fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), Str
     // 4.2: Validate voting rewards (must be non-negative)
     if rep_data.total_voting_rewards_reputation < 0.0 {
         let err_msg = format!(
-            "Total voting rewards reputation cannot be negative (got: {})",
+            "[validate_reputation_document] Total voting rewards reputation cannot be negative (got: {})",
             rep_data.total_voting_rewards_reputation
         );
-        logger!("error", "[validate_reputation_document] {}", err_msg);
+        logger!("error", "{}", err_msg);
         return Err(err_msg);
     }
 
     // 4.3: Validate vote weight (must be between 0.0 and 1.0)
     if rep_data.vote_weight.value() < 0.0 || rep_data.vote_weight.value() > 1.0 {
         let err_msg = format!(
-            "Vote weight must be between 0.0 and 1.0 (got: {})",
+            "[validate_reputation_document] Vote weight must be between 0.0 and 1.0 (got: {})",
             rep_data.vote_weight.value()
         );
-        logger!("error", "[validate_reputation_document] {}", err_msg);
+        logger!("error", "{}", err_msg);
         return Err(err_msg);
     }
 
@@ -922,10 +921,10 @@ fn validate_time_periods(periods: &[TimePeriod]) -> Result<(), String> {
         // Validate multiplier range (0.05 to 10.0)
         if period.multiplier < 0.05 || period.multiplier > 10.0 {
             let err_msg = format!(
-                "Multiplier for period {} must be between 0.05 and 10.0 (got: {})",
+                "[validate_time_periods]Multiplier for period {} must be between 0.05 and 10.0 (got: {})",
                 i + 1, period.multiplier
             );
-            logger!("error", "[validate_time_periods] {}", err_msg);
+            logger!("error", "{}", err_msg);
             return Err(err_msg);
         }
 
@@ -935,20 +934,20 @@ fn validate_time_periods(periods: &[TimePeriod]) -> Result<(), String> {
         let remainder = multiplier_int % 5.0;
         if remainder > 0.000001 { // Allow for small floating-point rounding errors
             let err_msg = format!(
-                "Multiplier for period {} must use 0.05 step increments (got: {})",
+                "[validate_time_periods] Multiplier for period {} must use 0.05 step increments (got: {})",
                 i + 1, period.multiplier
             );
-            logger!("error", "[validate_time_periods] {}", err_msg);
+            logger!("error", "{}", err_msg);
             return Err(err_msg);
         }
 
         // Validate month duration is greater than 0
         if period.months == 0 {
             let err_msg = format!(
-                "Months for period {} must be greater than 0 (got: {})",
+                "[validate_time_periods] Months for period {} must be greater than 0 (got: {})",
                 i + 1, period.months
             );
-            logger!("error", "[validate_time_periods] {}", err_msg);
+            logger!("error", "{}", err_msg);
             return Err(err_msg);
         }
     }
@@ -1060,13 +1059,13 @@ async fn get_user_reputation(user_key: String, tag_key: String) -> Result<f64, S
     
     // Input validation
     if user_key.is_empty() {
-        let err_msg = "User key cannot be empty";
-        logger!("error", "[get_user_reputation] {}", err_msg);
+        let err_msg = "[get_user_reputation] User key cannot be empty";
+        logger!("error", "{}", err_msg);
         return Err(err_msg.to_string());
     }
     if tag_key.is_empty() {
-        let err_msg = "Tag key cannot be empty";
-        logger!("error", "[get_user_reputation] {}", err_msg);
+        let err_msg = "[get_user_reputation] Tag key cannot be empty";
+        logger!("error", "{}", err_msg);
         return Err(err_msg.to_string());
     }
 
@@ -1089,8 +1088,8 @@ async fn get_user_reputation(user_key: String, tag_key: String) -> Result<f64, S
             Ok(reputation_data.last_known_effective_reputation)
         },
         None => {
-            let err_msg = format!("User {} has no reputation in tag {}", user_key, tag_key);
-            logger!("error", "[get_user_reputation] {}", err_msg);
+            let err_msg = format!("[get_user_reputation] User {} has no reputation in tag {}", user_key, tag_key);
+            logger!("error", "{}", err_msg);
             Err(err_msg)
         }
     }
@@ -1121,13 +1120,13 @@ async fn get_user_reputation_full(user_key: String, tag_key: String) -> Result<R
     
     // Input validation
     if user_key.is_empty() {
-        let err_msg = "User key cannot be empty";
-        logger!("error", "[get_user_reputation_full] {}", err_msg);
+        let err_msg = "[get_user_reputation_full] User key cannot be empty";
+        logger!("error", "{}", err_msg);
         return Err(err_msg.to_string());
     }
     if tag_key.is_empty() {
-        let err_msg = "Tag key cannot be empty";
-        logger!("error", "[get_user_reputation_full] {}", err_msg);
+        let err_msg = "[get_user_reputation_full] Tag key cannot be empty";
+        logger!("error", "{}", err_msg);
         return Err(err_msg.to_string());
     }
 
@@ -1149,8 +1148,8 @@ async fn get_user_reputation_full(user_key: String, tag_key: String) -> Result<R
             Ok(reputation_data)
         },
         None => {
-            let err_msg = format!("User {} has no reputation in tag {}", user_key, tag_key);
-            logger!("error", "[get_user_reputation_full] {}", err_msg);
+            let err_msg = format!("[get_user_reputation_full] User {} has no reputation in tag {}", user_key, tag_key);
+            logger!("error", "{}", err_msg);
             Err(err_msg)
         }
     }
@@ -1192,21 +1191,21 @@ pub async fn recalculate_reputation(user_key: String, tag_key: String) -> Result
     
     // Input validation
     if user_key.is_empty() {
-        let err_msg = "User key cannot be empty";
-        logger!("error", "[recalculate_reputation] {}", err_msg);
+        let err_msg = "[recalculate_reputation] User key cannot be empty";
+        logger!("error", "{}", err_msg);
         return Err(err_msg.to_string());
     }
     if tag_key.is_empty() {
-        let err_msg = "Tag key cannot be empty";
-        logger!("error", "[recalculate_reputation] {}", err_msg);
+        let err_msg = "[recalculate_reputation] Tag key cannot be empty";
+        logger!("error", "{}", err_msg);
         return Err(err_msg.to_string());
     }
 
     // Attempt to calculate reputation
     let reputation_data = calculate_user_reputation(&user_key, &tag_key).await
         .map_err(|e| {
-            let err_msg = format!("Failed to calculate reputation: {}", e);
-            logger!("error", "[recalculate_reputation] {}: user={}, tag={}", err_msg, user_key, tag_key);
+            let err_msg = format!("[recalculate_reputation] Failed to calculate reputation: {}", e);
+            logger!("error", "{}", err_msg);
             err_msg
         })?;
     

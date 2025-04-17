@@ -41,14 +41,7 @@
  * - Add query interface for log analysis
  */
 
-use junobuild_satellite::{
-    log, log_with_data,
-    debug, debug_with_data,
-    info, info_with_data,
-    warn, warn_with_data,
-    error, error_with_data
-};
-use serde::Serialize;
+
 
 /// The logger! macro provides a user-friendly interface for logging.
 /// 

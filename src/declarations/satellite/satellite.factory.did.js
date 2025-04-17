@@ -15,7 +15,6 @@ export const idlFactory = ({ IDL }) => {
     'total_basis_reputation' : IDL.Float64,
   });
   const Result_1 = IDL.Variant({ 'Ok' : ReputationData, 'Err' : IDL.Text });
-  const Result_2 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text });
   return IDL.Service({
     'build_version' : IDL.Func([], [IDL.Text], ['query']),
     'get_user_reputation' : IDL.Func([IDL.Text, IDL.Text], [Result], ['query']),
@@ -25,7 +24,6 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'recalculate_reputation' : IDL.Func([IDL.Text, IDL.Text], [Result], []),
-    'test_logging_exposed' : IDL.Func([], [Result_2], []),
   });
 };
 // @ts-expect-error

@@ -7,7 +7,7 @@
 	import { idlFactory } from '../../declarations/satellite/satellite.factory.did.js';
 	import type { _SERVICE as SatelliteActor } from '../../declarations/satellite/satellite.did';
 	import { createUserDescription, createTagDescription, createVoteDescription, createSearchPattern } from '$lib/description';
-	import { getUserReputationFull, testLoggingExposed } from '../../declarations/satellite/satellite.api';
+	import { getUserReputationFull } from '../../declarations/satellite/satellite.api';
 
 	// Configuration Constants
 	const COLLECTIONS = {
@@ -820,22 +820,6 @@
 			error = e instanceof Error ? e.message : 'Failed to delete reputation document';
 		}
 	}
-
-	// Add function to test logging
-	async function testLogging() {
-		try {
-			console.log('[Admin] Testing satellite logging...');
-			const result = await testLoggingExposed();
-			if ('Ok' in result) {
-				success = 'Logging test executed successfully! Check satellite logs.';
-			} else {
-				error = `Logging test failed: ${result.Err}`;
-			}
-		} catch (e: any) {
-			console.error('[Admin] Error testing logging:', e);
-			error = `Error testing logging: ${e?.message || String(e)}`;
-		}
-	}
 </script>
 
 {#if user}
@@ -843,11 +827,6 @@
 		<!-- Admin Tools Section -->
 		<div class="mb-8 p-4 bg-base-200 rounded-lg">
 			<h2 class="text-2xl font-bold mb-4">Admin Tools</h2>
-			<div class="flex gap-4">
-				<button class="btn btn-primary" on:click={testLogging}>
-					Test Satellite Logging
-				</button>
-			</div>
 			{#if success}
 				<div class="alert alert-success mt-4">
 					<span>{success}</span>
