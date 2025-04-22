@@ -10,15 +10,15 @@ This document outlines the proposed validation architecture for the Reputator sy
 ## Proposed Directory Structure
 ```
 src/satellite/src/validations/
-├── mod.rs              // Exports all validation modules
-├── common.rs           // Shared validation traits and utilities
-├── document.rs         // Document-level validation traits
-├── field.rs            // Field-level validation traits
-├── builder.rs          // ValidationBuilder implementation
-├── users.rs            // User document validation
-├── votes.rs            // Vote document validation
-├── tags.rs            // Tag document validation
-└── reputations.rs     // Reputation document validation
+├── mod.rs          // Exports all validation modules
+├── common.rs       // Shared validation traits and utilities
+├── document.rs     // Document-level validation traits
+├── field.rs        // Field-level validation traits
+├── builder.rs      // ValidationBuilder implementation
+├── users.rs        // User document validation
+├── votes.rs        // Vote document validation
+├── tags.rs         // Tag document validation
+└── reputations.rs  // Reputation document validation
 ```
 
 ## Core Validation Traits
@@ -46,6 +46,20 @@ pub trait TagDocumentValidator: DocumentValidator {
     fn validate_name(&self) -> Result<(), String>;
     fn validate_description(&self) -> Result<(), String>;
     fn validate_time_periods(&self) -> Result<(), String>;
+}
+
+pub trait VoteDocumentValidator: DocumentValidator {
+    /// Validates that the vote author matches the context user's key/principal
+    /// Note: This validation is disabled in playground mode
+    fn validate_author(&self) -> Result<(), String>;
+    
+    /// Validates that both the key and target documents exist
+    fn validate_document_references(&self) -> Result<(), String>;
+    
+    /// Validates that the vote weight is within the tag's allowed ranges
+    /// Typically -1 or 1, with no decimals or zeros
+    /// Some tags may allow different ranges, but zero votes are never allowed
+    fn validate_vote_weight(&self) -> Result<(), String>;
 }
 
 // Similar traits for votes and reputations
