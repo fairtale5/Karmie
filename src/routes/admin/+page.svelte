@@ -1,13 +1,35 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { nanoid } from 'nanoid';
-	import { listDocs, setDoc, deleteDoc, type Doc, authSubscribe, type User, getDoc, signOut, getSatelliteExtendedActor } from '@junobuild/core';
+	import {
+		listDocs,
+		setDoc,
+		deleteDoc,
+		type Doc,
+		authSubscribe,
+		type User,
+		getDoc,
+		signOut,
+		getSatelliteExtendedActor
+	} from '@junobuild/core';
 	import { goto } from '$app/navigation';
 	import { REPUTATION_SETTINGS } from '$lib/settings';
 	import { idlFactory } from '../../declarations/satellite/satellite.factory.did.js';
 	import type { _SERVICE as SatelliteActor } from '../../declarations/satellite/satellite.did';
-	import { createUserDescription, createTagDescription, createVoteDescription, createSearchPattern } from '$lib/description';
+	import {
+		createTagDescription,
+		createVoteDescription,
+		createSearchPattern
+	} from '$lib/description';
 	import { getUserReputationFull } from '../../declarations/satellite/satellite.api';
+	import {
+		formatUserKey,
+		formatTagKey,
+		formatVoteKey,
+		formatReputationKey,
+		createUlid
+	} from '$lib/keys/keys_index';
+	import type { ULID } from '$lib/keys/ulid_types';
+	import type { Principal } from '@dfinity/principal';
 
 	// Configuration Constants
 	const COLLECTIONS = {
@@ -19,38 +41,27 @@
 
 	const DEFAULT_VOTE_WEIGHT = 1;
 	const DEFAULT_TAG_MULTIPLIERS = [
-		{ months: 1, multiplier: 1.5 },    // Period 1: First month
-		{ months: 2, multiplier: 1.2 },    // Period 2: Months 2-3
-		{ months: 3, multiplier: 1.1 },    // Period 3: Months 4-6
-		{ months: 6, multiplier: 1.0 },    // Period 4: Months 7-12
-		{ months: 12, multiplier: 0.95 },  // Period 5: Months 13-24
-		{ months: 12, multiplier: 0.75 },  // Period 6: Months 25-36
-		{ months: 12, multiplier: 0.55 },  // Period 7: Months 37-48
-		{ months: 999, multiplier: 0.25 }  // Period 8: Months 49+ (treated as infinity)
+		{ months: 1, multiplier: 1.5 }, // Period 1: First month
+		{ months: 2, multiplier: 1.2 }, // Period 2: Months 2-3
+		{ months: 3, multiplier: 1.1 }, // Period 3: Months 4-6
+		{ months: 6, multiplier: 1.0 }, // Period 4: Months 7-12
+		{ months: 12, multiplier: 0.95 }, // Period 5: Months 13-24
+		{ months: 12, multiplier: 0.75 }, // Period 6: Months 25-36
+		{ months: 12, multiplier: 0.55 }, // Period 7: Months 37-48
+		{ months: 999, multiplier: 0.25 } // Period 8: Months 49+ (treated as infinity)
 	];
 
-	// User form data
-	let newUser = {
-		key: '',
-		username: '',
-		display_name: ''
-	};
+	type UserData = Record<string, unknown>;
 
-	// User type definition
-	interface UserData {
-		username: string;
-		display_name: string;
-	}
+	// User form data
+	let userBeingEdited: Doc<UserData>;
 
 	// List of all users
-	let users: Doc<{
-		username: string;
-		display_name: string;
-	}>[] = [];
+	let users: Doc<any>[] = [];
 
 	// Form data for creating/updating tags
 	let newTag = {
-		key: '',  // Optional - if provided, will update existing tag
+		key: '', // Optional - if provided, will update existing tag
 		name: '',
 		description: '',
 		time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
@@ -91,9 +102,9 @@
 	}>[] = [];
 
 	// Error message if something goes wrong
-	let error = '';
+	let errorGlobal = ''; // delete this as soon as possible
 	// Success message for feedback
-	let success = '';
+	let successGlobal = ''; // delete this as soon as possible
 	// Current authenticated user
 	let user: User | null = null;
 
@@ -118,16 +129,19 @@
 	// Add a variable to store reputation documents
 	let reputationDocs: Doc<ReputationData>[] = [];
 
+	// Explicitly type the version variable
+	let version: bigint | undefined;
+
 	// Function to load user reputations for selected tag
 	async function loadUserReputations(tagKey: string) {
 		try {
 			console.log('[Admin] Loading reputations for tag:', tagKey);
-			
+
 			// Get all users first
 			const usersList = await listDocs<{ username: string; display_name: string }>({
 				collection: COLLECTIONS.USERS
 			});
-			
+
 			// There are two approaches to fetching reputation data:
 			// 1. Bulk approach (current): Get all reputations for the tag at once with listDocs
 			//    - Pros: Fewer network requests, better for many users
@@ -137,12 +151,12 @@
 			//    - Cons: More network requests, worse for many users
 			//
 			// The bulk approach is more efficient for admin views where we need all user data
-			
+
 			// Get the satellite actor
 			const actor = await getSatelliteExtendedActor<SatelliteActor>({
 				idlFactory
 			});
-			
+
 			// Get all reputations for this tag
 			const reputationsList = await listDocs<ReputationData>({
 				collection: COLLECTIONS.REPUTATIONS,
@@ -152,12 +166,12 @@
 					}
 				}
 			});
-			
+
 			// Create a map of user_key to reputation data
 			const reputationMap = new Map(
-				reputationsList.items.map(item => [item.data.user_key, item.data])
+				reputationsList.items.map((item) => [item.data.user_key, item.data])
 			);
-			
+
 			// Get reputation data for each user
 			userReputations = {};
 			for (const user of usersList.items) {
@@ -173,7 +187,7 @@
 				};
 				userReputations[user.key] = reputation;
 			}
-			
+
 			// Example of individual approach (not used but shown for reference):
 			// userReputations = {};
 			// for (const user of usersList.items) {
@@ -209,7 +223,7 @@
 			//         };
 			//     }
 			// }
-			
+
 			console.log('[Admin] Loaded reputations:', userReputations);
 		} catch (error) {
 			console.error('[Admin] Error loading reputations:', error);
@@ -221,7 +235,7 @@
 		// Subscribe to auth state
 		const sub = authSubscribe((state) => {
 			user = state;
-			
+
 			// If user is not logged in, redirect to home
 			if (user === null) {
 				goto('/');
@@ -248,10 +262,15 @@
 	// Load users
 	async function loadUsers() {
 		try {
-			const usersList = await listDocs<{ username: string; display_name: string }>({
+			const usersList = await listDocs<{
+				username: string;
+				display_name: string;
+				usr_key: ULID;
+			}>({
 				collection: COLLECTIONS.USERS
 			});
 			users = usersList.items;
+			console.log('Loaded users:', users); // Debug log to verify data
 		} catch (error) {
 			console.error('Error loading users:', error);
 		}
@@ -260,7 +279,13 @@
 	// Load votes
 	async function loadVotes() {
 		try {
-			const votesList = await listDocs<{ author_key: string; target_key: string; tag_key: string; value: number; weight: number }>({
+			const votesList = await listDocs<{
+				author_key: string;
+				target_key: string;
+				tag_key: string;
+				value: number;
+				weight: number;
+			}>({
 				collection: COLLECTIONS.VOTES
 			});
 			console.log('Loaded votes:', votesList.items); // Debug log
@@ -273,11 +298,11 @@
 	// Load tags
 	async function loadTags() {
 		try {
-			const tagsList = await listDocs<{ 
-				name: string; 
-				description: string; 
+			const tagsList = await listDocs<{
+				name: string;
+				description: string;
 				author_key: string;
-				time_periods: { months: number; multiplier: number; }[];
+				time_periods: { months: number; multiplier: number }[];
 				reputation_threshold: number;
 				vote_reward: number;
 				min_users_for_threshold: number;
@@ -317,77 +342,37 @@
 		};
 	}
 
+	// Function to load user data for editing
+	function editUser(userDocSelected: Doc<UserData>) {
+		userBeingEdited = userDocSelected;
+		// Scroll to form
+		document.getElementById('userForm')?.scrollIntoView({ behavior: 'smooth' });
+	}
+
 	/**
 	 * Creates or updates a user in the Juno collection
 	 * @throws {Error} If saving fails
 	 */
 	async function saveUser() {
 		try {
-			// Clear any previous messages
-			error = '';
-			success = '';
-
-			// Comment out frontend validation to test satellite validation
-			/*
-			// Basic validation
-			if (!newUser.username || !newUser.display_name) {
-				error = 'Please fill in all required fields';
-				return;
-			}
-
-			// Validate username format
-			const usernameRegex = /^[a-zA-Z0-9_-]{3,30}$/;
-			if (!usernameRegex.test(newUser.username)) {
-				error = 'Username must be 3-30 characters long and can only contain letters, numbers, underscores, and hyphens';
-				return;
-			}
-
-			// Validate display name format
-			if (newUser.display_name.trim().length === 0) {
-				error = 'Display name cannot be empty';
-				return;
-			}
-			if (newUser.display_name.length > 100) {
-				error = 'Display name cannot be longer than 100 characters';
-				return;
-			}
-			*/
-
-			// For new documents: generate key with nanoid
-			const documentKey = newUser.key || nanoid();
-
-			// If we're updating an existing user, we need to get its current version
-			let version;
-			if (newUser.key) {
-				try {
-					const existingDoc = await getDoc({
-						collection: COLLECTIONS.USERS,
-						key: newUser.key
-					});
-					if (!existingDoc) {
-						error = 'User not found';
-						return;
-					}
-					version = existingDoc.version;
-				} catch (e) {
-					console.error('[Admin] Error fetching existing user:', e);
-					error = 'Failed to fetch existing user version';
-					return;
-				}
-			}
+			// For new documents: generate key with ULID
+			const userDocUsername = userBeingEdited.data.username!.toString().trim();
+			const userDocKeyResult = !userBeingEdited.key ? createUlid() : null;
+			const userDocumentKey =
+				userBeingEdited.key || formatUserKey(userDocKeyResult!, userDocUsername);
+			const userDocVersion = userBeingEdited.version;
 
 			// Create the document data with required fields
 			const docData = {
 				collection: COLLECTIONS.USERS,
 				doc: {
-					key: documentKey,
+					key: userDocumentKey,
 					data: {
-						key: documentKey,
-						username: newUser.username.toLowerCase(),
-						display_name: newUser.display_name.trim()
+						username: userBeingEdited.data.username!.toString().trim(),
+						display_name: userBeingEdited.data.display_name!.toString().trim(),
+						usr_key: userDocKeyResult
 					},
-					description: createUserDescription(documentKey, newUser.username.toLowerCase()),
-					...(version && { version })
+					...(userDocVersion && { version: userDocVersion })
 				}
 			};
 
@@ -398,29 +383,33 @@
 			await setDoc(docData);
 
 			// Clear form and show success message
-			newUser = {
+			userBeingEdited = {
 				key: '',
-				username: '',
-				display_name: ''
+				description: '',
+				owner: '',
+				created_at: BigInt(0),
+				updated_at: BigInt(0),
+				version: BigInt(0),
+				data: {}
 			};
-			success = 'User saved successfully';
+			successGlobal = 'User saved successfully';
 
 			// Reload users list
 			await loadUsers();
 		} catch (e) {
 			console.error('[Admin] Error saving user:', e);
-			
+
 			// Enhanced error handling
 			if (e instanceof Error) {
 				if (e.message.includes('Username')) {
-					error = 'This username is already taken. Please choose a different one.';
+					errorGlobal = 'This username is already taken. Please choose a different one.';
 				} else if (e.message.includes('Invalid user data format')) {
-					error = 'Invalid user data format. Please check your input and try again.';
+					errorGlobal = 'Invalid user data format. Please check your input and try again.';
 				} else {
-					error = e.message;
+					errorGlobal = e.message;
 				}
 			} else {
-				error = 'Failed to save user. Please try again.';
+				errorGlobal = 'Failed to save user. Please try again.';
 			}
 		}
 	}
@@ -432,12 +421,15 @@
 	async function saveTag() {
 		try {
 			console.log('[Admin] Saving tag:', newTag);
-			
+
 			// Validate inputs
 			if (!newTag.name || !newTag.description) {
-				error = 'Please fill in all required fields';
+				errorGlobal = 'Please fill in all required fields';
 				return;
 			}
+
+			// We know user is defined in admin page
+			const authenticatedUser = user!;
 
 			// If we're updating an existing tag, we need to get its current version
 			let version;
@@ -448,13 +440,13 @@
 						key: newTag.key
 					});
 					if (!existingDoc) {
-						error = 'Tag not found';
+						errorGlobal = 'Tag not found';
 						return;
 					}
 					version = existingDoc.version;
 				} catch (e) {
 					console.error('[Admin] Error fetching existing tag:', e);
-					error = 'Failed to fetch existing tag version';
+					errorGlobal = 'Failed to fetch existing tag version';
 					return;
 				}
 			}
@@ -472,7 +464,7 @@
 				doc: {
 					key: documentKey,
 					data: {
-						author_key: user.key,  // Admin creates tags
+						author_key: user.key, // Admin creates tags
 						name: newTag.name,
 						description: newTag.description,
 						time_periods: newTag.time_periods,
@@ -480,7 +472,7 @@
 						vote_reward: newTag.vote_reward,
 						min_users_for_threshold: newTag.min_users_for_threshold
 					},
-					description: createTagDescription(user, documentKey, newTag.name, user.key),  // Admin creates tags
+					description: createTagDescription(user, documentKey, newTag.name, user.key), // Admin creates tags
 					...(version && { version })
 				}
 			});
@@ -495,14 +487,14 @@
 				vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
 				min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
 			};
-			success = 'Tag saved successfully';
-			error = '';
+			successGlobal = 'Tag saved successfully';
+			errorGlobal = '';
 
 			// Reload tags list
 			await loadTags();
 		} catch (e) {
 			console.error('[Admin] Error saving tag:', e);
-			error = e instanceof Error ? e.message : 'Failed to save tag';
+			errorGlobal = e instanceof Error ? e.message : 'Failed to save tag';
 		}
 	}
 
@@ -517,8 +509,8 @@
 		}
 
 		try {
-			error = '';
-			success = '';
+			errorGlobal = '';
+			successGlobal = '';
 
 			// Get the current version of the tag
 			const existingDoc = await getDoc({
@@ -527,7 +519,7 @@
 			});
 
 			if (!existingDoc) {
-				error = 'Tag not found';
+				errorGlobal = 'Tag not found';
 				return;
 			}
 
@@ -540,11 +532,11 @@
 				}
 			});
 
-			success = 'Tag deleted successfully!';
+			successGlobal = 'Tag deleted successfully!';
 			await loadTags();
 		} catch (e) {
 			console.error('Error deleting tag:', e);
-			error = e instanceof Error ? e.message : 'Failed to delete tag';
+			errorGlobal = e instanceof Error ? e.message : 'Failed to delete tag';
 		}
 	}
 
@@ -552,14 +544,16 @@
 	 * Loads tag data into the form for editing
 	 * @param tagDoc - The tag document to edit
 	 */
-	function editTag(tagDoc: Doc<{ 
-		name: string; 
-		description: string; 
-		time_periods: Array<{ months: number; multiplier: number }>;
-		reputation_threshold: number;
-		vote_reward: number;
-		min_users_for_threshold: number;
-	}>) {
+	function editTag(
+		tagDoc: Doc<{
+			name: string;
+			description: string;
+			time_periods: Array<{ months: number; multiplier: number }>;
+			reputation_threshold: number;
+			vote_reward: number;
+			min_users_for_threshold: number;
+		}>
+	) {
 		newTag = {
 			key: tagDoc.key,
 			name: tagDoc.data.name,
@@ -580,8 +574,8 @@
 		}
 
 		try {
-			error = '';
-			success = '';
+			errorGlobal = '';
+			successGlobal = '';
 
 			// Get the current version of the user
 			const existingDoc = await getDoc({
@@ -590,7 +584,7 @@
 			});
 
 			if (!existingDoc) {
-				error = 'User not found';
+				errorGlobal = 'User not found';
 				return;
 			}
 
@@ -603,23 +597,12 @@
 				}
 			});
 
-			success = 'User deleted successfully!';
+			successGlobal = 'User deleted successfully!';
 			await loadUsers();
 		} catch (e) {
 			console.error('Error deleting user:', e);
-			error = e instanceof Error ? e.message : 'Failed to delete user';
+			errorGlobal = e instanceof Error ? e.message : 'Failed to delete user';
 		}
-	}
-
-	// Function to load user data for editing
-	function editUser(userDoc: Doc<{ username: string; display_name: string }>) {
-		newUser = {
-			key: userDoc.key,
-			username: userDoc.data.username,
-			display_name: userDoc.data.display_name
-		};
-		// Scroll to form
-		document.getElementById('userForm')?.scrollIntoView({ behavior: 'smooth' });
 	}
 
 	/**
@@ -630,14 +613,20 @@
 		try {
 			// Generate a new document key
 			const documentKey = nanoid();
-			
+
 			// Create the vote document with proper structure
 			// WARNING: key is a root-level field in the document structure, NOT part of data
 			const voteDoc = {
-				collection: "votes",
+				collection: 'votes',
 				doc: {
 					key: documentKey,
-					description: createVoteDescription(user, documentKey, newVote.data.author_key, newVote.data.target_key, newVote.data.tag_key),
+					description: createVoteDescription(
+						user,
+						documentKey,
+						newVote.data.author_key,
+						newVote.data.target_key,
+						newVote.data.tag_key
+					),
 					data: {
 						author_key: newVote.data.author_key,
 						target_key: newVote.data.target_key,
@@ -650,9 +639,9 @@
 
 			// Log the document being saved
 			console.log('[Admin] Sending to setDoc:', voteDoc);
-			
+
 			await setDoc(voteDoc);
-			
+
 			// Reset form
 			newVote.data = {
 				author_key: '',
@@ -661,12 +650,12 @@
 				tag_key: '',
 				weight: 1.0
 			};
-			
+
 			// Refresh votes list
 			await loadVotes();
 		} catch (e) {
 			console.error('[Admin] Error saving vote:', e);
-			error = e instanceof Error ? e.message : 'Failed to save vote';
+			errorGlobal = e instanceof Error ? e.message : 'Failed to save vote';
 		}
 	}
 
@@ -677,8 +666,8 @@
 		}
 
 		try {
-			error = '';
-			success = '';
+			errorGlobal = '';
+			successGlobal = '';
 
 			// Get the current version of the vote
 			const existingDoc = await getDoc({
@@ -687,7 +676,7 @@
 			});
 
 			if (!existingDoc) {
-				error = 'Vote not found';
+				errorGlobal = 'Vote not found';
 				return;
 			}
 
@@ -702,16 +691,16 @@
 
 			// Reload votes
 			await loadVotes();
-			
+
 			// Reload reputations if a tag is selected
 			if (selectedTag) {
 				await loadUserReputations(selectedTag);
 			}
 
-			success = 'Vote deleted successfully';
+			successGlobal = 'Vote deleted successfully';
 		} catch (err) {
 			console.error('Error deleting vote:', err);
-			error = 'Failed to delete vote';
+			errorGlobal = 'Failed to delete vote';
 		}
 	}
 
@@ -719,30 +708,30 @@
 	async function recalculateUserReputation(userKey: string) {
 		try {
 			console.log('[Admin] Recalculating reputation for user:', userKey);
-			
+
 			// Get the satellite actor
 			const actor = await getSatelliteExtendedActor<SatelliteActor>({
 				idlFactory
 			});
-			
+
 			// Get the current tag key from the URL
 			const tagKey = window.location.pathname.split('/').pop();
 			if (!tagKey) {
 				throw new Error('No tag selected');
 			}
-			
+
 			// Call recalculate_reputation
 			const result = await actor.recalculate_reputation(userKey, tagKey);
-			
+
 			// Reload reputations to show updated values
 			await loadUserReputations(tagKey);
-			
-			success = `Recalculated reputation for user ${userKey}`;
-			error = '';
+
+			successGlobal = `Recalculated reputation for user ${userKey}`;
+			errorGlobal = '';
 		} catch (e) {
 			console.error('[Admin] Error recalculating reputation:', e);
-			error = e instanceof Error ? e.message : 'Failed to recalculate reputation';
-			success = '';
+			errorGlobal = e instanceof Error ? e.message : 'Failed to recalculate reputation';
+			successGlobal = '';
 		}
 	}
 
@@ -750,12 +739,12 @@
 	function getTimeAgo(timestamp: number): string {
 		const now = Date.now() * 1_000_000; // Convert to nanoseconds
 		const diff = now - timestamp;
-		
+
 		const seconds = diff / 1_000_000_000;
 		const minutes = seconds / 60;
 		const hours = minutes / 60;
 		const days = hours / 24;
-		
+
 		if (days > 1) return `${Math.floor(days)}d ago`;
 		if (hours > 1) return `${Math.floor(hours)}h ago`;
 		if (minutes > 1) return `${Math.floor(minutes)}m ago`;
@@ -768,17 +757,17 @@
 			const actor = await getSatelliteExtendedActor<SatelliteActor>({
 				idlFactory
 			});
-			
+
 			const result = await actor.recalculate_reputation(userKey, tagKey);
 			if ('Ok' in result) {
 				// Reload reputations after recalculation
 				await loadUserReputations(tagKey);
-				success = `Recalculated reputation for ${userKey}`;
+				successGlobal = `Recalculated reputation for ${userKey}`;
 			} else {
-				error = `Failed to recalculate: ${result.Err}`;
+				errorGlobal = `Failed to recalculate: ${result.Err}`;
 			}
 		} catch (e) {
-			error = `Error recalculating reputation: ${e}`;
+			errorGlobal = `Error recalculating reputation: ${e}`;
 			console.error('[Admin] Recalculation error:', e);
 		}
 	}
@@ -790,8 +779,8 @@
 		}
 
 		try {
-			error = '';
-			success = '';
+			errorGlobal = '';
+			successGlobal = '';
 
 			// Get the current version of the document
 			const existingDoc = await getDoc({
@@ -800,7 +789,7 @@
 			});
 
 			if (!existingDoc) {
-				error = 'Reputation document not found';
+				errorGlobal = 'Reputation document not found';
 				return;
 			}
 
@@ -813,11 +802,11 @@
 				}
 			});
 
-			success = 'Reputation document deleted successfully!';
+			successGlobal = 'Reputation document deleted successfully!';
 			await loadReputations();
 		} catch (e) {
 			console.error('Error deleting reputation document:', e);
-			error = e instanceof Error ? e.message : 'Failed to delete reputation document';
+			errorGlobal = e instanceof Error ? e.message : 'Failed to delete reputation document';
 		}
 	}
 </script>
@@ -825,25 +814,25 @@
 {#if user}
 	<div class="container mx-auto p-4">
 		<!-- Admin Tools Section -->
-		<div class="mb-8 p-4 bg-base-200 rounded-lg">
-			<h2 class="text-2xl font-bold mb-4">Admin Tools</h2>
-			{#if success}
+		<div class="bg-base-200 mb-8 rounded-lg p-4">
+			<h2 class="mb-4 text-2xl font-bold">Admin Tools</h2>
+			{#if successGlobal}
 				<div class="alert alert-success mt-4">
-					<span>{success}</span>
+					<span>{successGlobal}</span>
 				</div>
 			{/if}
-			{#if error}
+			{#if errorGlobal}
 				<div class="alert alert-error mt-4">
-					<span>{error}</span>
+					<span>{errorGlobal}</span>
 				</div>
 			{/if}
 		</div>
 
-		<div class="flex justify-between items-center mb-8">
+		<div class="mb-8 flex items-center justify-between">
 			<h1 class="text-2xl">Admin Dashboard</h1>
 			<button
 				on:click={() => signOut()}
-				class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+				class="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
 			>
 				Log Out
 			</button>
@@ -851,12 +840,8 @@
 
 		<!-- Tag Selector -->
 		<div class="mb-8">
-			<label for="tag-select" class="block text-lg mb-2">Select Tag to Filter Data:</label>
-			<select
-				id="tag-select"
-				bind:value={selectedTag}
-				class="border p-2 w-full max-w-md"
-			>
+			<label for="tag-select" class="mb-2 block text-lg">Select Tag to Filter Data:</label>
+			<select id="tag-select" bind:value={selectedTag} class="w-full max-w-md border p-2">
 				<option value="">Show all data</option>
 				{#each tags as tag}
 					<option value={tag.key}>
@@ -868,12 +853,12 @@
 
 		{#if selectedTag}
 			<!-- Selected Tag Details -->
-			{@const selectedTagDoc = tags.find(t => t.key === selectedTag)}
+			{@const selectedTagDoc = tags.find((t) => t.key === selectedTag)}
 			{#if selectedTagDoc}
 				<div class="mb-8">
-					<h2 class="text-xl mb-4">Selected Tag Details</h2>
+					<h2 class="mb-4 text-xl">Selected Tag Details</h2>
 					<div class="overflow-x-auto">
-						<table class="table table-zebra w-full">
+						<table class="table-zebra table w-full">
 							<tbody>
 								<tr>
 									<td class="font-bold">Document Key</td>
@@ -889,11 +874,13 @@
 								</tr>
 								<tr>
 									<td class="font-bold">Created At</td>
-									<td>{new Date(Number(selectedTagDoc.created_at) / 1_000_000).toLocaleString()}</td>
+									<td>{new Date(Number(selectedTagDoc.created_at) / 1_000_000).toLocaleString()}</td
+									>
 								</tr>
 								<tr>
 									<td class="font-bold">Updated At</td>
-									<td>{new Date(Number(selectedTagDoc.updated_at) / 1_000_000).toLocaleString()}</td>
+									<td>{new Date(Number(selectedTagDoc.updated_at) / 1_000_000).toLocaleString()}</td
+									>
 								</tr>
 								<tr>
 									<td class="font-bold">Version</td>
@@ -914,7 +901,7 @@
 								<tr>
 									<td class="font-bold">Time Periods</td>
 									<td>
-										<ul class="list-disc list-inside">
+										<ul class="list-inside list-disc">
 											{#each selectedTagDoc.data.time_periods as period}
 												<li>{period.months} months: {period.multiplier}x</li>
 											{/each}
@@ -942,16 +929,16 @@
 
 		<!-- Create/Update User Form -->
 		<div class="mb-8" id="userForm">
-			<h2 class="text-xl mb-4">{newUser.key ? 'Update User' : 'Create New User'}</h2>
+			<h2 class="mb-4 text-xl">{userBeingEdited.key ? 'Update User' : 'Create New User'}</h2>
 			<form on:submit|preventDefault={saveUser} class="space-y-4">
-				{#if newUser.key}
+				{#if userBeingEdited.key}
 					<div>
 						<label for="key" class="block">User Key:</label>
 						<input
 							type="text"
 							id="key"
-							bind:value={newUser.key}
-							class="border p-2 w-full bg-gray-100"
+							bind:value={userBeingEdited.key}
+							class="w-full border bg-gray-100 p-2"
 							readonly
 						/>
 					</div>
@@ -962,8 +949,8 @@
 					<input
 						type="text"
 						id="username"
-						bind:value={newUser.username}
-						class="border p-2 w-full"
+						bind:value={userBeingEdited.data.username}
+						class="w-full border p-2"
 						placeholder="Enter username"
 					/>
 				</div>
@@ -973,22 +960,30 @@
 					<input
 						type="text"
 						id="display_name"
-						bind:value={newUser.display_name}
-						class="border p-2 w-full"
+						bind:value={userBeingEdited.data.display_name}
+						class="w-full border p-2"
 						placeholder="e.g., John Doe"
 					/>
 				</div>
 
 				<div class="flex gap-4">
-					<button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">
-						{newUser.key ? 'Update User' : 'Create User'}
+					<button type="submit" class="rounded bg-blue-500 px-4 py-2 text-white">
+						{userBeingEdited.key ? 'Update User' : 'Create User'}
 					</button>
-					{#if newUser.key}
+					{#if userBeingEdited.key}
 						<button
 							type="button"
-							class="bg-gray-500 text-white px-4 py-2 rounded"
+							class="rounded bg-gray-500 px-4 py-2 text-white"
 							on:click={() => {
-								newUser = { key: '', username: '', display_name: '' };
+								userBeingEdited = {
+									key: '',
+									description: '',
+									owner: '',
+									created_at: BigInt(0),
+									updated_at: BigInt(0),
+									version: BigInt(0),
+									data: {}
+								};
 							}}
 						>
 							Cancel Edit
@@ -997,19 +992,19 @@
 				</div>
 			</form>
 
-			{#if error}
-				<div class="text-red-500 mt-2">{error}</div>
+			{#if errorGlobal}
+				<div class="mt-2 text-red-500">{errorGlobal}</div>
 			{/if}
-			{#if success}
-				<div class="text-green-500 mt-2">{success}</div>
+			{#if successGlobal}
+				<div class="mt-2 text-green-500">{successGlobal}</div>
 			{/if}
 		</div>
 
 		<!-- Users with Reputation -->
 		<div class="mb-8">
-			<h2 class="text-xl mb-4">Users and Their Reputation</h2>
+			<h2 class="mb-4 text-xl">Users and Their Reputation</h2>
 			<div class="overflow-x-auto">
-				<table class="table table-zebra w-full">
+				<table class="table-zebra table w-full">
 					<thead>
 						<tr>
 							<th>Document Info</th>
@@ -1019,8 +1014,8 @@
 						</tr>
 					</thead>
 					<tbody>
-						{#each users as user}
-							{@const reputation = userReputations[user.key] ?? {
+						{#each users as userSelected}
+							{@const reputation = userReputations[userSelected.key] ?? {
 								total_basis_reputation: 0,
 								total_voting_rewards_reputation: 0,
 								last_known_effective_reputation: 0,
@@ -1031,18 +1026,26 @@
 							<tr>
 								<td>
 									<div class="space-y-1">
-										<div class="font-mono text-xs">Key: {user.key}</div>
-										<div class="font-mono text-xs">Description: {user.description}</div>
-										<div class="font-mono text-xs">Owner: {user.owner}</div>
-										<div class="text-xs">Created: {new Date(Number(user.created_at) / 1_000_000).toLocaleString()}</div>
-										<div class="text-xs">Updated: {new Date(Number(user.updated_at) / 1_000_000).toLocaleString()}</div>
-										<div class="text-xs">Version: {user.version}</div>
+										<div class="font-mono text-xs">Key: {userSelected.key}</div>
+										<div class="font-mono text-xs">Description: {userSelected.description}</div>
+										<div class="font-mono text-xs">Owner: {userSelected.owner}</div>
+										<div class="text-xs">
+											Created: {new Date(
+												Number(userSelected.created_at) / 1_000_000
+											).toLocaleString()}
+										</div>
+										<div class="text-xs">
+											Updated: {new Date(
+												Number(userSelected.updated_at) / 1_000_000
+											).toLocaleString()}
+										</div>
+										<div class="text-xs">Version: {userSelected.version}</div>
 									</div>
 								</td>
 								<td>
 									<div class="space-y-1">
-										<div class="font-bold">{user.data.username}</div>
-										<div class="text-sm opacity-75">{user.data.display_name}</div>
+										<div class="font-bold">{userSelected.data.username}</div>
+										<div class="text-sm opacity-75">{userSelected.data.display_name}</div>
 									</div>
 								</td>
 								<td>
@@ -1052,28 +1055,32 @@
 										<div>Total Rep: {reputation.last_known_effective_reputation.toFixed(2)}</div>
 										<div>Weight: {(Number(reputation.vote_weight) * 100).toFixed(4)}%</div>
 										<div>Status: {reputation.has_voting_power ? 'Active' : 'Inactive'}</div>
-										<div class="text-xs">Last Calc: {new Date(Number(reputation.last_calculation) / 1_000_000).toLocaleString()}</div>
+										<div class="text-xs">
+											Last Calc: {new Date(
+												Number(reputation.last_calculation) / 1_000_000
+											).toLocaleString()}
+										</div>
 									</div>
 								</td>
 								<td>
-									<div class="flex gap-2 justify-center">
+									<div class="flex justify-center gap-2">
 										<button
 											class="btn btn-xs btn-primary"
-											on:click={() => recalculateReputation(user.key, selectedTag)}
+											on:click={() => recalculateReputation(userSelected.key, selectedTag)}
 											title="Recalculate reputation"
 										>
 											🔄
 										</button>
 										<button
 											class="btn btn-xs btn-info"
-											on:click={() => editUser(user)}
+											on:click={() => editUser(userSelected)}
 											title="Edit user"
 										>
 											✏️
 										</button>
 										<button
 											class="btn btn-xs btn-error"
-											on:click={() => deleteUser(user.key)}
+											on:click={() => deleteUser(userSelected.key)}
 											title="Delete user"
 										>
 											❌
@@ -1089,15 +1096,11 @@
 
 		<!-- Create Vote Form -->
 		<div class="mb-8" id="voteForm">
-			<h2 class="text-xl mb-4">Create New Vote</h2>
+			<h2 class="mb-4 text-xl">Create New Vote</h2>
 			<form on:submit|preventDefault={saveVote} class="space-y-4">
 				<div>
 					<label for="author" class="block">Author (User Key):</label>
-					<select
-						id="author"
-						bind:value={newVote.data.author_key}
-						class="border p-2 w-full"
-					>
+					<select id="author" bind:value={newVote.data.author_key} class="w-full border p-2">
 						<option value="">Select Author</option>
 						{#each users as user}
 							<option value={user.key}>
@@ -1109,11 +1112,7 @@
 
 				<div>
 					<label for="target" class="block">Target (User Key):</label>
-					<select
-						id="target"
-						bind:value={newVote.data.target_key}
-						class="border p-2 w-full"
-					>
+					<select id="target" bind:value={newVote.data.target_key} class="w-full border p-2">
 						<option value="">Select Target</option>
 						{#each users as user}
 							<option value={user.key}>
@@ -1125,12 +1124,7 @@
 
 				<div>
 					<label for="tag" class="block">Tag:</label>
-					<select
-						id="tag"
-						bind:value={newVote.data.tag_key}
-						class="border p-2 w-full"
-						required
-					>
+					<select id="tag" bind:value={newVote.data.tag_key} class="w-full border p-2" required>
 						<option value="">Select Tag</option>
 						{#each tags as tag}
 							<option value={tag.key}>
@@ -1142,24 +1136,14 @@
 
 				<div>
 					<fieldset>
-						<legend class="block mb-2">Vote Value:</legend>
+						<legend class="mb-2 block">Vote Value:</legend>
 						<div class="flex gap-4">
 							<label class="inline-flex items-center">
-								<input
-									type="radio"
-									bind:group={newVote.data.value}
-									value={1}
-									class="mr-2"
-								/>
+								<input type="radio" bind:group={newVote.data.value} value={1} class="mr-2" />
 								Positive (+1)
 							</label>
 							<label class="inline-flex items-center">
-								<input
-									type="radio"
-									bind:group={newVote.data.value}
-									value={-1}
-									class="mr-2"
-								/>
+								<input type="radio" bind:group={newVote.data.value} value={-1} class="mr-2" />
 								Negative (-1)
 							</label>
 						</div>
@@ -1167,7 +1151,7 @@
 				</div>
 
 				<div>
-					<button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">
+					<button type="submit" class="rounded bg-blue-500 px-4 py-2 text-white">
 						Create Vote
 					</button>
 				</div>
@@ -1176,9 +1160,9 @@
 
 		<!-- All Votes -->
 		<div class="mb-8">
-			<h2 class="text-xl mb-4">{selectedTag ? 'Votes in Selected Tag' : 'All Votes'}</h2>
+			<h2 class="mb-4 text-xl">{selectedTag ? 'Votes in Selected Tag' : 'All Votes'}</h2>
 			<div class="overflow-x-auto">
-				<table class="table table-zebra w-full">
+				<table class="table-zebra table w-full">
 					<thead>
 						<tr>
 							<th>Document Info</th>
@@ -1188,18 +1172,22 @@
 						</tr>
 					</thead>
 					<tbody>
-						{#each votes.filter(v => !selectedTag || v.data.tag_key === selectedTag) as vote}
-							{@const author = users.find(u => u.key === vote.data.author_key)}
-							{@const target = users.find(u => u.key === vote.data.target_key)}
-							{@const tag = tags.find(t => t.key === vote.data.tag_key)}
+						{#each votes.filter((v) => !selectedTag || v.data.tag_key === selectedTag) as vote}
+							{@const author = users.find((u) => u.key === vote.data.author_key)}
+							{@const target = users.find((u) => u.key === vote.data.target_key)}
+							{@const tag = tags.find((t) => t.key === vote.data.tag_key)}
 							<tr>
 								<td>
 									<div class="space-y-1">
 										<div class="font-mono text-xs">Key: {vote.key}</div>
 										<div class="font-mono text-xs">Description: {vote.description}</div>
 										<div class="font-mono text-xs">Owner: {vote.owner}</div>
-										<div class="text-xs">Created: {new Date(Number(vote.created_at) / 1_000_000).toLocaleString()}</div>
-										<div class="text-xs">Updated: {new Date(Number(vote.updated_at) / 1_000_000).toLocaleString()}</div>
+										<div class="text-xs">
+											Created: {new Date(Number(vote.created_at) / 1_000_000).toLocaleString()}
+										</div>
+										<div class="text-xs">
+											Updated: {new Date(Number(vote.updated_at) / 1_000_000).toLocaleString()}
+										</div>
 										<div class="text-xs">Version: {vote.version}</div>
 									</div>
 								</td>
@@ -1211,8 +1199,16 @@
 								</td>
 								<td>
 									<div class="space-y-1">
-										<div>Author: {author ? `${author.data.display_name} (${author.data.username})` : 'Unknown'}</div>
-										<div>Target: {target ? `${target.data.display_name} (${target.data.username})` : 'Unknown'}</div>
+										<div>
+											Author: {author
+												? `${author.data.display_name} (${author.data.username})`
+												: 'Unknown'}
+										</div>
+										<div>
+											Target: {target
+												? `${target.data.display_name} (${target.data.username})`
+												: 'Unknown'}
+										</div>
 										<div>Tag: {tag ? tag.data.name : 'No Tag'}</div>
 										<div class="font-mono text-xs">Author Key: {vote.data.author_key}</div>
 										<div class="font-mono text-xs">Target Key: {vote.data.target_key}</div>
@@ -1220,7 +1216,7 @@
 									</div>
 								</td>
 								<td>
-									<div class="flex gap-2 justify-center">
+									<div class="flex justify-center gap-2">
 										<button
 											on:click={() => deleteVote(vote.key)}
 											class="btn btn-xs btn-error"
@@ -1239,7 +1235,7 @@
 
 		<!-- Create/Update Tag Form -->
 		<div class="mb-8" id="tagForm">
-			<h2 class="text-xl mb-4">Create New Tag</h2>
+			<h2 class="mb-4 text-xl">Create New Tag</h2>
 			<form on:submit|preventDefault={saveTag} class="space-y-4">
 				{#if newTag.key}
 					<div>
@@ -1248,7 +1244,7 @@
 							type="text"
 							id="tagKey"
 							bind:value={newTag.key}
-							class="border p-2 w-full bg-gray-100"
+							class="w-full border bg-gray-100 p-2"
 							readonly
 						/>
 					</div>
@@ -1260,7 +1256,7 @@
 						type="text"
 						id="tagName"
 						bind:value={newTag.name}
-						class="border p-2 w-full"
+						class="w-full border p-2"
 						placeholder="e.g., Technical Skills"
 					/>
 				</div>
@@ -1270,22 +1266,22 @@
 					<textarea
 						id="tagDescription"
 						bind:value={newTag.description}
-						class="border p-2 w-full"
+						class="w-full border p-2"
 						placeholder="Describe what this tag represents"
 						rows="3"
 					></textarea>
 				</div>
 
 				<div>
-					<label for="time-periods" class="block mb-2">Time Period Multipliers:</label>
+					<label for="time-periods" class="mb-2 block">Time Period Multipliers:</label>
 					<div id="time-periods" class="space-y-2">
 						<table class="w-full border-collapse">
 							<thead>
 								<tr>
-									<th class="border p-2 text-left w-1/6">Period</th>
-									<th class="border p-2 text-left w-2/6">Months</th>
-									<th class="border p-2 text-left w-2/6">Multiplier</th>
-									<th class="border p-2 text-left w-1/6">Actions</th>
+									<th class="w-1/6 border p-2 text-left">Period</th>
+									<th class="w-2/6 border p-2 text-left">Months</th>
+									<th class="w-2/6 border p-2 text-left">Multiplier</th>
+									<th class="w-1/6 border p-2 text-left">Actions</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -1297,7 +1293,7 @@
 												type="number"
 												id="months-{i}"
 												bind:value={period.months}
-												class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-2"
+												class="w-full rounded-md border-gray-300 px-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
 												min="1"
 												max={i === newTag.time_periods.length - 1 ? 999 : 12}
 											/>
@@ -1307,7 +1303,7 @@
 												type="number"
 												id="multiplier-{i}"
 												bind:value={period.multiplier}
-												class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-2"
+												class="w-full rounded-md border-gray-300 px-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
 												min="0"
 												max="2"
 												step="0.05"
@@ -1318,9 +1314,12 @@
 												<button
 													type="button"
 													on:click={() => {
-														newTag.time_periods = [...newTag.time_periods, { months: 12, multiplier: 1.0 }];
+														newTag.time_periods = [
+															...newTag.time_periods,
+															{ months: 12, multiplier: 1.0 }
+														];
 													}}
-													class="inline-flex items-center px-3 py-1 border border-transparent text-sm text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded"
+													class="inline-flex items-center rounded border border-transparent bg-blue-100 px-3 py-1 text-sm text-blue-700 hover:bg-blue-200 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
 												>
 													Add Period
 												</button>
@@ -1328,9 +1327,11 @@
 												<button
 													type="button"
 													on:click={() => {
-														newTag.time_periods = newTag.time_periods.filter((_, index) => index !== i);
+														newTag.time_periods = newTag.time_periods.filter(
+															(_, index) => index !== i
+														);
 													}}
-													class="inline-flex items-center px-3 py-1 border border-transparent text-sm text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 rounded"
+													class="inline-flex items-center rounded border border-transparent bg-red-100 px-3 py-1 text-sm text-red-700 hover:bg-red-200 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none"
 												>
 													Remove
 												</button>
@@ -1344,7 +1345,9 @@
 				</div>
 
 				<div class="mb-4">
-					<label for="reputation_threshold" class="block text-sm font-medium text-gray-700">Reputation Threshold</label>
+					<label for="reputation_threshold" class="block text-sm font-medium text-gray-700"
+						>Reputation Threshold</label
+					>
 					<input
 						type="number"
 						id="reputation_threshold"
@@ -1355,7 +1358,9 @@
 					/>
 				</div>
 				<div class="mb-4">
-					<label for="vote_reward" class="block text-sm font-medium text-gray-700">Vote Reward</label>
+					<label for="vote_reward" class="block text-sm font-medium text-gray-700"
+						>Vote Reward</label
+					>
 					<input
 						type="number"
 						id="vote_reward"
@@ -1366,7 +1371,9 @@
 					/>
 				</div>
 				<div class="mb-4">
-					<label for="min_users_for_threshold" class="block text-sm font-medium text-gray-700">Minimum Users for Threshold</label>
+					<label for="min_users_for_threshold" class="block text-sm font-medium text-gray-700"
+						>Minimum Users for Threshold</label
+					>
 					<input
 						type="number"
 						id="min_users_for_threshold"
@@ -1375,17 +1382,19 @@
 						min="1"
 						class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
 					/>
-					<p class="mt-1 text-sm text-gray-500">Number of users that need to reach threshold before vote rewards are restricted</p>
+					<p class="mt-1 text-sm text-gray-500">
+						Number of users that need to reach threshold before vote rewards are restricted
+					</p>
 				</div>
 
 				<div class="flex gap-4">
-					<button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">
+					<button type="submit" class="rounded bg-blue-500 px-4 py-2 text-white">
 						{newTag.key ? 'Update Tag' : 'Create Tag'}
 					</button>
 					{#if newTag.key}
 						<button
 							type="button"
-							class="bg-gray-500 text-white px-4 py-2 rounded"
+							class="rounded bg-gray-500 px-4 py-2 text-white"
 							on:click={() => {
 								newTag = {
 									key: '',
@@ -1404,19 +1413,19 @@
 				</div>
 			</form>
 
-			{#if error}
-				<div class="text-red-500 mt-2">{error}</div>
+			{#if errorGlobal}
+				<div class="mt-2 text-red-500">{errorGlobal}</div>
 			{/if}
-			{#if success}
-				<div class="text-green-500 mt-2">{success}</div>
+			{#if successGlobal}
+				<div class="mt-2 text-green-500">{successGlobal}</div>
 			{/if}
 		</div>
 
 		<!-- Tag List -->
 		<div>
-			<h2 class="text-xl mb-4">Existing Tags</h2>
+			<h2 class="mb-4 text-xl">Existing Tags</h2>
 			<div class="overflow-x-auto">
-				<table class="table table-zebra w-full">
+				<table class="table-zebra table w-full">
 					<thead>
 						<tr>
 							<th>Document Info</th>
@@ -1434,8 +1443,12 @@
 										<div class="font-mono text-xs">Key: {tag.key}</div>
 										<div class="font-mono text-xs">Description: {tag.description}</div>
 										<div class="font-mono text-xs">Owner: {tag.owner}</div>
-										<div class="text-xs">Created: {new Date(Number(tag.created_at) / 1_000_000).toLocaleString()}</div>
-										<div class="text-xs">Updated: {new Date(Number(tag.updated_at) / 1_000_000).toLocaleString()}</div>
+										<div class="text-xs">
+											Created: {new Date(Number(tag.created_at) / 1_000_000).toLocaleString()}
+										</div>
+										<div class="text-xs">
+											Updated: {new Date(Number(tag.updated_at) / 1_000_000).toLocaleString()}
+										</div>
 										<div class="text-xs">Version: {tag.version}</div>
 									</div>
 								</td>
@@ -1447,7 +1460,7 @@
 									</div>
 								</td>
 								<td>
-									<ul class="list-disc list-inside">
+									<ul class="list-inside list-disc">
 										{#each tag.data.time_periods as period}
 											<li>{period.months}mo: {period.multiplier}x</li>
 										{/each}
@@ -1461,7 +1474,7 @@
 									</div>
 								</td>
 								<td>
-									<div class="flex gap-2 justify-center">
+									<div class="flex justify-center gap-2">
 										<button
 											on:click={() => editTag(tag)}
 											class="text-blue-500 hover:text-blue-700"
@@ -1487,9 +1500,9 @@
 
 		<!-- Reputation Documents -->
 		<div class="mt-8">
-			<h2 class="text-xl mb-4">Reputation Documents</h2>
+			<h2 class="mb-4 text-xl">Reputation Documents</h2>
 			<div class="overflow-x-auto">
-				<table class="table table-zebra w-full">
+				<table class="table-zebra table w-full">
 					<thead>
 						<tr>
 							<th>Document Info</th>
@@ -1505,8 +1518,12 @@
 										<div class="font-mono text-xs">Key: {doc.key}</div>
 										<div class="font-mono text-xs">Description: {doc.description}</div>
 										<div class="font-mono text-xs">Owner: {doc.owner}</div>
-										<div class="text-xs">Created: {new Date(Number(doc.created_at) / 1_000_000).toLocaleString()}</div>
-										<div class="text-xs">Updated: {new Date(Number(doc.updated_at) / 1_000_000).toLocaleString()}</div>
+										<div class="text-xs">
+											Created: {new Date(Number(doc.created_at) / 1_000_000).toLocaleString()}
+										</div>
+										<div class="text-xs">
+											Updated: {new Date(Number(doc.updated_at) / 1_000_000).toLocaleString()}
+										</div>
 										<div class="text-xs">Version: {doc.version}</div>
 									</div>
 								</td>
@@ -1519,11 +1536,15 @@
 										<div>Total Rep: {doc.data.last_known_effective_reputation.toFixed(2)}</div>
 										<div>Vote Weight: {(Number(doc.data.vote_weight) * 100).toFixed(4)}%</div>
 										<div>Status: {doc.data.has_voting_power ? 'Active' : 'Inactive'}</div>
-										<div class="text-xs">Last Calc: {new Date(Number(doc.data.last_calculation) / 1_000_000).toLocaleString()}</div>
+										<div class="text-xs">
+											Last Calc: {new Date(
+												Number(doc.data.last_calculation) / 1_000_000
+											).toLocaleString()}
+										</div>
 									</div>
 								</td>
 								<td>
-									<div class="flex gap-2 justify-center">
+									<div class="flex justify-center gap-2">
 										<button
 											on:click={() => recalculateReputation(doc.data.user_key, doc.data.tag_key)}
 											class="btn btn-xs btn-primary"
@@ -1551,4 +1572,4 @@
 	<div class="container mx-auto p-4">
 		<p>Please log in to access the admin interface.</p>
 	</div>
-{/if} 
+{/if}

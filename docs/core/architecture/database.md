@@ -36,33 +36,53 @@ Collection name: `users`
 ```typescript
 interface UserDocument {
     // Standard Juno fields (automatically managed)
-    key: string;              // Unique identifier generated with nanoid() by Juno
-    
-    // Description format: [owner:documentKey],[username:username]
-    // - owner: The key of this user document being created/edited
-    // - username: The username field from the document data (not a key)
-    // Example: [owner:user_123],[username:john_doe]
-    description: string;      
-    
-    owner: Principal;         // Automatically set to user's Internet Identity Principal
-    created_at: bigint;      // Creation timestamp in nanoseconds
-    updated_at: bigint;      // Last update timestamp in nanoseconds
-    version: bigint;         // Document version for concurrency control
-    
-    // User-specific data
-    data: {
-        username: string;     // Unique username (must be unique across all users)
-        display_name: string; // Display name (not required to be unique)
+    key: string;                // Format: USR_{ulid}_USRNAME_{username}_ generated with ulid() src/lib/keys/create_ulid.ts
+    description: string;        // currently not used
+    owner: Principal;           // Automatically set to user's Internet Identity Principal
+    created_at: bigint;         // Creation timestamp in nanoseconds
+    updated_at: bigint;         // Last update timestamp in nanoseconds
+    version: bigint;            // Document version for concurrency control
+    data: {                     // User-specific data
+        username: string;       // Unique username (must be unique across all users)
+        display_name: string;   // Display name (not required to be unique)
+        usr_key: ULID;          // Pure ULID for references
     }
 }
 ```
 
+#### Validation Rules
+1. **Username Validation**
+   - Length: 3-30 characters
+   - Allowed characters: alphanumeric, hyphen
+   - Must be unique across all users (case-insensitive)
+   - Stored in lowercase format in the key field
+   - Stored in original case in the data.username field
+
+2. **Display Name Validation**
+   - Non-empty after trimming
+   - Maximum length: 100 characters
+   - No character restrictions
+
+3. **Document Key Format**
+   - Format: `usr_{ulid}_usrName_{username}_`
+   - ULID: 26 characters, Crockford Base32
+   - Username: Lowercase, sanitized version
+
+4. **Description Format** // no longer used.
+
+5. **Production Mode Rules**
+   - One account per Internet Identity
+   - Owner field uses Principal ID instead of document key
+   - Stricter validation rules apply
+
 #### Notes
 - `username` must be unique across all users
 - `display_name` is not required to be unique
-- The `description` field is managed automatically by the backend using standard Juno hooks
+- Username uniqueness is enforced by backend validation
+- Frontend should handle validation errors gracefully
 - All timestamps are in nanoseconds
-- `version` is required for updates to prevent concurrent modifications
+- Version is required for updates to prevent concurrent modifications
+- ULID provides chronological sorting capability
 
 ### Tags Collection
 
@@ -78,34 +98,24 @@ Collection name: `tags`
 ```typescript
 interface TagDocument {
     // Standard Juno fields (automatically managed)
-    key: string;              // Unique identifier generated with nanoid()
-    
-    // Description format: [owner:creatorUserKey],[name:tagName]
-    // - owner: The document key of the user who is creating the tag
-    // - name: The name field provided in the frontend (not a key)
-    // Example: [owner:user_123],[name:technical_skills]
-    description: string;      
-    
-    owner: Principal;         // Automatically set to document creator's Principal
-    created_at: bigint;      // Creation timestamp in nanoseconds
-    updated_at: bigint;      // Last update timestamp in nanoseconds
-    version: bigint;         // Document version for concurrency control
-    
-    // Tag-specific data
-    data: {
-        author_key: string;   // User key of the creator (references Users collection)
-        name: string;         // Display name of the tag
-        description: string;  // Description of the tag's purpose
-        
-        // Time periods for vote decay multipliers
-        time_periods: Array<{
+    key: string;                // Format: usr_{ulid}_tag_{ulid}_tagName_{name}_ generated with ulid() src/lib/keys/create_ulid.ts
+    description: string;        // currently not used
+    owner: Principal;           // Automatically set to document creator's Principal
+    created_at: bigint;         // Creation timestamp in nanoseconds
+    updated_at: bigint;         // Last update timestamp in nanoseconds
+    version: bigint;            // Document version for concurrency control
+    data: {                     // Tag-specific data
+        name: string;           // Display name of the tag
+        usr_key: ULID;          // Pure ULID of the user who created the tag
+        tag_key: ULID;          // Pure ULID of this tag
+        username: string;       // Creator's username for key reconstruction if needed
+        time_periods: Array<{   // Time periods for vote decay multipliers
             months: number;     // Duration in months (1-999)
             multiplier: number; // Weight multiplier (0.05-1.5)
         }>;
-        
-        reputation_threshold: number;     // Minimum reputation needed for voting power
-        vote_reward: number;              // Reputation points given for casting votes
-        min_users_for_threshold: number;  // Minimum users needed before vote rewards are restricted
+        reputation_threshold: number;       // Minimum reputation needed for voting power
+        vote_reward: number;                // Reputation points given for casting votes
+        min_users_for_threshold: number;    // Minimum users needed before vote rewards are restricted
     }
 }
 ```
@@ -139,6 +149,32 @@ Example Tag Document:
     }
 }
 ```
+#### Validation Rules
+1. **Name Validation**
+   - Length: 3-30 characters
+   - Allowed characters: alphanumeric, hyphen
+   - Must be unique across all tags (case-insensitive)
+   - Stored in lowercase format in the key field
+   - Stored in original case in the data.name field
+
+2. **Document Key Format**
+   - Format: `usr_{ulid}_tag_{ulid}_tagName_{name}_`
+   - First ULID: Creator's user identifier (must be uppercase)
+   - Second ULID: Tag's unique identifier (must be uppercase)
+   - Name: Lowercase, sanitized version of tag name
+
+3. **Production Mode Rules**
+   - Stricter validation rules apply
+   - Owner field uses Principal ID
+   - Tag names must be unique system-wide
+
+#### Notes
+- `name` must be unique across all tags
+- Tag name uniqueness is enforced by backend validation
+- Frontend should handle validation errors gracefully
+- All timestamps are in nanoseconds
+- Version is required for updates to prevent concurrent modifications
+- ULID provides chronological sorting capability
 
 ### Votes Collection
 
@@ -154,31 +190,49 @@ Collection name: `votes`
 ```typescript
 interface VoteDocument {
     // Standard Juno fields (automatically managed)
-    key: string;              // Unique identifier generated with nanoid()
-    
-    // Description format: [owner:voterUserKey],[target:targetUserKey],[tag:tagKey]
-    // - owner: The document key of the user casting the vote
-    // - target: The document key of the user being voted on
-    // - tag: The document key of the tag this vote belongs to
-    // Example: [owner:user_123],[target:user_456],[tag:tag_789]
-    description: string;      
-    
-    owner: Principal;         // Automatically set to document creator's Principal
-    created_at: bigint;      // Creation timestamp in nanoseconds
-    updated_at: bigint;      // Last update timestamp in nanoseconds
-    version: bigint;         // Document version for concurrency control
-    
-    // Vote-specific data
-    data: {
-        author_key: string;   // User key who cast the vote (references Users collection)
-        target_key: string;   // User key being voted on (references Users collection)
-        tag_key: string;      // Tag key this vote is for (references Tags collection)
-        value: number;        // Vote value (+1 for upvote, -1 for downvote)
-        weight: number;       // Vote weight (default: 1.0)
-        created_at: bigint;   // Creation timestamp in nanoseconds
+    key: string;                // Format: usr_{ulid}_tag_{ulid}_tar_{ulid}_key_{ulid}_ generated with ulid()
+    description: string;        // currently not used
+    owner: Principal;           // Automatically set to document creator's Principal
+    created_at: bigint;         // Creation timestamp in nanoseconds
+    updated_at: bigint;         // Last update timestamp in nanoseconds
+    version: bigint;            // Document version for concurrency control
+    data: {                     // Vote-specific data
+        usr_key: ULID;          // Pure ULID of the user casting the vote
+        tag_key: ULID;          // Pure ULID of the tag being voted on
+        tar_key: ULID;          // Pure ULID of the target user receiving the vote
+        vote_key: ULID;         // Pure ULID for this specific vote
+        value: number;          // Vote value (+1 for upvote, -1 for downvote, some tags may allow other values)
+        created_at: bigint;     // Creation timestamp in nanoseconds
     }
 }
 ```
+
+#### Validation Rules
+
+1. **Vote Value Validation**
+   - Standard tags: Only +1 (upvote) or -1 (downvote) allowed
+   - Special tags: May allow additional values based on tag configuration
+   - No fractional values allowed
+   - Value must be an integer
+
+2. **Document Key Format**
+   - Format: `usr_{ulid}_tag_{ulid}_tar_{ulid}_key_{ulid}_`
+   - First ULID: Voter's identifier (must be uppercase)
+   - Second ULID: Tag identifier (must be uppercase)
+   - Third ULID: Target user identifier (must be uppercase)
+   - Fourth ULID: Vote identifier (must be uppercase)
+   - All parts must be present and properly formatted
+
+3. **Production Mode Rules**
+   - Cannot vote on self (usr_key cannot equal tar_key)
+
+### Notes
+- All timestamps are in nanoseconds
+- ULID provides chronological sorting capability
+- Vote impact is determined by voter's reputation at calculation time
+- Vote weight is stored in voter's reputation document, not in vote document
+- Some tags may have special validation rules for vote values
+
 
 ### Reputations Collection
 
@@ -191,46 +245,98 @@ Collection name: `reputations`
 - Mutable Permissions: false
 
 #### Document Structure
+
 ```typescript
 interface ReputationDocument {
     // Standard Juno fields (automatically managed)
-    key: string;              // Unique identifier generated with nanoid()
-    
-    // Description format: [owner:userKey],[tag:tagKey]
-    // - owner: The document key of the user this reputation belongs to
-    // - tag: The document key of the tag this reputation is for
-    // Example: [owner:user_123],[tag:tag_789]
-    description: string;      
-    
-    owner: Principal;         // Automatically set to document creator's Principal
-    created_at: bigint;      // Creation timestamp in nanoseconds
-    updated_at: bigint;      // Last update timestamp in nanoseconds
-    version: bigint;         // Document version for concurrency control
-    
-    // Reputation-specific data
-    data: {
-        user_key: string;     // User this reputation is for (references Users collection)
-        tag_key: string;      // Tag this reputation is for (references Tags collection)
-        
-        total_basis_reputation: number;          // Reputation from received votes
-        total_voting_rewards_reputation: number; // Reputation from casting votes
-        last_known_effective_reputation: number; // Final reputation score (cached value)
-        
-        last_calculation: bigint;  // When the reputation was last calculated (timestamp in nanoseconds)
-        vote_weight: number;       // The user's vote weight (0.0 to 1.0, where 1.0 = 100%)
-        has_voting_power: boolean; // Whether the user has sufficient reputation to have voting power
+    key: string;                // Format: usr_{ulid}_tag_{ulid}_ generated with ulid()
+    description: string;        // currently not used
+    owner: Principal;           // Automatically set to canister Principal (ic_cdk::id())
+    created_at: bigint;         // Creation timestamp in nanoseconds
+    updated_at: bigint;         // Last update timestamp in nanoseconds
+    version: bigint;            // Document version for concurrency control
+    data: {                     // Reputation-specific data
+        usr_key: ULID;          // Pure ULID of the user this reputation is for
+        tag_key: ULID;          // Pure ULID of the tag this reputation is for
+        reputation: number;      // Current reputation score
+        vote_weight: number;     // User's voting weight in this tag
+        activity_score: number;  // Activity level in this tag
+        received_votes: number;  // Count of votes received
+        cast_votes: number;      // Count of votes cast
+        last_vote_at: bigint;   // Timestamp of last vote cast
+        last_received_at: bigint; // Timestamp of last vote received
     }
 }
 ```
 
+Example Reputation Document:
+
+```typescript
+{
+    key: "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW",
+    description: "",
+    owner: Principal.fromText("..."),  // Canister Principal
+    created_at: 1234567890n,
+    updated_at: 1234567890n,
+    version: 1n,
+    data: {
+        usr_key: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        tag_key: "01ARZ3NDEKTSV4RRFFQ69G5FAW",
+        reputation: 25.5,
+        vote_weight: 0.85,
+        activity_score: 0.75,
+        received_votes: 12,
+        cast_votes: 8,
+        last_vote_at: 1234567890n,
+        last_received_at: 1234567890n
+    }
+}
+```
+
+#### Validation Rules
+
+1. **Document Key Format**
+   - Format: `usr_{ulid}_tag_{ulid}_`
+   - First ULID: User identifier (must be uppercase)
+   - Second ULID: Tag identifier (must be uppercase)
+   - All parts must be present and properly formatted
+
+2. **Reputation Score Rules**
+   - Must be a non-negative number
+   - Calculated based on received votes and their weights
+   - Updated whenever user receives a vote in the tag
+
+3. **Vote Weight Rules**
+   - Must be a non-negative number
+   - Calculated based on:
+     - User's reputation in the tag
+     - Activity score in the tag
+     - Time since last vote
+   - Updated before each vote is cast
+   - Stored to ensure consistent vote impact
+
+4. **Activity Score Rules**
+   - Must be a non-negative number
+   - Increases with voting activity
+   - Decays over time without activity
+   - Affects vote weight calculation
+
+5. **Production Mode Rules**
+   - One reputation document per user-tag combination
+   - Cannot be manually created or deleted
+   - Updates only through system functions
+   - All fields must be present and valid
+
 #### Notes
-- Each document represents one user's reputation in one tag
-- Reputation calculations are tag-specific
-- Cached scores are updated only when needed
-- Other tags' reputations remain untouched during updates
-- The `vote_weight` field has special handling:
-  - In the Rust code: Implemented as a custom `VoteWeight` struct with validation to ensure values are between 0.0 and 1.0
-  - In the database: Stored directly as a number between 0.0 and 1.0
+- All timestamps are in nanoseconds
+- ULID provides chronological sorting capability
+- Vote weight is recalculated before each vote
+- Activity score helps prevent reputation farming
+- System maintains consistency between votes and reputation
+- Uses exponential backoff for creation retries:
+  - Max attempts: 3
+  - Initial delay: 100ms
+  - Backoff: 100ms -> 200ms -> 400ms
 
 ## Description Field Queries
 
@@ -338,214 +444,3 @@ const { items } = await listDocs({
    - Author stored in description field
    - Will change to proper multi-user system later 
 
-# Document Description Field Standards
-
-## Format Standard
-All document descriptions follow a consistent format with field-value pairs:
-`field1=value1;field2=value2;field3=value3;`
-
-Rules:
-- Each field-value pair ends with a semicolon `;`
-- Use equal sign `=` to separate field from value
-- Use consistent field order per collection
-- All values are document keys unless specified otherwise
-
-## Collection-Specific Formats
-
-### Users Collection
-Format: `owner=documentKey;username=username;`
-- `owner`: The key of this user document being created/edited
-- `username`: The username field from the document data (not a key)
-
-Example: `owner=user_123;username=john_doe;`
-
-### Tags Collection
-Format: `owner=creatorUserKey;name=tagName;`
-- `owner`: The document key of the user who is creating the tag
-- `name`: The name field provided in the frontend (not a key)
-
-Example: `owner=user_123;name=technical_skills;`
-
-### Votes Collection
-Format: `owner=voterUserKey;target=targetUserKey;tag=tagKey;`
-- `owner`: The document key of the user casting the vote
-- `target`: The document key of the user being voted on
-- `tag`: The document key of the tag this vote belongs to
-
-Example: `owner=user_123;target=user_456;tag=tag_789;`
-
-### Reputations Collection
-Format: `owner=userKey;tag=tagKey;`
-- `owner`: The document key of the user this reputation belongs to
-- `tag`: The document key of the tag this reputation is for
-
-Example: `owner=user_123;tag=tag_789;`
-
-## Important Implementation Notes
-
-1. **Description Field Generation**:
-   ```rust
-   // Example: Creating a vote description in Rust
-   let description = format!(
-       "owner={};target={};tag={};",
-       vote.data.author_key,
-       vote.data.target_key,
-       vote.data.tag_key
-   );
-   ```
-
-2. **Handling in Collection Hooks**:
-   ```rust
-   // Example: In on_set_doc hook for votes collection
-   fn on_set_doc(doc: &mut Document) -> Result<(), String> {
-       // Access the data fields directly
-       if let Some(data) = doc.data.as_object_mut() {
-           // Get fields from the document data
-           let author_key = data.get("author_key").and_then(|v| v.as_str()).unwrap_or("");
-           let target_key = data.get("target_key").and_then(|v| v.as_str()).unwrap_or("");
-           let tag_key = data.get("tag_key").and_then(|v| v.as_str()).unwrap_or("");
-           
-           // Set the description using the fields
-           doc.description = format!("owner={};target={};tag={};", author_key, target_key, tag_key);
-       }
-       Ok(())
-   }
-   ```
-
-3. **Querying with Partial Matches**:
-   ```typescript
-   // Example: Find all votes for a specific tag, regardless of author or target
-   const { items } = await listDocs({
-       collection: "votes",
-       filter: {
-           matcher: {
-               description: `tag=${tagKey};`
-           }
-       }
-   });
-   ```
-
-## Benefits of Field=Value; Format
-
-1. **Clear Field Boundaries**: 
-   - Each field-value pair ends with a semicolon
-   - Prevents issues with values containing delimiters
-
-2. **Partial Matching**: 
-   - Can match on any subset of fields
-   - Easier to construct search patterns
-
-3. **Consistent Pattern**:
-   - Same pattern across all collections
-   - Easier to generate programmatically
-   - Easier to parse in queries
-
-4. **Developer-Friendly**:
-   - Intuitive mapping to underlying data structures
-   - Self-documenting format
-   - Easy to debug and understand
-
-## Description Field Pattern Matching
-
-The `ListMatcher` in Juno provides powerful pattern matching capabilities for description fields. This is particularly useful when querying documents that need to match multiple criteria.
-
-### Basic Pattern Matching
-
-```rust
-// Simple single-field match
-let results = list_docs_store(
-    caller,
-    String::from("votes"),
-    ListParams {
-        matcher: Some(ListMatcher {
-            description: Some(format!("tag={};", tag_key)),
-            ..Default::default()
-        }),
-        ..Default::default()
-    },
-);
-```
-
-### Multiple Field Matching 
-
-To match multiple fields:
-
-```rust
-// Match documents where both owner AND tag match
-let results = list_docs_store(
-    caller,
-    String::from("reputations"),
-    ListParams {
-        matcher: Some(ListMatcher {
-            // Will match description containing both owner=123; AND tag=456;
-            description: Some(format!("owner={};tag={};", user_key, tag_key)),
-            ..Default::default()
-        }),
-        ..Default::default()
-    },
-);
-```
-
-### Benefits of ListMatcher
-
-1. **Database-Level Filtering**: 
-   - Pattern matching happens at the database level
-   - More efficient than filtering in application code
-   - Reduces data transfer
-
-2. **Flexible Matching**:
-   - Support for exact string matching
-   - Can match partial patterns
-   - Order-independent matching
-
-3. **Clear Intent**:
-   - Pattern matching logic is explicit
-   - Easy to understand and maintain
-   - Self-documenting queries
-
-4. **Performance**:
-   - Optimized for description field queries
-   - Efficient for large datasets
-   - Minimizes memory usage
-
-### Best Practices
-
-1. **Use Proper Formatting**:
-   ```rust
-   // Good: Clear field boundaries
-   format!("owner={};tag={};", user_key, tag_key)
-   
-   // Bad: Unclear boundaries
-   format!("owner={} tag={}", user_key, tag_key)
-   ```
-
-2. **Choose Appropriate Logic**:
-   ```rust
-   // Match documents for a specific field
-   format!("tag={};", tag_key)
-   
-   // Match documents with multiple criteria
-   format!("owner={};tag={};", user_key, tag_key)
-   ```
-
-3. **Consider Access Control**:
-   ```rust
-   // System-level operations
-   list_docs_store(ic_cdk::id(), ...)
-   
-   // User-level operations
-   list_docs_store(ic_cdk::caller(), ...)
-   ```
-
-4. **Handle Results Appropriately**:
-   ```rust
-   // Use first() when expecting single result
-   if let Some((doc_key, doc)) = results.items.first() {
-       // Process single document
-   }
-   
-   // Iterate when expecting multiple results
-   for (doc_key, doc) in results.items {
-       // Process each document
-   }
-   ```

@@ -6,7 +6,31 @@ Currently, we query documents using the description field, which requires loadin
 
 The key field is the only field that can be queried without loading the table into memory, making it much more efficient for queries. We need to move our query patterns from description-based to key-based.
 
-## Solution
+## Solution Overview
+
+### Key Concepts
+
+1. **Document Keys vs ULID Fields**
+   - Document keys are composite strings used for efficient querying
+   - ULID fields in `data` are pure ULIDs used for references
+   - Keys can include additional info (e.g., username) for readability
+   - ULIDs ensure type safety and validation where needed
+
+2. **Type Safety**
+   ```typescript
+   // In types.ts
+   type ULID = string & { readonly __brand: unique symbol };
+   
+   // Example document structure
+   interface Document {
+     key: string;           // Composite key for querying
+     data: {
+       usr_key: ULID;      // Pure ULID for references
+       other_key: ULID;    // Pure ULID for references
+       // ... other fields
+     }
+   }
+   ```
 
 ### 1. Reputation Documents
 
@@ -16,12 +40,20 @@ The key field is the only field that can be queried without loading the table in
 - No standardized key format
 
 **New Solution:**
-- Key format: `USR_{ulid}_TAG_{ulid}`
+- Document key format: `USR_{ulid}_TAG_{ulid}`
 - Example: `USR_01ARZ3NDEKTSV4RRFFQ69G5FAV_TAG_01ARZ3NDEKTSV4RRFFQ69G5FAW`
+- Data fields:
+  ```typescript
+  interface ReputationData {
+    usr_key: ULID;    // Pure ULID for user reference
+    tag_key: ULID;    // Pure ULID for tag reference
+    // ... other fields
+  }
+  ```
 - Benefits:
   - Can query without loading table into memory
-  - Prevents duplicate reputation documents (same user+tag combination)
-  - Standardized ULID format (26 characters, Crockford Base32)
+  - Prevents duplicate reputation documents
+  - Type-safe ULID references in data (26 characters, Crockford Base32)
   - Natural chronological sorting
   - Easy validation using ULID library
 
@@ -33,8 +65,18 @@ The key field is the only field that can be queried without loading the table in
 - No standardized key format
 
 **New Solution:**
-- Key format: `USR_{ulid}_TAG_{ulid}_TAR_{ulid}_KEY_{ulid}`
+- Document key format: `USR_{ulid}_TAG_{ulid}_TAR_{ulid}_KEY_{ulid}`
 - Example: `USR_01ARZ3NDEKTSV4RRFFQ69G5FAV_TAG_01ARZ3NDEKTSV4RRFFQ69G5FAW_TAR_01ARZ3NDEKTSV4RRFFQ69G5FAX_KEY_01ARZ3NDEKTSV4RRFFQ69G5FAY`
+- Data fields:
+  ```typescript
+  interface VoteData {
+    usr_key: ULID;    // Pure ULID for user reference
+    tag_key: ULID;    // Pure ULID for tag reference
+    tar_key: ULID;    // Pure ULID for target reference
+    vote_key: ULID;   // Pure ULID for this vote
+    // ... other fields
+  }
+  ```
 - Query patterns:
   - Find votes by user in tag: Search for `USR_{ulid}_TAG_{ulid}`
   - Find votes for target in tag: Search for `TAG_{ulid}_TAR_{ulid}`
@@ -43,13 +85,59 @@ The key field is the only field that can be queried without loading the table in
 ### 3. Standard Format for All Documents
 
 All document keys will follow these standards:
-- User keys: `usr_{ulid}`
-- Tag keys: `usr_{ulid}_tag_{ulid}`
+- User keys: `usr_{ulid}_usrName_{string}_`
+- Tag keys: `usr_{ulid}_tag_{ulid}_tagName_{string}_`
 - Reputation keys: `usr_{ulid}_tag_{ulid}`
 - Vote keys: `usr_{ulid}_tag_{ulid}_tar_{ulid}_key_{ulid}`
 
 Note: All ULIDs are 26 characters using Crockford's Base32 encoding, providing both uniqueness and chronological sorting.
-Important: All ULIDs must be stored in UPPERCASE format for consistency between frontend and backend.
+Important: 
+- ULIDs themselves must be UPPERCASE (e.g., `01ARZ3NDEKTSV4RRFFQ69G5FAV`) for consistency between frontend and backend
+- Key segment prefixes use camelCase (e.g., `usr_`, `usrName_`, `tagName_`, etc.)
+- Names in keys (username, tagname) are lowercase for efficient querying
+
+### 4. Detailing for each document type
+
+#### 4.1 User Documents
+
+  - Example: `usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_usrName_johndoe_`
+  - ULID: Unique identifier for the user (must be uppercase)
+  - Username: Sanitized username for readability
+  - Validation:
+    - Username: 3-30 chars, alphanumeric + hyphen, can be both upper or lower case, no spaces.
+    - Username uniqueness enforced by backend. Uniqueness ignores case. This means that `johndoe` and `JohnDoe` are considered the same username.
+      - In the user key, the username is stored in lowercase, for efficient queries. Example: `johndoe`
+      - In the data.username field, the username is stored in the original case. Example: `JohnDoe`
+      - One account per identity in production mode
+    - Display name: Non-empty, max 50 chars
+
+#### 4.2 Tag Documents
+
+  - Example: `usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW_tagName_technicalskills_`
+  - First ULID: Creator's user identifier (must be uppercase)
+  - Second ULID: Tag's unique identifier (must be uppercase)
+  - Tag name: Sanitized, no spaces, lowercase tag name for readability and querying
+  - Validation:
+    - Tag name: Must be unique (case-insensitive) 3-30 chars, alphanumeric + hyphen, can be both upper or lower case, no spaces.
+    - Original case preserved in data.name field
+    - Tag name follows same character restrictions as username
+
+#### 4.3 Reputation Documents
+
+  - Example: `usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW`
+  - First ULID: User's identifier (must be uppercase)
+  - Second ULID: Tag's identifier (must be uppercase)
+  - No additional components needed as the combination of user and tag is unique
+
+#### 4.4 Vote Documents
+
+  - Example: `usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW_tar_01ARZ3NDEKTSV4RRFFQ69G5FAX_key_01ARZ3NDEKTSV4RRFFQ69G5FAY`
+  - Components:
+    - usr: Voter's ulid identifier (must be uppercase)
+    - tag: Tag being voted on's ulid identifier (must be uppercase)
+    - tar: Target user receiving the vote's ulid identifier (must be uppercase)
+    - key: Unique vote ulid identifier (must be uppercase)
+  - Format enables efficient querying by any combination of voter, tag, and target
 
 ## Required Updates
 
