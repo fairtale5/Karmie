@@ -1,5 +1,60 @@
 # Document Key Optimization Plan
 
+## ToDo List
+
+### Completed Tasks
+- [x] Add ULID library (ulid/javascript) to frontend
+- [x] Create ULID types (`src/lib/keys/ulid_types.ts`)
+- [x] Create ULID generation function (`src/lib/keys/create_ulid.ts`)
+- [x] Implement key formatting utilities:
+  - [x] `formatUserKey` in `src/lib/keys/format_key_user.ts`
+  - [x] `formatTagKey` in `src/lib/keys/format_key_tag.ts`
+  - [x] `formatReputationKey` in `src/lib/keys/format_key_reputation.ts`
+  - [x] `formatVoteKey` in `src/lib/keys/format_key_vote.ts`
+- [x] Update User document creation in admin panel to use new key format
+
+### Current Priority: Frontend Implementation
+- [x] Update Tag document creation in admin panel to use new key format 
+  - Follow implementation steps in `docs/core/temp/tag_implementation_plan.md`
+  - Remove usage of `nanoid()` in tag creation
+  - Update tag form to include author selection
+  - Modify `saveTag()` to use `formatTagKey`
+- [ ] Update Vote document creation in admin panel to use new key format
+  - Remove usage of `nanoid()` in vote creation
+  - Modify `saveVote()` to use `formatVoteKey`
+- [ ] Update document queries in frontend to use key-based search instead of description-based
+
+### Next Phase: Backend Changes
+- [ ] Add ULID library (dylanhart/ulid-rs) to backend
+- [ ] Update `src/satellite/src/utils/structs.rs` to include new ULID fields
+  - Add `usr_key`, `tag_key`, etc. ULID fields to appropriate structs
+  - Mark `description` field as deprecated but keep for compatibility
+- [ ] Implement ULID generation and validation functions in Rust
+- [ ] Update backend validation for all document types:
+  - User document format and validation
+  - Tag document format and validation
+  - Vote document format and validation
+  - Reputation document format and validation
+- [ ] Update document creation flows for Reputations (see `docs/core/temp/reputation_implementation_plan.md`and reputation_calculations.rs)
+- [ ] Update query patterns to use key-based search
+- [ ] Implement hybrid query approach to support both old and new formats during transition
+
+### Documentation & Testing
+- [ ] Update `docs/core/architecture/database.md` to reflect the new document layouts:
+  - Update key format descriptions for all collections
+  - Document transition approach from description-based to key-based queries
+  - Update example documents to show new ULID format
+  - Remove outdated query examples and add new key-based query examples
+- [ ] Create implementation guide for team
+- [ ] Test performance impact of key-based vs. description-based queries
+- [ ] Define clear monitoring strategy for new format adoption
+
+### Migration Considerations
+- [ ] Determine approach for handling mixed format documents during transition
+- [ ] Develop a strategy for gradually migrating existing documents (if needed)
+- [ ] Create a timeline for full transition to new format
+- [ ] Define error handling approach for mixed-format operations
+
 ## Main Problem
 
 Currently, we query documents using the description field, which requires loading the entire table into memory first. This is not scalable as the dataset grows.
@@ -40,8 +95,8 @@ The key field is the only field that can be queried without loading the table in
 - No standardized key format
 
 **New Solution:**
-- Document key format: `USR_{ulid}_TAG_{ulid}`
-- Example: `USR_01ARZ3NDEKTSV4RRFFQ69G5FAV_TAG_01ARZ3NDEKTSV4RRFFQ69G5FAW`
+- Document key format: `usr_{ulid}_tag_{ulid}`
+- Example: `usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW`
 - Data fields:
   ```typescript
   interface ReputationData {
@@ -65,8 +120,8 @@ The key field is the only field that can be queried without loading the table in
 - No standardized key format
 
 **New Solution:**
-- Document key format: `USR_{ulid}_TAG_{ulid}_TAR_{ulid}_KEY_{ulid}`
-- Example: `USR_01ARZ3NDEKTSV4RRFFQ69G5FAV_TAG_01ARZ3NDEKTSV4RRFFQ69G5FAW_TAR_01ARZ3NDEKTSV4RRFFQ69G5FAX_KEY_01ARZ3NDEKTSV4RRFFQ69G5FAY`
+- Document key format: `usr_{ulid}_tag_{ulid}_tar_{ulid}_key_{ulid}`
+- Example: `usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW_tar_01ARZ3NDEKTSV4RRFFQ69G5FAX_key_01ARZ3NDEKTSV4RRFFQ69G5FAY`
 - Data fields:
   ```typescript
   interface VoteData {
@@ -78,8 +133,8 @@ The key field is the only field that can be queried without loading the table in
   }
   ```
 - Query patterns:
-  - Find votes by user in tag: Search for `USR_{ulid}_TAG_{ulid}`
-  - Find votes for target in tag: Search for `TAG_{ulid}_TAR_{ulid}`
+  - Find votes by user in tag: Search for `usr_{ulid}_tag_{ulid}`
+  - Find votes for target in tag: Search for `tag_{ulid}_tar_{ulid}`
   - Natural chronological sorting by default
 
 ### 3. Standard Format for All Documents
@@ -102,7 +157,7 @@ Important:
 
   - Example: `usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_usrName_johndoe_`
   - ULID: Unique identifier for the user (must be uppercase)
-  - Username: Sanitized username for readability
+  - Username: Sanitized username for readability and querying
   - Validation:
     - Username: 3-30 chars, alphanumeric + hyphen, can be both upper or lower case, no spaces.
     - Username uniqueness enforced by backend. Uniqueness ignores case. This means that `johndoe` and `JohnDoe` are considered the same username.
@@ -181,9 +236,9 @@ Important:
 
    - Key format benefits:
      ```rust
-     // Example key: USR_01ARZ3NDEKTSV4RRFFQ69G5FAV_TAG_01ARZ3NDEKTSV4RRFFQ69G5FAW
+     // Example key: usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW
      // Benefits:
-     // 1. Prefix (USR_, TAG_) makes key type immediately identifiable
+     // 1. Prefix (usr_, tag_) makes key type immediately identifiable
      // 2. Underscore separator is URL-safe and easy to split/parse
      // 3. ULID format (26 chars) is compact and includes timestamp
      // 4. Natural chronological sorting
@@ -223,7 +278,7 @@ Important:
        collection: "votes",
        filter: {
          matcher: {
-           key: `^USR_${userUlid}_TAG_${tagUlid}`  // Prefix match
+           key: `^usr_${userUlid}_tag_${tagUlid}`  // Prefix match
          }
        }
      });
@@ -233,7 +288,7 @@ Important:
        collection: "votes",
        filter: {
          matcher: {
-           key: `TAG_${tagUlid}_TAR_${targetUlid}`  // Partial match
+           key: `tag_${tagUlid}_tar_${targetUlid}`  // Partial match
          }
        }
      });
@@ -243,7 +298,7 @@ Important:
        collection: "votes",
        filter: {
          matcher: {
-           key: `USR_${userUlid}`
+           key: `usr_${userUlid}`
          },
          paginate: {
            startAfter: lastKey,
@@ -276,7 +331,7 @@ Important:
              String::from("votes"),
              ListParams {
                  matcher: Some(ListMatcher {
-                     key: Some(format!("^USR_{}_TAG_{}", user_ulid, tag_ulid)),
+                     key: Some(format!("^usr_{}_tag_{}", user_ulid, tag_ulid)),
                      ..Default::default()
                  }),
                  ..Default::default()

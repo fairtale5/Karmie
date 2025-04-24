@@ -16,7 +16,6 @@
 	import { idlFactory } from '../../declarations/satellite/satellite.factory.did.js';
 	import type { _SERVICE as SatelliteActor } from '../../declarations/satellite/satellite.did';
 	import {
-		createTagDescription,
 		createVoteDescription,
 		createSearchPattern
 	} from '$lib/description';
@@ -60,21 +59,41 @@
 	let users: Doc<any>[] = [];
 
 	// Form data for creating/updating tags
-	let newTag = {
-		key: '', // Optional - if provided, will update existing tag
-		name: '',
+	let tagBeingEdited: Doc<{
+		name: string;
+		description: string;
+		usr_key?: ULID; // Replace author_key with usr_key using ULID type
+		tag_key?: ULID; // Add tag_key field for ULID of the tag itself
+		time_periods: Array<{ months: number; multiplier: number }>;
+		reputation_threshold: number;
+		vote_reward: number;
+		min_users_for_threshold: number;
+	}> = {
+		key: '',
 		description: '',
-		time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
-		reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
-		vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
-		min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
+		owner: '',
+		created_at: BigInt(0),
+		updated_at: BigInt(0),
+		version: BigInt(0),
+		data: {
+			name: '',
+			description: '',
+			time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
+			reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
+			vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
+			min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
+		}
 	};
+
+	// New selectedAuthorKey field for tag creation (mirror's the user document pattern)
+	let selectedAuthorKey = '';
 
 	// List of all tags
 	let tags: Doc<{
 		name: string;
 		description: string;
-		author_key: string;
+		usr_key?: ULID; // Replace author_key with usr_key
+		tag_key?: ULID; // Add tag_key field
 		time_periods: Array<{ months: number; multiplier: number }>;
 		reputation_threshold: number;
 		vote_reward: number;
@@ -301,7 +320,8 @@
 			const tagsList = await listDocs<{
 				name: string;
 				description: string;
-				author_key: string;
+				usr_key?: ULID; // Use optional fields to handle both old and new formats
+				tag_key?: ULID;
 				time_periods: { months: number; multiplier: number }[];
 				reputation_threshold: number;
 				vote_reward: number;
@@ -415,78 +435,134 @@
 	}
 
 	/**
+	 * Loads tag data into the form for editing
+	 * @param tagDoc - The tag document to edit
+	 */
+	function editTag(
+		tagDoc: Doc<{
+			name: string;
+			description: string;
+			usr_key?: ULID;
+			tag_key?: ULID;
+			author_key?: string;
+			time_periods: Array<{ months: number; multiplier: number }>;
+			reputation_threshold: number;
+			vote_reward: number;
+			min_users_for_threshold: number;
+		}>
+	) {
+		// Clone tag document into tagBeingEdited
+		tagBeingEdited = {
+			key: tagDoc.key,
+			description: tagDoc.description,
+			owner: tagDoc.owner,
+			created_at: tagDoc.created_at,
+			updated_at: tagDoc.updated_at,
+			version: tagDoc.version,
+			data: {
+				name: tagDoc.data.name,
+				description: tagDoc.data.description,
+				usr_key: tagDoc.data.usr_key, // Copy the usr_key field if it exists
+				tag_key: tagDoc.data.tag_key, // Copy the tag_key field if it exists
+				time_periods: [...tagDoc.data.time_periods],
+				reputation_threshold: tagDoc.data.reputation_threshold,
+				vote_reward: tagDoc.data.vote_reward,
+				min_users_for_threshold: tagDoc.data.min_users_for_threshold
+			}
+		};
+
+		// Scroll to form
+		document.getElementById('tagForm')?.scrollIntoView({ behavior: 'smooth' });
+	}
+
+	/**
 	 * Creates or updates a tag in the Juno collection
 	 * @throws {Error} If saving fails
 	 */
 	async function saveTag() {
 		try {
-			console.log('[Admin] Saving tag:', newTag);
+			console.log('[Admin] Saving tag:', tagBeingEdited);
 
 			// Validate inputs
-			if (!newTag.name || !newTag.description) {
-				errorGlobal = 'Please fill in all required fields';
+			if (!tagBeingEdited.data.name || !tagBeingEdited.data.description || !selectedAuthorKey) {
+				errorGlobal = 'Please fill in all required fields, including selecting an author';
 				return;
 			}
 
-			// We know user is defined in admin page
-			const authenticatedUser = user!;
-
-			// If we're updating an existing tag, we need to get its current version
-			let version;
-			if (newTag.key) {
-				try {
-					const existingDoc = await getDoc({
-						collection: COLLECTIONS.TAGS,
-						key: newTag.key
-					});
-					if (!existingDoc) {
-						errorGlobal = 'Tag not found';
-						return;
-					}
-					version = existingDoc.version;
-				} catch (e) {
-					console.error('[Admin] Error fetching existing tag:', e);
-					errorGlobal = 'Failed to fetch existing tag version';
-					return;
-				}
+			// Find the selected user to get their usr_key
+			const selectedUser = users.find(u => u.key === selectedAuthorKey);
+			if (!selectedUser || !selectedUser.data.usr_key) {
+				errorGlobal = 'Selected user not found or missing ULID';
+				return;
 			}
 
-			// Generate document key if not updating
-			const documentKey = newTag.key || nanoid();
+			// For new documents: generate tag ULID and format key
+			let tagDocKey: string;
+			let tagDocUlid: ULID | null = null;
+			let tagDocVersion = tagBeingEdited.version;
 
-			// Create or update tag document
-			if (!user?.key) {
-				throw new Error('User must be authenticated to create or update tags');
+			if (tagBeingEdited.key) {
+				// If tagBeingEdited.key is not null, we know we're updating an existing tag
+				
+				// For updates, use existing tag_key
+				tagDocUlid = tagBeingEdited.data.tag_key || null;
+			} else {
+				// Creating new tag - generate new ULID for the tag
+				tagDocUlid = createUlid();
 			}
 
-			await setDoc({
+			// Format the tag key using the proper pattern
+			if (!tagBeingEdited.key) {
+				tagDocKey = formatTagKey(
+					selectedUser.data.usr_key, 
+					tagDocUlid!, 
+					tagBeingEdited.data.name
+				);
+			}
+
+			// Create the document data with required fields
+			const docData = {
 				collection: COLLECTIONS.TAGS,
 				doc: {
-					key: documentKey,
+					key: tagDocKey!,
 					data: {
-						author_key: user.key, // Admin creates tags
-						name: newTag.name,
-						description: newTag.description,
-						time_periods: newTag.time_periods,
-						reputation_threshold: newTag.reputation_threshold,
-						vote_reward: newTag.vote_reward,
-						min_users_for_threshold: newTag.min_users_for_threshold
+						name: tagBeingEdited.data.name,
+						description: tagBeingEdited.data.description,
+						usr_key: selectedUser.data.usr_key, // Store pure ULID in data
+						tag_key: tagDocUlid, // Store the tag's own ULID
+						time_periods: tagBeingEdited.data.time_periods,
+						reputation_threshold: tagBeingEdited.data.reputation_threshold,
+						vote_reward: tagBeingEdited.data.vote_reward,
+						min_users_for_threshold: tagBeingEdited.data.min_users_for_threshold
 					},
-					description: createTagDescription(user, documentKey, newTag.name, user.key), // Admin creates tags
-					...(version && { version })
+					...(tagDocVersion && tagDocVersion > BigInt(0) && { version: tagDocVersion })
 				}
-			});
+			};
+
+			// Log the exact data being sent to setDoc
+			console.log('[Admin] Sending to setDoc:', docData);
+
+			// Create or update tag document
+			await setDoc(docData);
 
 			// Clear form and show success message
-			newTag = {
+			tagBeingEdited = {
 				key: '',
-				name: '',
 				description: '',
-				time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
-				reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
-				vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
-				min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
+				owner: '',
+				created_at: BigInt(0),
+				updated_at: BigInt(0),
+				version: BigInt(0),
+				data: {
+					name: '',
+					description: '',
+					time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
+					reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
+					vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
+					min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
+				}
 			};
+			selectedAuthorKey = '';
 			successGlobal = 'Tag saved successfully';
 			errorGlobal = '';
 
@@ -494,7 +570,19 @@
 			await loadTags();
 		} catch (e) {
 			console.error('[Admin] Error saving tag:', e);
-			errorGlobal = e instanceof Error ? e.message : 'Failed to save tag';
+			
+			// Enhanced error handling
+			if (e instanceof Error) {
+				if (e.message.includes('Tag name')) {
+					errorGlobal = 'This tag name is already taken. Please choose a different one.';
+				} else if (e.message.includes('Invalid ULID')) {
+					errorGlobal = 'Invalid ULID format detected. Please check user selection.';
+				} else {
+					errorGlobal = e.message;
+				}
+			} else {
+				errorGlobal = 'Failed to save tag. Please try again.';
+			}
 		}
 	}
 
@@ -538,33 +626,6 @@
 			console.error('Error deleting tag:', e);
 			errorGlobal = e instanceof Error ? e.message : 'Failed to delete tag';
 		}
-	}
-
-	/**
-	 * Loads tag data into the form for editing
-	 * @param tagDoc - The tag document to edit
-	 */
-	function editTag(
-		tagDoc: Doc<{
-			name: string;
-			description: string;
-			time_periods: Array<{ months: number; multiplier: number }>;
-			reputation_threshold: number;
-			vote_reward: number;
-			min_users_for_threshold: number;
-		}>
-	) {
-		newTag = {
-			key: tagDoc.key,
-			name: tagDoc.data.name,
-			description: tagDoc.data.description,
-			time_periods: [...tagDoc.data.time_periods],
-			reputation_threshold: tagDoc.data.reputation_threshold,
-			vote_reward: tagDoc.data.vote_reward,
-			min_users_for_threshold: tagDoc.data.min_users_for_threshold
-		};
-		// Scroll to form
-		document.getElementById('tagForm')?.scrollIntoView({ behavior: 'smooth' });
 	}
 
 	// Function to delete a user
@@ -615,7 +676,6 @@
 			const documentKey = nanoid();
 
 			// Create the vote document with proper structure
-			// WARNING: key is a root-level field in the document structure, NOT part of data
 			const voteDoc = {
 				collection: 'votes',
 				doc: {
@@ -885,10 +945,6 @@
 								<tr>
 									<td class="font-bold">Version</td>
 									<td>{selectedTagDoc.version}</td>
-								</tr>
-								<tr>
-									<td class="font-bold">Author Key</td>
-									<td class="font-mono">{selectedTagDoc.data.author_key}</td>
 								</tr>
 								<tr>
 									<td class="font-bold">Name</td>
@@ -1235,27 +1291,48 @@
 
 		<!-- Create/Update Tag Form -->
 		<div class="mb-8" id="tagForm">
-			<h2 class="mb-4 text-xl">Create New Tag</h2>
+			<h2 class="mb-4 text-xl">{tagBeingEdited.key ? 'Update Tag' : 'Create New Tag'}</h2>
 			<form on:submit|preventDefault={saveTag} class="space-y-4">
-				{#if newTag.key}
+				{#if tagBeingEdited.key}
 					<div>
 						<label for="tagKey" class="block">Tag Key:</label>
 						<input
 							type="text"
 							id="tagKey"
-							bind:value={newTag.key}
+							bind:value={tagBeingEdited.key}
 							class="w-full border bg-gray-100 p-2"
 							readonly
 						/>
 					</div>
 				{/if}
 
+				<!-- Add author selection dropdown -->
+				<div>
+					<label for="tagAuthor" class="block text-sm font-medium text-gray-700">
+						Tag Author
+					</label>
+					<select
+						id="tagAuthor"
+						bind:value={selectedAuthorKey}
+						class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+						required
+					>
+						<option value="">Select Author</option>
+						{#each users as user}
+							<option value={user.key}>
+								{user.data.display_name} ({user.data.username})
+							</option>
+						{/each}
+					</select>
+					<p class="mt-1 text-sm text-gray-500">Select the user who will be the author of this tag</p>
+				</div>
+
 				<div>
 					<label for="tagName" class="block">Tag Name:</label>
 					<input
 						type="text"
 						id="tagName"
-						bind:value={newTag.name}
+						bind:value={tagBeingEdited.data.name}
 						class="w-full border p-2"
 						placeholder="e.g., Technical Skills"
 					/>
@@ -1265,7 +1342,7 @@
 					<label for="tagDescription" class="block">Description:</label>
 					<textarea
 						id="tagDescription"
-						bind:value={newTag.description}
+						bind:value={tagBeingEdited.data.description}
 						class="w-full border p-2"
 						placeholder="Describe what this tag represents"
 						rows="3"
@@ -1285,7 +1362,7 @@
 								</tr>
 							</thead>
 							<tbody>
-								{#each newTag.time_periods as period, i}
+								{#each tagBeingEdited.data.time_periods as period, i}
 									<tr>
 										<td class="border p-2">Period {i + 1}</td>
 										<td class="border p-2">
@@ -1295,7 +1372,7 @@
 												bind:value={period.months}
 												class="w-full rounded-md border-gray-300 px-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
 												min="1"
-												max={i === newTag.time_periods.length - 1 ? 999 : 12}
+												max={i === tagBeingEdited.data.time_periods.length - 1 ? 999 : 12}
 											/>
 										</td>
 										<td class="border p-2">
@@ -1310,12 +1387,12 @@
 											/>
 										</td>
 										<td class="border p-2 text-center">
-											{#if i === newTag.time_periods.length - 1}
+											{#if i === tagBeingEdited.data.time_periods.length - 1}
 												<button
 													type="button"
 													on:click={() => {
-														newTag.time_periods = [
-															...newTag.time_periods,
+														tagBeingEdited.data.time_periods = [
+															...tagBeingEdited.data.time_periods,
 															{ months: 12, multiplier: 1.0 }
 														];
 													}}
@@ -1327,7 +1404,7 @@
 												<button
 													type="button"
 													on:click={() => {
-														newTag.time_periods = newTag.time_periods.filter(
+														tagBeingEdited.data.time_periods = tagBeingEdited.data.time_periods.filter(
 															(_, index) => index !== i
 														);
 													}}
@@ -1351,7 +1428,7 @@
 					<input
 						type="number"
 						id="reputation_threshold"
-						bind:value={newTag.reputation_threshold}
+						bind:value={tagBeingEdited.data.reputation_threshold}
 						step="1"
 						min="0"
 						class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -1364,7 +1441,7 @@
 					<input
 						type="number"
 						id="vote_reward"
-						bind:value={newTag.vote_reward}
+						bind:value={tagBeingEdited.data.vote_reward}
 						step="0.1"
 						min="0"
 						class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -1377,7 +1454,7 @@
 					<input
 						type="number"
 						id="min_users_for_threshold"
-						bind:value={newTag.min_users_for_threshold}
+						bind:value={tagBeingEdited.data.min_users_for_threshold}
 						step="1"
 						min="1"
 						class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -1389,22 +1466,30 @@
 
 				<div class="flex gap-4">
 					<button type="submit" class="rounded bg-blue-500 px-4 py-2 text-white">
-						{newTag.key ? 'Update Tag' : 'Create Tag'}
+						{tagBeingEdited.key ? 'Update Tag' : 'Create Tag'}
 					</button>
-					{#if newTag.key}
+					{#if tagBeingEdited.key}
 						<button
 							type="button"
 							class="rounded bg-gray-500 px-4 py-2 text-white"
 							on:click={() => {
-								newTag = {
+								tagBeingEdited = {
 									key: '',
-									name: '',
 									description: '',
-									time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
-									reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
-									vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
-									min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
+									owner: '',
+									created_at: BigInt(0),
+									updated_at: BigInt(0),
+									version: BigInt(0),
+									data: {
+										name: '',
+										description: '',
+										time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
+										reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
+										vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
+										min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
+									}
 								};
+								selectedAuthorKey = '';
 							}}
 						>
 							Cancel Edit
@@ -1456,7 +1541,19 @@
 									<div class="space-y-1">
 										<div class="font-bold">{tag.data.name}</div>
 										<div class="text-sm opacity-75">{tag.data.description}</div>
-										<div class="font-mono text-xs">Author: {tag.data.author_key}</div>
+										<!-- Show usr_key if available, otherwise fall back to author_key -->
+										<div class="font-mono text-xs">
+											{#if tag.data.usr_key}
+												User ULID: {tag.data.usr_key}
+											{:else if tag.data.author_key}
+												Author Key: {tag.data.author_key} (old format)
+											{:else}
+												No Author
+											{/if}
+										</div>
+										{#if tag.data.tag_key}
+											<div class="font-mono text-xs">Tag ULID: {tag.data.tag_key}</div>
+										{/if}
 									</div>
 								</td>
 								<td>

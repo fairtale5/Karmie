@@ -49,6 +49,10 @@ pub struct UserData {
 
     /// Display name (not required to be unique)
     pub display_name: String,
+    
+    /// ULID for this user, stored separately from the formatted key
+    /// This is the raw ULID without username and prefixes
+    pub usr_key: Option<String>,
 }
 
 /// Represents a tag that can be used for categorizing votes and reputation

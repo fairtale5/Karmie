@@ -43,8 +43,8 @@ pub fn validate_username(username: &str) -> Result<(), String> {
     }
 
     // Step 3: Check allowed characters
-    if !username.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
-        return Err("Username can only contain letters, numbers, underscores, and hyphens".to_string());
+    if !username.chars().all(|c| c.is_alphanumeric() || c == '-') {
+        return Err("Username can only contain letters, numbers, and hyphens".to_string());
     }
 
     Ok(())
@@ -106,7 +106,7 @@ pub fn validate_tag_name(tag_name: &str) -> Result<(), String> {
     }
 
     // Step 3: Check allowed characters
-    if !tag_name.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
+    if !tag_name.chars().all(|c| c.is_alphanumeric() || c == '-') {
         return Err("Tag name can only contain letters, numbers, underscores, and hyphens".to_string());
     }
 
@@ -121,7 +121,6 @@ mod tests {
     fn test_validate_username() {
         // Test valid usernames
         assert!(validate_username("user123").is_ok());
-        assert!(validate_username("user_name").is_ok());
         assert!(validate_username("user-name").is_ok());
 
         // Test invalid usernames
@@ -146,7 +145,6 @@ mod tests {
     fn test_validate_tag_name() {
         // Test valid tag names
         assert!(validate_tag_name("tech").is_ok());
-        assert!(validate_tag_name("coding_skills").is_ok());
         assert!(validate_tag_name("soft-skills").is_ok());
         
         // Test invalid tag names

@@ -8,7 +8,7 @@ type ULID = string & { readonly __brand: unique symbol };
 
 interface TagDocument {
     // Standard Juno fields (automatically managed)
-    key: string;              // Composite key: USR_{userUlid}_TAG_{tagUlid}_{username}_
+    key: string;              // Composite key: usr_{userUlid}_tag_{tagUlid}_tagName_{tagName}_
     owner: Principal;         // Automatically set to document creator's Principal
     created_at: bigint;      // Creation timestamp in nanoseconds
     updated_at: bigint;      // Last update timestamp in nanoseconds
@@ -16,10 +16,9 @@ interface TagDocument {
     
     // Tag-specific data
     data: {
-        name: string;         // Display name of the tag
+        name: string;         // Display name of the tag (original case preserved)
         usr_key: ULID;       // Pure ULID of the user who created the tag
         tag_key: ULID;       // Pure ULID of this tag
-        username: string;     // For key reconstruction if needed
         
         // Time periods for vote decay multipliers
         time_periods: Array<{
@@ -34,28 +33,24 @@ interface TagDocument {
 }
 ```
 
-## 2. Update Tag Key Generation (`src/lib/keys/tag.ts`)
+## 2. Use Tag Key Formatting Function (`src/lib/keys/format_key_tag.ts`)
+
+The formatTagKey function has been updated to include the tag name in the key format:
 
 ```typescript
-interface CreateTagKeyResult {
-  fullKey: string;      // Composite key for document
-  tagUlid: ULID;       // Pure ULID for references
-}
-
-export function createTagKey(userUlid: ULID, username: string): CreateTagKeyResult {
-  if (!validateUlid(userUlid)) {
-    throw new Error('Invalid ULID provided for tag key generation');
-  }
-  const tagUlid = generateUlid();
-  return {
-    fullKey: `USR_${userUlid}_TAG_${tagUlid}_${username}_`,
-    tagUlid
-  };
+export function formatTagKey(userUlid: ULID, tagUlid: ULID, tagName: string): string {
+    if (!validateUlid(userUlid) || !validateUlid(tagUlid)) {
+        throw new Error('Invalid ULID provided for tag key formatting');
+    }
+    
+    // Convert tag name to lowercase and sanitize for key usage
+    const sanitizedTagName = tagName.toLowerCase();
+    
+    return `usr_${userUlid}_tag_${tagUlid}_tagName_${sanitizedTagName}_`;
 }
 ```
 
 ## 3. Cleanup Tasks
-- Move ULID type to central types file
 - Delete `createTagDescription()` function
 - Remove any imports of this function
 - Update any code that expects the old key format
@@ -86,9 +81,10 @@ export function createTagKey(userUlid: ULID, username: string): CreateTagKeyResu
 
 ### B. Update Tag Form State
 ```typescript
-let newTag = {
+let tagBeingEdited = {
   key: '',
   name: '',
+  description: '',
   selectedAuthorKey: '',  // New field for user selection
   time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
   reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
@@ -101,70 +97,101 @@ let newTag = {
 ```typescript
 async function saveTag() {
   try {
-    if (!newTag.name || !newTag.selectedAuthorKey) {
-      error = 'Please fill in all required fields';
+    console.log('[Admin] Saving tag:', tagBeingEdited);
+
+    // Validate inputs
+    if (!tagBeingEdited.data.name || !tagBeingEdited.data.description || !selectedAuthorKey) {
+      errorGlobal = 'Please fill in all required fields, including selecting an author';
       return;
     }
 
     // Get selected user
-    const selectedUser = users.find(u => u.key === newTag.selectedAuthorKey);
-    if (!selectedUser) {
-      error = 'Selected user not found';
+    const selectedUser = users.find(u => u.key === selectedAuthorKey);
+    if (!selectedUser || !selectedUser.data.usr_key) {
+      errorGlobal = 'Selected user not found or missing ULID';
       return;
     }
 
-    // Generate tag key
-    const { fullKey, tagUlid } = createTagKey(selectedUser.data.usr_key, selectedUser.data.username);
+    // For new documents: generate ULID and format key
+    let tagDocKey: string;
+    let tagDocUlid: ULID | null = null;
+    let version: bigint | undefined;
 
-    // If updating existing tag, get current version
-    let version;
-    if (newTag.key) {
-      const existingDoc = await getDoc({
-        collection: COLLECTIONS.TAGS,
-        key: newTag.key
-      });
-      if (!existingDoc) {
-        error = 'Tag not found';
+    if (tagBeingEdited.key) {
+      // Updating existing tag - need to get version
+      try {
+        const existingDoc = await getDoc({
+          collection: COLLECTIONS.TAGS,
+          key: tagBeingEdited.key
+        });
+        if (!existingDoc) {
+          errorGlobal = 'Tag not found';
+          return;
+        }
+        tagDocKey = tagBeingEdited.key;
+        version = existingDoc.version;
+        // When updating, we use the existing tag_key from the document
+        tagDocUlid = existingDoc.data.tag_key;
+      } catch (e) {
+        console.error('[Admin] Error fetching existing tag:', e);
+        errorGlobal = 'Failed to fetch existing tag version';
         return;
       }
-      version = existingDoc.version;
+    } else {
+      // Creating new tag - generate new ULID and format key
+      tagDocUlid = createUlid();
+      tagDocKey = formatTagKey(selectedUser.data.usr_key, tagDocUlid, tagBeingEdited.data.name);
     }
 
     // Create or update tag document
     await setDoc({
       collection: COLLECTIONS.TAGS,
       doc: {
-        key: fullKey,
+        key: tagDocKey,
         data: {
-          name: newTag.name,
+          name: tagBeingEdited.data.name,
+          description: tagBeingEdited.data.description,
           usr_key: selectedUser.data.usr_key,  // Pure ULID
-          tag_key: tagUlid,                    // Pure ULID
-          username: selectedUser.data.username,
-          time_periods: newTag.time_periods,
-          reputation_threshold: newTag.reputation_threshold,
-          vote_reward: newTag.vote_reward,
-          min_users_for_threshold: newTag.min_users_for_threshold
+          tag_key: tagDocUlid!,               // Pure ULID
+          time_periods: tagBeingEdited.data.time_periods,
+          reputation_threshold: tagBeingEdited.data.reputation_threshold,
+          vote_reward: tagBeingEdited.data.vote_reward,
+          min_users_for_threshold: tagBeingEdited.data.min_users_for_threshold
         },
         ...(version && { version })
       }
     });
 
     // Reset form
-    newTag = {
+    tagBeingEdited = {
       key: '',
       name: '',
+      description: '',
       selectedAuthorKey: '',
       time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
       reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
       vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
       min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
     };
-
-    success = 'Tag saved successfully';
+    
+    successGlobal = 'Tag saved successfully';
+    errorGlobal = '';
     await loadTags();
   } catch (e) {
     console.error('[Admin] Error saving tag:', e);
-    error = e instanceof Error ? e.message : 'Failed to save tag';
+    
+    // Enhanced error handling
+    if (e instanceof Error) {
+      if (e.message.includes('Tag name')) {
+        errorGlobal = 'This tag name is already taken. Please choose a different one.';
+      } else if (e.message.includes('Invalid ULID')) {
+        errorGlobal = 'Invalid ULID format detected. Please check user selection.';
+      } else {
+        errorGlobal = e.message;
+      }
+    } else {
+      errorGlobal = 'Failed to save tag. Please try again.';
+    }
   }
 }
 ```
@@ -186,15 +213,16 @@ async function saveTag() {
         <td>
           <div class="space-y-1">
             <div class="font-mono text-xs">Key: {tag.key}</div>
-            <div class="font-mono text-xs">User ULID: {tag.data.usr_key}</div>
-            <div class="font-mono text-xs">Tag ULID: {tag.data.tag_key}</div>
+            <div class="font-mono text-xs">User ULID: {tag.data.usr_key || 'N/A'}</div>
+            <div class="font-mono text-xs">Tag ULID: {tag.data.tag_key || 'N/A'}</div>
             <div class="text-xs">Created: {new Date(Number(tag.created_at) / 1_000_000).toLocaleString()}</div>
           </div>
         </td>
         <td>
           <div class="space-y-1">
             <div class="font-bold">{tag.data.name}</div>
-            <div class="text-sm">Created by: {tag.data.username}</div>
+            <div class="text-sm opacity-75">{tag.data.description}</div>
+            <div class="text-xs">Author: {users.find(u => u.data.usr_key === tag.data.usr_key)?.data.username || 'Unknown'}</div>
           </div>
         </td>
         <!-- ... rest of the display ... -->
@@ -206,15 +234,19 @@ async function saveTag() {
 
 ## 5. Implementation Order
 
-1. Move ULID type to central types file
-2. Update tag document interface with new ULID types
-3. Create and test new `createTagKey()` function
-4. Remove `createTagDescription()` function and its imports
-5. Update admin page:
+1. Update `formatTagKey()` function to include tag name (already done)
+2. Remove `createTagDescription()` function and its imports
+3. Update admin page:
    - Add user selection UI
    - Update tag form state
-   - Modify `saveTag()` function
+   - Modify `saveTag()` function to use `createUlid()` and `formatTagKey()`
    - Update tag list display
-6. Test tag creation with new structure
-7. Test tag updates with new structure
-8. Verify key format and data storage 
+4. Test tag creation with new structure
+5. Test tag updates with new structure
+6. Verify key format and data storage
+7. Update loadTags() function to handle both old and new formats during transition
+
+## 6. Removal of `author_key`
+- Removed all references to `author_key` in the tag data structure.
+- Updated all logic to use `usr_key` with ULIDs for user identification.
+- Ensured backward compatibility is not required. 

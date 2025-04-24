@@ -36,16 +36,16 @@ Collection name: `users`
 ```typescript
 interface UserDocument {
     // Standard Juno fields (automatically managed)
-    key: string;                // Format: USR_{ulid}_USRNAME_{username}_ generated with ulid() src/lib/keys/create_ulid.ts
+    key: string;                // Format: usr_{ulid}_usrName_{username}_ generated with ulid() src/lib/keys/create_ulid.ts
     description: string;        // currently not used
     owner: Principal;           // Automatically set to user's Internet Identity Principal
     created_at: bigint;         // Creation timestamp in nanoseconds
     updated_at: bigint;         // Last update timestamp in nanoseconds
     version: bigint;            // Document version for concurrency control
     data: {                     // User-specific data
+        usr_key: ULID;          // Pure ULID for references
         username: string;       // Unique username (must be unique across all users)
         display_name: string;   // Display name (not required to be unique)
-        usr_key: ULID;          // Pure ULID for references
     }
 }
 ```
@@ -98,17 +98,17 @@ Collection name: `tags`
 ```typescript
 interface TagDocument {
     // Standard Juno fields (automatically managed)
-    key: string;                // Format: usr_{ulid}_tag_{ulid}_tagName_{name}_ generated with ulid() src/lib/keys/create_ulid.ts
+    key: string;                // Format: usr_{userUlid}_tag_{tagUlid}_tagName_{tagName}_ generated with formatTagKey() 
     description: string;        // currently not used
     owner: Principal;           // Automatically set to document creator's Principal
     created_at: bigint;         // Creation timestamp in nanoseconds
     updated_at: bigint;         // Last update timestamp in nanoseconds
     version: bigint;            // Document version for concurrency control
     data: {                     // Tag-specific data
-        name: string;           // Display name of the tag
+        name: string;           // Display name of the tag (original case preserved)
+        description: string;    // Longer description of the tag's purpose
         usr_key: ULID;          // Pure ULID of the user who created the tag
         tag_key: ULID;          // Pure ULID of this tag
-        username: string;       // Creator's username for key reconstruction if needed
         time_periods: Array<{   // Time periods for vote decay multipliers
             months: number;     // Duration in months (1-999)
             multiplier: number; // Weight multiplier (0.05-1.5)
@@ -123,16 +123,17 @@ interface TagDocument {
 Example Tag Document:
 ```typescript
 {
-    key: "tag_123",
-    description: "[owner:user_123],[name:Technical Skills]",
+    key: "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW_tagName_technicalskills_",
+    description: "",
     owner: Principal.fromText("..."),
     created_at: 1234567890n,
     updated_at: 1234567890n,
     version: 1n,
     data: {
-        author_key: "user_123",
-        name: "Technical Skills",
+        name: "Technical-Skills", // Display name of the tag (original case preserved, no spaces or special characters, just alphanumeric and dashes)	
         description: "Technical expertise and knowledge",
+        usr_key: "01ARZ3NDEKTSV4RRFFQ69G5FAV", // Pure ULID of the user who created the tag
+        tag_key: "01ARZ3NDEKTSV4RRFFQ69G5FAW", // Pure ULID of this tag
         time_periods: [
             { months: 1, multiplier: 1.5 },    // Period 1: First month
             { months: 2, multiplier: 1.2 },    // Period 2: Months 2-3
@@ -152,16 +153,16 @@ Example Tag Document:
 #### Validation Rules
 1. **Name Validation**
    - Length: 3-30 characters
-   - Allowed characters: alphanumeric, hyphen
+   - Allowed characters: alphanumeric, hyphen, no spaces, underscores, or special characters
    - Must be unique across all tags (case-insensitive)
    - Stored in lowercase format in the key field
    - Stored in original case in the data.name field
 
 2. **Document Key Format**
-   - Format: `usr_{ulid}_tag_{ulid}_tagName_{name}_`
+   - Format: `usr_{userUlid}_tag_{tagUlid}_tagName_{tagName}_`
    - First ULID: Creator's user identifier (must be uppercase)
    - Second ULID: Tag's unique identifier (must be uppercase)
-   - Name: Lowercase, sanitized version of tag name
+   - Tag Name: Lowercase, sanitized version of tag name for easy querying
 
 3. **Production Mode Rules**
    - Stricter validation rules apply
@@ -175,6 +176,7 @@ Example Tag Document:
 - All timestamps are in nanoseconds
 - Version is required for updates to prevent concurrent modifications
 - ULID provides chronological sorting capability
+- The tag name is included in the key to facilitate uniqueness checks and queries
 
 ### Votes Collection
 
