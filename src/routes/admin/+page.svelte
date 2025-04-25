@@ -185,7 +185,7 @@
 				collection: COLLECTIONS.REPUTATIONS,
 				filter: {
 					matcher: {
-						description: `tag=${tagKey};`
+						key: `tag=${tagKey}`
 					}
 				}
 			});
