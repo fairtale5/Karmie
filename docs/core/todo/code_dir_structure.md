@@ -9,25 +9,27 @@ As the Reputator backend grows in complexity, there's a need to better organize 
 ```
 src/satellite/
 ├── src/
-│   ├── lib.rs                 # Main entry point and exports
-│   ├── validation/            # Input validation
-│   │   ├── mod.rs             # Module exports
-│   │   ├── user.rs            # User-related validations  
-│   │   ├── tag.rs             # Tag-related validations
-│   │   ├── vote.rs            # Vote-related validations
-│   │   └── reputation.rs      # Reputation-related validations
-│   ├── core/                  # Core business logic
-│   │   ├── mod.rs             # Module exports
-│   │   ├── reputation.rs      # Reputation calculation algorithms
-│   │   └── tags.rs            # Tag management algorithms
-│   └── utils/                 # Utility functions
-│       ├── mod.rs             # Module exports
-│       ├── structs.rs         # Data structures
-│       ├── logging.rs         # Logging utilities
-│       ├── time.rs            # Time-related utilities
-│       ├── description.rs     # Document description helpers
-│       ├── normalize.rs       # String normalization utilities
-│       └── id_generator.rs    # ID generation utilities
+│   ├── lib.rs                            # Main entry point and exports
+│   ├── assert_set_doc/                   # Document creation validation hooks
+│   │   ├── assert_doc_user.rs            # User-document creation validation  
+│   │   ├── assert_doc_tag.rs             # Tag-document creation validation
+│   │   ├── assert_doc_vote.rs            # Vote-document creation validation
+│   │   └── assert_doc_reputation.rs      # Reputation-document creation validation
+|   |   validation/                       # Variable validation functions
+│   │   ├── validate_name.rs              # 
+│   │   └── validate_rg.rs                # 
+│   ├── core/                             # Core business logic
+│   │   ├── mod.rs                        # Module exports
+│   │   ├── reputation.rs                 # Reputation calculation algorithms
+│   │   └── tags.rs                       # Tag management algorithms
+│   └── utils/                            # Utility functions
+│       ├── mod.rs                        # Module exports
+│       ├── structs.rs                    # Data structures
+│       ├── logging.rs                    # Logging utilities
+│       ├── time.rs                       # Time-related utilities
+│       ├── description.rs                # Document description helpers
+│       ├── normalize.rs                  # String normalization utilities
+│       └── id_generator.rs               # ID generation utilities
 ```
 
 ## Implementation Plan

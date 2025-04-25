@@ -23,6 +23,9 @@
   - Remove usage of `nanoid()` in vote creation
   - Modify `saveVote()` to use `formatVoteKey`
 - [ ] Update document queries in frontend to use key-based search instead of description-based
+  - [ ] Update `loadUserReputations` to use key-based filtering instead of description-based filtering.
+  - [ ] Review `loadVotes` and `loadTags` for potential key-based filtering improvements.
+  - [ ] Ensure all queries are optimized for key-based search to improve efficiency.
 
 ### Next Phase: Backend Changes
 - [ ] Add ULID library (dylanhart/ulid-rs) to backend

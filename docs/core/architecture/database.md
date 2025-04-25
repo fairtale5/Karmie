@@ -380,51 +380,7 @@ Example Reputation Document:
 
 The description field uses a consistent bracket format that enables powerful querying capabilities. Here are some common query patterns:
 
-### Exact Match Query
-```typescript
-// Find a specific user's reputation in a specific tag
-const { items } = await listDocs({
-    collection: "reputations",
-    filter: {
-        matcher: {
-            description: `[owner:${userKey}],[tag:${tagKey}]`
-        }
-    }
-});
-```
 
-### Partial Match Query
-```typescript
-// Find all votes for a specific tag, regardless of author or target
-const { items } = await listDocs({
-    collection: "votes",
-    filter: {
-        matcher: {
-            description: `[tag:${tagKey}]`
-        }
-    }
-});
-
-// Find all votes by a specific user
-const { items } = await listDocs({
-    collection: "votes",
-    filter: {
-        matcher: {
-            description: `[owner:${userKey}]`
-        }
-    }
-});
-
-// Find a user by username
-const { items } = await listDocs({
-    collection: "users",
-    filter: {
-        matcher: {
-            description: `[username:${username}]`
-        }
-    }
-});
-```
 
 ## Important Notes
 
