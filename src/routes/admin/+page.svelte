@@ -15,10 +15,6 @@
 	import { REPUTATION_SETTINGS } from '$lib/settings';
 	import { idlFactory } from '../../declarations/satellite/satellite.factory.did.js';
 	import type { _SERVICE as SatelliteActor } from '../../declarations/satellite/satellite.did';
-	import {
-		createVoteDescription,
-		createSearchPattern
-	} from '$lib/description';
 	import { getUserReputationFull } from '../../declarations/satellite/satellite.api';
 	import {
 		formatUserKey,
@@ -51,9 +47,17 @@
 	];
 
 	type UserData = Record<string, unknown>;
-
+	 
 	// User form data
-	let userBeingEdited: Doc<UserData>;
+	let userBeingEdited: Doc<UserData> = {
+    key: '',
+    description: '',
+    owner: '',
+    created_at: BigInt(0),
+    updated_at: BigInt(0),
+    version: BigInt(0),
+    data: {}
+	};
 
 	// List of all users
 	let users: Doc<any>[] = [];
@@ -76,12 +80,12 @@
 		updated_at: BigInt(0),
 		version: BigInt(0),
 		data: {
-			name: '',
-			description: '',
-			time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
-			reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
-			vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
-			min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
+		name: '',
+		description: '',
+		time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
+		reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
+		vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
+		min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
 		}
 	};
 
@@ -103,7 +107,7 @@
 	// Form data for creating votes
 	let newVote = {
 		data: {
-			author_key: '',
+			usr_key: '',
 			target_key: '',
 			tag_key: '',
 			value: 1,
@@ -113,7 +117,7 @@
 
 	// List of all votes
 	let votes: Doc<{
-		author_key: string;
+		usr_key: string;
 		target_key: string;
 		tag_key: string;
 		value: number;
@@ -155,12 +159,12 @@
 	async function loadUserReputations(tagKey: string) {
 		try {
 			console.log('[Admin] Loading reputations for tag:', tagKey);
-
+			
 			// Get all users first
 			const usersList = await listDocs<{ username: string; display_name: string }>({
 				collection: COLLECTIONS.USERS
 			});
-
+			
 			// There are two approaches to fetching reputation data:
 			// 1. Bulk approach (current): Get all reputations for the tag at once with listDocs
 			//    - Pros: Fewer network requests, better for many users
@@ -170,12 +174,12 @@
 			//    - Cons: More network requests, worse for many users
 			//
 			// The bulk approach is more efficient for admin views where we need all user data
-
+			
 			// Get the satellite actor
 			const actor = await getSatelliteExtendedActor<SatelliteActor>({
 				idlFactory
 			});
-
+			
 			// Get all reputations for this tag
 			const reputationsList = await listDocs<ReputationData>({
 				collection: COLLECTIONS.REPUTATIONS,
@@ -185,12 +189,12 @@
 					}
 				}
 			});
-
+			
 			// Create a map of user_key to reputation data
 			const reputationMap = new Map(
 				reputationsList.items.map((item) => [item.data.user_key, item.data])
 			);
-
+			
 			// Get reputation data for each user
 			userReputations = {};
 			for (const user of usersList.items) {
@@ -206,7 +210,7 @@
 				};
 				userReputations[user.key] = reputation;
 			}
-
+			
 			// Example of individual approach (not used but shown for reference):
 			// userReputations = {};
 			// for (const user of usersList.items) {
@@ -242,7 +246,7 @@
 			//         };
 			//     }
 			// }
-
+			
 			console.log('[Admin] Loaded reputations:', userReputations);
 		} catch (error) {
 			console.error('[Admin] Error loading reputations:', error);
@@ -254,7 +258,7 @@
 		// Subscribe to auth state
 		const sub = authSubscribe((state) => {
 			user = state;
-
+			
 			// If user is not logged in, redirect to home
 			if (user === null) {
 				goto('/');
@@ -299,7 +303,7 @@
 	async function loadVotes() {
 		try {
 			const votesList = await listDocs<{
-				author_key: string;
+				usr_key: string;
 				target_key: string;
 				tag_key: string;
 				value: number;
@@ -317,9 +321,9 @@
 	// Load tags
 	async function loadTags() {
 		try {
-			const tagsList = await listDocs<{
-				name: string;
-				description: string;
+			const tagsList = await listDocs<{ 
+				name: string; 
+				description: string; 
 				usr_key?: ULID; // Use optional fields to handle both old and new formats
 				tag_key?: ULID;
 				time_periods: { months: number; multiplier: number }[];
@@ -418,7 +422,7 @@
 			await loadUsers();
 		} catch (e) {
 			console.error('[Admin] Error saving user:', e);
-
+			
 			// Enhanced error handling
 			if (e instanceof Error) {
 				if (e.message.includes('Username')) {
@@ -482,7 +486,7 @@
 	async function saveTag() {
 		try {
 			console.log('[Admin] Saving tag:', tagBeingEdited);
-
+			
 			// Validate inputs
 			if (!tagBeingEdited.data.name || !tagBeingEdited.data.description || !selectedAuthorKey) {
 				errorGlobal = 'Please fill in all required fields, including selecting an author';
@@ -493,8 +497,8 @@
 			const selectedUser = users.find(u => u.key === selectedAuthorKey);
 			if (!selectedUser || !selectedUser.data.usr_key) {
 				errorGlobal = 'Selected user not found or missing ULID';
-				return;
-			}
+						return;
+					}
 
 			// For new documents: generate tag ULID and format key
 			let tagDocKey: string;
@@ -554,12 +558,12 @@
 				updated_at: BigInt(0),
 				version: BigInt(0),
 				data: {
-					name: '',
-					description: '',
-					time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
-					reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
-					vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
-					min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
+				name: '',
+				description: '',
+				time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
+				reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
+				vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
+				min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
 				}
 			};
 			selectedAuthorKey = '';
@@ -672,23 +676,21 @@
 	 */
 	async function saveVote() {
 		try {
-			// Generate a new document key
-			const documentKey = nanoid();
+			// Generate a new ULID for the vote
+			const voteUlid = createUlid();
 
 			// Create the vote document with proper structure
 			const voteDoc = {
 				collection: 'votes',
 				doc: {
-					key: documentKey,
-					description: createVoteDescription(
-						user,
-						documentKey,
-						newVote.data.author_key,
-						newVote.data.target_key,
-						newVote.data.tag_key
+					key: formatVoteKey(
+						user?.key as ULID, 					// Use the authenticated user's key
+						newVote.data.tag_key as ULID, 		// Use the existing tag key
+						newVote.data.target_key as ULID, 	// Use the existing target key
+						voteUlid                            // Use the new ULID for the vote
 					),
 					data: {
-						author_key: newVote.data.author_key,
+						usr_key: user?.key, // Use the authenticated user's key
 						target_key: newVote.data.target_key,
 						tag_key: newVote.data.tag_key,
 						value: newVote.data.value,
@@ -704,7 +706,7 @@
 
 			// Reset form
 			newVote.data = {
-				author_key: '',
+				usr_key: '',
 				target_key: '',
 				value: 1,
 				tag_key: '',
@@ -751,7 +753,7 @@
 
 			// Reload votes
 			await loadVotes();
-
+			
 			// Reload reputations if a tag is selected
 			if (selectedTag) {
 				await loadUserReputations(selectedTag);
@@ -768,24 +770,24 @@
 	async function recalculateUserReputation(userKey: string) {
 		try {
 			console.log('[Admin] Recalculating reputation for user:', userKey);
-
+			
 			// Get the satellite actor
 			const actor = await getSatelliteExtendedActor<SatelliteActor>({
 				idlFactory
 			});
-
+			
 			// Get the current tag key from the URL
 			const tagKey = window.location.pathname.split('/').pop();
 			if (!tagKey) {
 				throw new Error('No tag selected');
 			}
-
+			
 			// Call recalculate_reputation
 			const result = await actor.recalculate_reputation(userKey, tagKey);
-
+			
 			// Reload reputations to show updated values
 			await loadUserReputations(tagKey);
-
+			
 			successGlobal = `Recalculated reputation for user ${userKey}`;
 			errorGlobal = '';
 		} catch (e) {
@@ -799,12 +801,12 @@
 	function getTimeAgo(timestamp: number): string {
 		const now = Date.now() * 1_000_000; // Convert to nanoseconds
 		const diff = now - timestamp;
-
+		
 		const seconds = diff / 1_000_000_000;
 		const minutes = seconds / 60;
 		const hours = minutes / 60;
 		const days = hours / 24;
-
+		
 		if (days > 1) return `${Math.floor(days)}d ago`;
 		if (hours > 1) return `${Math.floor(hours)}h ago`;
 		if (minutes > 1) return `${Math.floor(minutes)}m ago`;
@@ -817,7 +819,7 @@
 			const actor = await getSatelliteExtendedActor<SatelliteActor>({
 				idlFactory
 			});
-
+			
 			const result = await actor.recalculate_reputation(userKey, tagKey);
 			if ('Ok' in result) {
 				// Reload reputations after recalculation
@@ -1156,7 +1158,7 @@
 			<form on:submit|preventDefault={saveVote} class="space-y-4">
 				<div>
 					<label for="author" class="block">Author (User Key):</label>
-					<select id="author" bind:value={newVote.data.author_key} class="w-full border p-2">
+					<select id="author" bind:value={newVote.data.usr_key} class="w-full border p-2">
 						<option value="">Select Author</option>
 						{#each users as user}
 							<option value={user.key}>
@@ -1229,14 +1231,13 @@
 					</thead>
 					<tbody>
 						{#each votes.filter((v) => !selectedTag || v.data.tag_key === selectedTag) as vote}
-							{@const author = users.find((u) => u.key === vote.data.author_key)}
+							{@const author = users.find((u) => u.key === vote.data.usr_key)}
 							{@const target = users.find((u) => u.key === vote.data.target_key)}
 							{@const tag = tags.find((t) => t.key === vote.data.tag_key)}
 							<tr>
 								<td>
 									<div class="space-y-1">
 										<div class="font-mono text-xs">Key: {vote.key}</div>
-										<div class="font-mono text-xs">Description: {vote.description}</div>
 										<div class="font-mono text-xs">Owner: {vote.owner}</div>
 										<div class="text-xs">
 											Created: {new Date(Number(vote.created_at) / 1_000_000).toLocaleString()}
@@ -1266,7 +1267,7 @@
 												: 'Unknown'}
 										</div>
 										<div>Tag: {tag ? tag.data.name : 'No Tag'}</div>
-										<div class="font-mono text-xs">Author Key: {vote.data.author_key}</div>
+										<div class="font-mono text-xs">Author Key: {vote.data.usr_key}</div>
 										<div class="font-mono text-xs">Target Key: {vote.data.target_key}</div>
 										<div class="font-mono text-xs">Tag Key: {vote.data.tag_key || 'None'}</div>
 									</div>
@@ -1481,12 +1482,12 @@
 									updated_at: BigInt(0),
 									version: BigInt(0),
 									data: {
-										name: '',
-										description: '',
-										time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
-										reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
-										vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
-										min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
+									name: '',
+									description: '',
+									time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
+									reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
+									vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
+									min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
 									}
 								};
 								selectedAuthorKey = '';
@@ -1541,15 +1542,7 @@
 									<div class="space-y-1">
 										<div class="font-bold">{tag.data.name}</div>
 										<div class="text-sm opacity-75">{tag.data.description}</div>
-										<!-- Show usr_key if available, otherwise fall back to author_key -->
-										<div class="font-mono text-xs">
-											{#if tag.data.usr_key}
-												User ULID: {tag.data.usr_key}
-											{:else if tag.data.author_key}
-												Author Key: {tag.data.author_key} (old format)
-											{:else}
-												No Author
-											{/if}
+										<div class="font-mono text-xs">User ULID: {tag.data.usr_key}
 										</div>
 										{#if tag.data.tag_key}
 											<div class="font-mono text-xs">Tag ULID: {tag.data.tag_key}</div>
@@ -1613,7 +1606,6 @@
 								<td>
 									<div class="space-y-1">
 										<div class="font-mono text-xs">Key: {doc.key}</div>
-										<div class="font-mono text-xs">Description: {doc.description}</div>
 										<div class="font-mono text-xs">Owner: {doc.owner}</div>
 										<div class="text-xs">
 											Created: {new Date(Number(doc.created_at) / 1_000_000).toLocaleString()}
@@ -1669,4 +1661,4 @@
 	<div class="container mx-auto p-4">
 		<p>Please log in to access the admin interface.</p>
 	</div>
-{/if}
+{/if} 

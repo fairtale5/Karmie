@@ -19,7 +19,7 @@
   - Remove usage of `nanoid()` in tag creation
   - Update tag form to include author selection
   - Modify `saveTag()` to use `formatTagKey`
-- [ ] Update Vote document creation in admin panel to use new key format
+- [x] Update Vote document creation in admin panel to use new key format
   - Remove usage of `nanoid()` in vote creation
   - Modify `saveVote()` to use `formatVoteKey`
 - [ ] Update document queries in frontend to use key-based search instead of description-based

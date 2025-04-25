@@ -5,7 +5,7 @@ This document defines the database schema for the Reputator project.
 ## Document Keys and Principals
 
 ### Document Keys
-- All document keys are generated using [nanoid](https://github.com/ai/nanoid) when documents are created
+- All document keys are generated using ULID when documents are created
 - Keys are unique identifiers within a collection, but have no special meaning
 - Keys are used only for document lookup and referencing
 - Example: `"user_123"`, `"tag_456"`, `"vote_789"`
@@ -84,6 +84,23 @@ interface UserDocument {
 - Version is required for updates to prevent concurrent modifications
 - ULID provides chronological sorting capability
 
+Example User Document:
+```typescript
+{
+    key: "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_usrName_johndoe_",
+    description: "",
+    owner: Principal.fromText("..."),
+    created_at: 1234567890n,
+    updated_at: 1234567890n,
+    version: 1n,
+    data: {
+        usr_key: "01ARZ3NDEKTSV4RRFFQ69G5FAV", // Pure ULID for user reference
+        username: "johndoe", // Lowercase, sanitized username
+        display_name: "John Doe" // Display name in original case
+    }
+}
+```
+
 ### Tags Collection
 
 Collection name: `tags`
@@ -130,23 +147,23 @@ Example Tag Document:
     updated_at: 1234567890n,
     version: 1n,
     data: {
-        name: "Technical-Skills", // Display name of the tag (original case preserved, no spaces or special characters, just alphanumeric and dashes)	
-        description: "Technical expertise and knowledge",
-        usr_key: "01ARZ3NDEKTSV4RRFFQ69G5FAV", // Pure ULID of the user who created the tag
-        tag_key: "01ARZ3NDEKTSV4RRFFQ69G5FAW", // Pure ULID of this tag
+        name: "Technical-Skills",               // Display name of the tag (original case preserved, no spaces or special characters, just alphanumeric and dashes)	
+        description: "Technical expertise and knowledge",   // Description of the tag's purpose, created by the author user.
+        usr_key: "01ARZ3NDEKTSV4RRFFQ69G5FAV",  // Pure ULID of the user who created the tag
+        tag_key: "01ARZ3NDEKTSV4RRFFQ69G5FAW",  // Pure ULID of this tag
         time_periods: [
-            { months: 1, multiplier: 1.5 },    // Period 1: First month
-            { months: 2, multiplier: 1.2 },    // Period 2: Months 2-3
-            { months: 3, multiplier: 1.1 },    // Period 3: Months 4-6
-            { months: 6, multiplier: 1.0 },    // Period 4: Months 7-12
-            { months: 12, multiplier: 0.95 },  // Period 5: Months 13-24
-            { months: 12, multiplier: 0.75 },  // Period 6: Months 25-36
-            { months: 12, multiplier: 0.55 },  // Period 7: Months 37-48
-            { months: 999, multiplier: 0.25 }  // Period 8: Months 49+ (treated as infinity)
+            { months: 1, multiplier: 1.5 },     // Period 1: First month
+            { months: 2, multiplier: 1.2 },     // Period 2: Months 2-3
+            { months: 3, multiplier: 1.1 },     // Period 3: Months 4-6
+            { months: 6, multiplier: 1.0 },     // Period 4: Months 7-12
+            { months: 12, multiplier: 0.95 },   // Period 5: Months 13-24
+            { months: 12, multiplier: 0.75 },   // Period 6: Months 25-36
+            { months: 12, multiplier: 0.55 },   // Period 7: Months 37-48
+            { months: 999, multiplier: 0.25 }   // Period 8: Months 49+ (treated as infinity)
         ],
-        reputation_threshold: 10,     // Users need 10 reputation to get voting power
-        vote_reward: 0.1,            // Users get 0.1 reputation for each vote they cast
-        min_users_for_threshold: 5   // Need 5 users to reach threshold before restricting rewards
+        reputation_threshold: 10,               // Users need 10 reputation to get voting power
+        vote_reward: 0.1,                       // Users get 0.1 reputation for each vote they cast
+        min_users_for_threshold: 5              // Need 5 users to reach threshold before restricting rewards
     }
 }
 ```
@@ -222,7 +239,7 @@ interface VoteDocument {
    - First ULID: Voter's identifier (must be uppercase)
    - Second ULID: Tag identifier (must be uppercase)
    - Third ULID: Target user identifier (must be uppercase)
-   - Fourth ULID: Vote identifier (must be uppercase)
+   - Fourth ULID: Vote identifier (must be uppercase) followed by an underscore to signal the end of the key.
    - All parts must be present and properly formatted
 
 3. **Production Mode Rules**
@@ -235,6 +252,25 @@ interface VoteDocument {
 - Vote weight is stored in voter's reputation document, not in vote document
 - Some tags may have special validation rules for vote values
 
+Example Vote Document:
+```typescript
+{
+    key: "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW_tar_01ARZ3NDEKTSV4RRFFQ69G5FAX_key_01ARZ3NDEKTSV4RRFFQ69G5FAY_",
+    description: "",
+    owner: Principal.fromText("..."),
+    created_at: 1234567890n,
+    updated_at: 1234567890n,
+    version: 1n,
+    data: {
+        usr_key: "01ARZ3NDEKTSV4RRFFQ69G5FAV",      // Pure ULID of the user casting the vote
+        tag_key: "01ARZ3NDEKTSV4RRFFQ69G5FAW",      // Pure ULID of the tag being voted on
+        tar_key: "01ARZ3NDEKTSV4RRFFQ69G5FAX",      // Pure ULID of the target user receiving the vote
+        vote_key: "01ARZ3NDEKTSV4RRFFQ69G5FAY",     // Pure ULID for this specific vote
+        value: 1,                                   // Vote value (usually +1 for upvote, -1 for downvote)
+        created_at: 1234567890n                     // Creation timestamp in nanoseconds
+    }
+}
+```
 
 ### Reputations Collection
 
@@ -398,8 +434,8 @@ const { items } = await listDocs({
    - Maximum batch operation size: 100 documents
 
 2. **Key Generation**
-   - All document keys are generated using nanoid()
-   - Keys are unique within a collection
+   - All document keys are generated using ULID
+   - Keys are unique within a collection and provide chronological sorting capability
    - Keys are used for document references
    - Do not use Principal IDs as keys
 

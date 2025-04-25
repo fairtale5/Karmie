@@ -26,13 +26,13 @@
  * DocumentPrefix type:
  * Think of this like a template checker. For example, if you try to use:
  * "USER_123" -> Error! (wrong format)
- * "USR_abc" -> Error! (not a valid ULID)
- * "USR_01ARZ3NDEKTSV4RRFFQ69G5FAV" -> ✓ Success! (correct format)
+ * "usr_abc" -> Error! (not a valid ULID)
+ * "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV" -> ✓ Success! (correct format)
  * 
  * ParsedDocumentKey type:
  * Helps us safely break down complex keys into their parts. Like taking:
- * "USR_123_TAG_456" and getting:
- * - What kind of document is it? ("USR")
+ * "usr_123_tag_456" and getting:
+ * - What kind of document is it? ("usr")
  * - What's the user's ID? ("123")
  * - What's the tag's ID? ("456")
  * This prevents us from accidentally splitting keys in the wrong place
