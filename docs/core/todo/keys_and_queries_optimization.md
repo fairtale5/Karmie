@@ -15,45 +15,112 @@
 
 ### Current Priority: Frontend Implementation
 - [x] Update Tag document creation in admin panel to use new key format 
-  - Follow implementation steps in `docs/core/temp/tag_implementation_plan.md`
-  - Remove usage of `nanoid()` in tag creation
-  - Update tag form to include author selection
-  - Modify `saveTag()` to use `formatTagKey`
+  - [x] Follow implementation steps in `docs/core/temp/tag_implementation_plan.md`
+  - [x] Remove usage of `nanoid()` in tag creation
+  - [x] Update tag form to include author selection
+  - [x] Modify `saveTag()` to use `formatTagKey`
 - [x] Update Vote document creation in admin panel to use new key format
-  - Remove usage of `nanoid()` in vote creation
-  - Modify `saveVote()` to use `formatVoteKey`
+  - [x] Remove usage of `nanoid()` in vote creation
+  - [x] Modify `saveVote()` to use `formatVoteKey`
 - [ ] Update document queries in frontend to use key-based search instead of description-based
   - [ ] Update `loadUserReputations` to use key-based filtering instead of description-based filtering.
   - [ ] Review `loadVotes` and `loadTags` for potential key-based filtering improvements.
   - [ ] Ensure all queries are optimized for key-based search to improve efficiency.
 
 ### Next Phase: Backend Changes
-- [ ] Add ULID library (dylanhart/ulid-rs) to backend
-- [ ] Update `src/satellite/src/utils/structs.rs` to include new ULID fields
-  - Add `usr_key`, `tag_key`, etc. ULID fields to appropriate structs
-  - Mark `description` field as deprecated but keep for compatibility
-- [ ] Implement ULID generation and validation functions in Rust
-- [ ] Update backend validation for all document types:
-  - User document format and validation
-  - Tag document format and validation
-  - Vote document format and validation
-  - Reputation document format and validation
+- [x] Add ULID library (dylanhart/ulid-rs) to backend
+  - [x] Add `ulid` crate to Cargo.toml with proper features
+  - [x] Implement comprehensive unit tests for ULID functionality
+- [x] Create processors directory structure
+  - [x] Implement `/src/satellite/src/processors/mod.rs` for module exports
+  - [x] Implement `/src/satellite/src/processors/ulid_generator.rs` with:
+    - [x] `generate_ulid()` function using IC's time and random functions
+    - [x] `validate_ulid()` function with format checking
+    - [x] Comprehensive tests for generation and validation
+- [x] Implement document key management
+  - [x] Create `/src/satellite/src/processors/document_keys.rs` with:
+    - [x] Common utilities (`sanitize_for_key()`, `parse_key()`)
+    - [x] Key generation for all document types (`create_user_key()`, etc.)
+    - [x] Key validation for all document types (`validate_user_key()`, etc.)
+    - [x] Comprehensive tests for each function
+- [x] Update `src/satellite/src/utils/structs.rs` to include new ULID fields
+  - [x] Add `usr_key` optional field to `UserData` for backward compatibility
+  - [x] Add `usr_key` and `tag_key` ULID fields to `TagData`
+  - [x] Add ULID fields to `VoteData` (`usr_key`, `tag_key_ulid`, `tar_key`, `vote_key`)
+  - [x] Add ULID fields to `ReputationData` including new fields for enhanced functionality
+  - [x] Update documentation for all struct fields
+- [x] Restructure validation system
+  - [x] Move from `/utils/validation.rs` to `/validation/` modular approach
+  - [x] Create specialized validation modules (username, display_name, etc.)
+  - [x] Update imports and references throughout codebase
+- [x] Update backend validation for document types:
+  - [x] User document format and validation:
+    - [x] Simplify user key validation in `assert_doc_user.rs`
+    - [x] Implement key-based validation instead of regex pattern matching
+    - [x] Remove description validation in favor of key validation
+    - [x] Update username uniqueness check to use key-based lookup
+    - [x] Implement direct `get_doc` with partial key matching for efficiency
+  - [ ] Tag document format and validation
+  - [ ] Vote document format and validation
+  - [ ] Reputation document format and validation
+- [x] Update API interface
+  - [x] Add public API functions in `lib.rs` for key management:
+    - [x] `create_document_key_for_user`
+    - [x] `create_document_key_for_tag`
+    - [x] `create_document_key_for_reputation`
+    - [x] `create_document_key_for_vote`
+    - [x] `validate_document_key`
+- [x] Enhance Type Safety for ULID
+  - [x] Create dedicated ULID newtype for stronger type checking
+    - [x] Define newtype in `/src/satellite/src/processors/ulid_type.rs`
+    - [x] Add deserialization logic for ULID type
+    - [x] Implement proper error handling for invalid ULID conversions
+    - [x] Add timestamp validation for ULID (enforcing valid date range)
+    - [x] Add character set validation (Crockford Base32)
+  - [ ] Update struct definitions to use the new ULID type
+    - [ ] Modify `UserData.usr_key` to use `Option<ULID>` instead of `Option<String>`
+    - [ ] Update `TagData` fields to use ULID type
+    - [ ] Update `VoteData` fields to use ULID type 
+    - [ ] Update `ReputationData` fields to use ULID type
+  - [ ] Update document key functions to use the new ULID type
+    - [ ] Modify `generate_ulid()` to return ULID instead of String
+    - [ ] Update key generation functions to accept ULID type
+    - [ ] Update key validation functions to work with ULID type
+  - [x] Add comprehensive tests for ULID type safety
+    - [x] Test serialization/deserialization
+    - [x] Test validation during construction
+    - [x] Test error handling for invalid ULIDs
 - [ ] Update document creation flows for Reputations (see `docs/core/temp/reputation_implementation_plan.md`and reputation_calculations.rs)
 - [ ] Update query patterns to use key-based search
-- [ ] Implement hybrid query approach to support both old and new formats during transition
+  - [x] Implement user document partial key matching in `validate_user_document`
+  - [ ] Update `list_docs` usage to prefer key-based filtering
+  - [ ] Implement key-based search for reputation documents
+  - [ ] Implement key-based search for vote documents
+  - [ ] Implement key-based search for tag documents
+- [ ] Implement clean transition approach
+  - [ ] Create utilities for dual-query (both key and description) for transition period
+  - [ ] Implement validation that supports both old and new formats
 
 ### Documentation & Testing
 - [ ] Update `docs/core/architecture/database.md` to reflect the new document layouts:
-  - Update key format descriptions for all collections
-  - Document transition approach from description-based to key-based queries
-  - Update example documents to show new ULID format
-  - Remove outdated query examples and add new key-based query examples
+  - [ ] Update key format descriptions for all collections
+  - [ ] Document transition approach from description-based to key-based queries
+  - [ ] Update example documents to show new ULID format
+  - [ ] Remove outdated query examples and add new key-based query examples
 - [ ] Create implementation guide for team
-- [ ] Test performance impact of key-based vs. description-based queries
+  - [ ] Document new key validation approach
+  - [ ] Provide examples of key-based queries
+  - [ ] Explain performance benefits of the new approach
+- [ ] Testing
+  - [x] Add comprehensive unit tests for ULID generation
+  - [x] Add comprehensive unit tests for document key validation
+  - [ ] Test performance impact of key-based vs. description-based queries
+  - [ ] Add integration tests for key-based document operations
 - [ ] Define clear monitoring strategy for new format adoption
+  - [ ] Create logging for key format issues during transition
+  - [ ] Implement metrics for tracking key-based query performance
 
 ### Migration Considerations
-- [ ] Determine approach for handling mixed format documents during transition
 - [ ] Develop a strategy for gradually migrating existing documents (if needed)
 - [ ] Create a timeline for full transition to new format
 - [ ] Define error handling approach for mixed-format operations
@@ -324,25 +391,26 @@ Important:
      6. Works with both document keys and descriptions
 
    - Implementation patterns:
-     ```rust
-     // Backend implementation using Rust
-     use junobuild_satellite::list_docs;
-     use junobuild_shared::types::list::{ListMatcher, ListParams};
+    ```rust
+    // Backend implementation using Rust
+    use junobuild_satellite::list_docs;
+    use junobuild_shared::types::list::{ListMatcher, ListParams};
 
-     async fn find_user_votes(user_ulid: &str, tag_ulid: &str) -> Result<Vec<Vote>, String> {
-         let results = list_docs(
-             String::from("votes"),
-             ListParams {
-                 matcher: Some(ListMatcher {
-                     key: Some(format!("^usr_{}_tag_{}", user_ulid, tag_ulid)),
-                     ..Default::default()
-                 }),
-                 ..Default::default()
-             },
-         ).await?;
+    // this is a bad example, because it is filtering in memory. the key should be matched at the same level as the collection
+    async fn find_user_votes(user_ulid: &str, tag_ulid: &str) -> Result<Vec<Vote>, String> {
+        let results = list_docs(
+            String::from("votes"),
+            ListParams {
+                matcher: Some(ListMatcher {
+                    key: Some(format!("^usr_{}_tag_{}", user_ulid, tag_ulid)),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        ).await?;
          
-         Ok(results.items)
-     }
+       Ok(results.items)
+    }
      ```
 
    - Performance considerations:
@@ -378,17 +446,6 @@ Important:
    - Add validation for ULID fields
    - Update any UI components that display/handle keys
 
-### Migration Plan
-
-1. **New Documents**
-   - All new documents will use new ULID format
-   - Implement validation for new format
-   - Take advantage of chronological sorting
-
-2. **Existing Documents**
-   - No need to migrate existing UUID documents
-   - New ULID format only applies to new documents
-
 ## Next Steps
 
 1. Add ULID libraries:
@@ -407,7 +464,3 @@ Important:
    - Delay between retries? (Currently exponential: 100ms -> 200ms -> 400ms)
    - Error handling after max retries?
 
-2. Migration strategy:
-   - How to handle mixed format queries?
-   - Documentation for mixed format period?
-   - Monitoring strategy for new format adoption?

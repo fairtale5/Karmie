@@ -130,4 +130,4 @@ pub async fn get_active_users_count(tag_key: &str) -> Result<u32, String> {
     );
     
     Ok(active_users)
-} 
+}

@@ -189,7 +189,6 @@ use junobuild_utils::{decode_doc_data, encode_doc_data};
 // Import our utility modules
 use crate::utils::{
     normalize::normalize_username,
-    validation::{validate_username, validate_display_name, validate_tag_name},
     structs::{Vote, VoteData, Tag, Reputation, UserData, TagData, TimePeriod, ReputationData},
     reputation_calculations::{
         calculate_user_reputation, get_user_reputation_data,
@@ -206,6 +205,7 @@ use crate::utils::{
 mod utils;
 mod assert_set_doc;
 mod validation;
+mod processors;
 
 // Use the moved validation function
 use assert_set_doc::{
@@ -244,8 +244,9 @@ async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
             Ok(())
         }
         _ => {
+            // This should never happen because we're specifying collections in the decorator
             let err_msg = format!("Unknown collection: {}", context.data.collection);
-            logger!("error", "{}", err_msg);
+            logger!("error", "[on_set_doc] {}", err_msg);
             Err(err_msg)
         }
     }
@@ -388,85 +389,6 @@ fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
     
     result
 }   
-
-/// Validates time periods configuration for tags
-/// 
-/// Time periods define how reputation ages over time in a tag.
-/// The configuration must follow specific rules to ensure:
-/// - Proper coverage of different time spans
-/// - Reasonable reputation decay
-/// - System stability
-/// 
-/// Requirements:
-/// 1. At least 1 period must be defined
-/// 2. Maximum 10 periods allowed
-/// 3. Last period must have 999 months duration
-/// 4. Valid multiplier values and increments
-/// 
-/// # Arguments
-/// * `periods` - Array of TimePeriod structs to validate
-/// 
-/// # Returns
-/// * `Result<(), String>` - Ok if validation passes, Err with detailed message if it fails
-fn validate_time_periods(periods: &[TimePeriod]) -> Result<(), String> {
-    // Step 1: Validate array length
-    if periods.is_empty() {
-        return Err("Tag must have at least 1 time period".to_string());
-    }
-    if periods.len() > 10 {
-        return Err(format!(
-            "Tag cannot have more than 10 time periods (got: {})",
-            periods.len()
-        ));
-    }
-
-    // Step 2: Validate last period is "infinity" (999 months)
-    let last_period = periods.last().unwrap();
-    if last_period.months != 999 {
-        return Err(format!(
-            "Last period must be 999 months (got: {})",
-            last_period.months
-        ));
-    }
-
-    // Step 3: Validate each period's configuration
-    for (i, period) in periods.iter().enumerate() {
-        // Validate multiplier range (0.05 to 10.0)
-        if period.multiplier < 0.05 || period.multiplier > 10.0 {
-            let err_msg = format!(
-                "[validate_time_periods]Multiplier for period {} must be between 0.05 and 10.0 (got: {})",
-                i + 1, period.multiplier
-            );
-            logger!("error", "{}", err_msg);
-            return Err(err_msg);
-        }
-
-        // Validate multiplier step increments (0.05) with floating-point tolerance
-        // We multiply by 100 to work with integers and avoid floating-point issues
-        let multiplier_int = (period.multiplier * 100.0).round();
-        let remainder = multiplier_int % 5.0;
-        if remainder > 0.000001 { // Allow for small floating-point rounding errors
-            let err_msg = format!(
-                "[validate_time_periods] Multiplier for period {} must use 0.05 step increments (got: {})",
-                i + 1, period.multiplier
-            );
-            logger!("error", "{}", err_msg);
-            return Err(err_msg);
-        }
-
-        // Validate month duration is greater than 0
-        if period.months == 0 {
-            let err_msg = format!(
-                "[validate_time_periods] Months for period {} must be greater than 0 (got: {})",
-                i + 1, period.months
-            );
-            logger!("error", "{}", err_msg);
-            return Err(err_msg);
-        }
-    }
-
-    Ok(())
-}
 
 // =============================================================================
 // Available Hooks and Assertions (Currently Disabled)
@@ -684,11 +606,11 @@ async fn get_user_reputation_full(user_key: String, tag_key: String) -> Result<R
 /// 2. Verifies user exists in the tag
 /// 3. Triggers complete reputation recalculation
 /// 4. Updates all reputation components in storage
-/// 
+///
 /// # Arguments
 /// * `user_key` - The unique identifier of the user
 /// * `tag_key` - The unique identifier of the tag
-/// 
+///
 /// # Returns
 /// * `Result<f64, String>` - The updated effective reputation score or a detailed error message
 /// 
@@ -729,6 +651,99 @@ pub async fn recalculate_reputation(user_key: String, tag_key: String) -> Result
     );
     
     Ok(reputation_data.last_known_effective_reputation)
+}
+
+/// Creates a document key using the new ULID-based format
+/// This is a helper function that can be used during document creation
+/// to generate properly formatted keys according to the schema
+///
+/// # Arguments
+/// * `username` - The username to use in the key
+///
+/// # Returns
+/// * `Result<String, String>` - The formatted key or an error
+#[query]
+pub async fn create_document_key_for_user(username: String) -> Result<String, String> {
+    // Use our document_keys module to create a properly formatted key
+    crate::processors::document_keys::create_user_key(None, &username).await
+}
+
+/// Creates a document key for a tag using the new ULID-based format
+///
+/// # Arguments
+/// * `user_ulid` - The ULID of the user creating the tag
+/// * `tag_name` - The name of the tag
+///
+/// # Returns
+/// * `Result<String, String>` - The formatted key or an error
+#[query]
+pub async fn create_document_key_for_tag(user_ulid: String, tag_name: String) -> Result<String, String> {
+    // Use our document_keys module to create a properly formatted key
+    crate::processors::document_keys::create_tag_key(&user_ulid, None, &tag_name).await
+}
+
+/// Creates a document key for a reputation entry using the new ULID-based format
+///
+/// # Arguments
+/// * `user_ulid` - The ULID of the user
+/// * `tag_ulid` - The ULID of the tag
+///
+/// # Returns
+/// * `Result<String, String>` - The formatted key or an error
+#[query]
+pub fn create_document_key_for_reputation(user_ulid: String, tag_ulid: String) -> Result<String, String> {
+    // Use our document_keys module to create a properly formatted key
+    crate::processors::document_keys::create_reputation_key(&user_ulid, &tag_ulid)
+}
+
+/// Creates a document key for a vote using the new ULID-based format
+///
+/// # Arguments
+/// * `user_ulid` - The ULID of the voter
+/// * `tag_ulid` - The ULID of the tag
+/// * `target_ulid` - The ULID of the user receiving the vote
+///
+/// # Returns
+/// * `Result<String, String>` - The formatted key or an error
+#[query]
+pub async fn create_document_key_for_vote(
+    user_ulid: String, 
+    tag_ulid: String, 
+    target_ulid: String
+) -> Result<String, String> {
+    // Use our document_keys module to create a properly formatted key
+    crate::processors::document_keys::create_vote_key(&user_ulid, &tag_ulid, &target_ulid, None).await
+}
+
+/// Validates that a document key is properly formatted
+///
+/// # Arguments
+/// * `key` - The document key to validate
+/// * `doc_type` - The document type ("user", "tag", "reputation", or "vote")
+///
+/// # Returns
+/// * `Result<bool, String>` - Ok(true) if valid, Err with message if invalid
+#[query]
+pub fn validate_document_key(key: String, doc_type: String) -> Result<bool, String> {
+    match doc_type.as_str() {
+        "user" => {
+            crate::processors::document_keys::validate_user_key(&key)?;
+            Ok(true)
+        },
+        "tag" => {
+            crate::processors::document_keys::validate_tag_key(&key)?;
+            Ok(true)
+        },
+        "reputation" => {
+            crate::processors::document_keys::validate_reputation_key(&key)?;
+            Ok(true)
+        },
+        "vote" => {
+            crate::processors::document_keys::validate_vote_key(&key)?;
+            Ok(true)
+        },
+        _ => Err(format!("Unknown document type: {}", doc_type))
+    }
 }
 
 include_satellite!();

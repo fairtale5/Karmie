@@ -52,6 +52,7 @@ pub struct UserData {
     
     /// ULID for this user, stored separately from the formatted key
     /// This is the raw ULID without username and prefixes
+    /// Optional for backward compatibility during transition
     pub usr_key: Option<String>,
 }
 
@@ -94,7 +95,7 @@ pub struct Tag {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TagData {
 
-    /// User key who created the tag
+    /// User key who created the tag (legacy field, kept for backward compatibility)
     pub author_key: String,
 
     /// Display name of the tag
@@ -114,7 +115,14 @@ pub struct TagData {
 
     /// Minimum number of users that need to reach threshold before vote rewards are restricted
     pub min_users_for_threshold: u32,
-
+    
+    /// ULID for the user who created this tag
+    /// This is the raw ULID without prefixes, stored as uppercase
+    pub usr_key: String,
+    
+    /// ULID for this tag
+    /// This is the raw ULID without prefixes, stored as uppercase
+    pub tag_key: String,
 }
 
 /// Represents a vote cast by one user on another
@@ -154,13 +162,13 @@ pub struct Vote {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VoteData {
 
-    /// User key who cast the vote (nanoid-generated document key)
+    /// User key who cast the vote (legacy field, kept for backward compatibility)
     pub author_key: String,
 
-    /// User key being voted on (nanoid-generated document key)
+    /// User key being voted on (legacy field, kept for backward compatibility)
     pub target_key: String,
 
-    /// Tag key this vote is for (nanoid-generated document key)
+    /// Tag key this vote is for (legacy field, kept for backward compatibility)
     pub tag_key: String,
 
     /// Vote value (+1 for upvote, -1 for downvote)
@@ -168,6 +176,27 @@ pub struct VoteData {
 
     /// Vote weight (default: 1.0)
     pub weight: f64,
+    
+    /// ULID for the user who cast this vote
+    /// This is the raw ULID without prefixes, stored as uppercase
+    pub usr_key: String,
+    
+    /// ULID for the tag this vote is for
+    /// This is the raw ULID without prefixes, stored as uppercase
+    /// Same as tag_key but in ULID format
+    pub tag_key_ulid: String,
+    
+    /// ULID for the target user receiving the vote
+    /// This is the raw ULID without prefixes, stored as uppercase
+    pub tar_key: String,
+    
+    /// ULID for this specific vote
+    /// This is the raw ULID without prefixes, stored as uppercase
+    pub vote_key: String,
+    
+    /// Creation timestamp in nanoseconds
+    /// Duplicate of the document's created_at field
+    pub created_at: u64,
 }
 
 /// Represents a user's reputation in a specific tag
@@ -207,10 +236,10 @@ pub struct Reputation {
 #[derive(Debug, Serialize, Deserialize, Clone, CandidType)]
 pub struct ReputationData {
 
-    /// The user this reputation is for
+    /// The user this reputation is for (legacy field, kept for backward compatibility)
     pub user_key: String,
 
-    /// The tag this reputation is for
+    /// The tag this reputation is for (legacy field, kept for backward compatibility)
     pub tag_key: String,
 
     /// Reputation from received votes
@@ -230,6 +259,35 @@ pub struct ReputationData {
 
     /// Whether the user has sufficient reputation to have voting power (above threshold)
     pub has_voting_power: bool,
+    
+    /// ULID for the user this reputation is for
+    /// This is the raw ULID without prefixes, stored as uppercase
+    pub usr_key: String,
+    
+    /// ULID for the tag this reputation is for
+    /// This is the raw ULID without prefixes, stored as uppercase
+    pub tag_key_ulid: String,
+    
+    /// Current reputation score
+    pub reputation: f64,
+    
+    /// User's voting weight in this tag
+    pub vote_weight_value: f64,
+    
+    /// Activity level in this tag
+    pub activity_score: f64,
+    
+    /// Count of votes received
+    pub received_votes: u32,
+    
+    /// Count of votes cast
+    pub cast_votes: u32,
+    
+    /// Timestamp of last vote cast
+    pub last_vote_at: u64,
+    
+    /// Timestamp of last vote received
+    pub last_received_at: u64,
 }
 
 /// Represents a vote weight with constraints (0.0 to 1.0)
@@ -269,8 +327,6 @@ impl<'de> Deserialize<'de> for VoteWeight {
         VoteWeight::new(value).map_err(serde::de::Error::custom)
     }
 }
-
-
 
 /// Contains information about a vote author used in reputation calculations
 #[derive(Debug, Clone)]

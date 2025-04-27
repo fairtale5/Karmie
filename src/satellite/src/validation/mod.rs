@@ -12,6 +12,20 @@
  * data integrity and consistency.
  */
 
+mod description;
+mod display_name;
+mod username;
+mod tag_validate_time_periods;
+pub mod ulid_timestamp_validate;
+
+pub use description::validate_description;
+pub use display_name::validate_display_name;
+pub use tag_validate_time_periods::validate_time_periods;
+pub use username::validate_username;
+pub use username::validate_username_uniqueness;
+
+
+
 // TODO: As validation functions are moved from utils to this module,
 // add the following structure:
 

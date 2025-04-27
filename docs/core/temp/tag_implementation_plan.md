@@ -41,7 +41,7 @@ The formatTagKey function has been updated to include the tag name in the key fo
 export function formatTagKey(userUlid: ULID, tagUlid: ULID, tagName: string): string {
     if (!validateUlid(userUlid) || !validateUlid(tagUlid)) {
         throw new Error('Invalid ULID provided for tag key formatting');
-    }
+  }
     
     // Convert tag name to lowercase and sanitize for key usage
     const sanitizedTagName = tagName.toLowerCase();
@@ -120,11 +120,11 @@ async function saveTag() {
     if (tagBeingEdited.key) {
       // Updating existing tag - need to get version
       try {
-        const existingDoc = await getDoc({
-          collection: COLLECTIONS.TAGS,
+      const existingDoc = await getDoc({
+        collection: COLLECTIONS.TAGS,
           key: tagBeingEdited.key
-        });
-        if (!existingDoc) {
+      });
+      if (!existingDoc) {
           errorGlobal = 'Tag not found';
           return;
         }
@@ -173,7 +173,7 @@ async function saveTag() {
       vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
       min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
     };
-    
+
     successGlobal = 'Tag saved successfully';
     errorGlobal = '';
     await loadTags();
