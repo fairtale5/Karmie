@@ -1,3 +1,11 @@
+use crate::logger;
+use junobuild_satellite::AssertSetDocContext;
+use junobuild_utils::decode_doc_data;
+use crate::utils::structs::ReputationData;
+use crate::IS_PLAYGROUND;
+use junobuild_shared::types::list::{ListMatcher, ListParams};
+use crate::list_docs;
+
 /// Validates a reputation document before creation or update
 /// 
 /// This function performs validation of reputation documents:
@@ -16,7 +24,7 @@
 /// 
 /// # Returns
 /// * `Result<(), String>` - Ok if validation passes, Err with detailed message if it fails
-fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), String> {
+pub fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), String> {
     // Step 1: Verify collection name
     // This ensures we're only validating documents in the correct collection
     if context.data.collection != "reputations" {
@@ -46,7 +54,7 @@ fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), Str
     let mut desc = DocumentDescription::new();
     let caller_string = context.caller.to_string(); // Create a string that lives for the duration of the function
     desc.add_owner(if IS_PLAYGROUND {
-        &rep_data.user_key
+        &rep_data.usr_key
     } else {
         &caller_string
     })
@@ -74,13 +82,13 @@ fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), Str
     // Check that the values are within acceptable ranges
 
     // 4.1: Log total_basis_reputation (can be negative or positive)
-    logger!("debug", "[validate_reputation_document] Total basis reputation: {}", rep_data.total_basis_reputation );
+    logger!("debug", "[validate_reputation_document] Total basis reputation: {}", rep_data.reputation_basis );
 
     // 4.2: Validate voting rewards (must be non-negative)
-    if rep_data.total_voting_rewards_reputation < 0.0 {
+    if rep_data.reputation_rewards < 0.0 {
         let err_msg = format!(
             "[validate_reputation_document] Total voting rewards reputation cannot be negative (got: {})",
-            rep_data.total_voting_rewards_reputation
+            rep_data.reputation_rewards
         );
         logger!("error", "{}", err_msg);
         return Err(err_msg);

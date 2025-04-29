@@ -14,17 +14,15 @@
 
 mod description;
 mod display_name;
-mod username;
-mod tag_validate_time_periods;
+mod validate_handle;
 pub mod ulid_timestamp_validate;
+mod validate_tag_date;
 
 pub use description::validate_description;
 pub use display_name::validate_display_name;
-pub use tag_validate_time_periods::validate_time_periods;
-pub use username::validate_username;
-pub use username::validate_username_uniqueness;
-
-
+pub use validate_handle::validate_handle;
+pub use validate_tag_date::validate_tag_date_struct;
+pub use ulid_timestamp_validate::validate_timestamp_component;
 
 // TODO: As validation functions are moved from utils to this module,
 // add the following structure:

@@ -2,10 +2,8 @@ use junobuild_satellite::AssertSetDocContext;
 use junobuild_utils::decode_doc_data;
 use junobuild_shared::types::list::{ListMatcher, ListParams};
 use crate::{
-    validation::{validate_username, validate_display_name},
-    utils::{
-        structs::UserData,
-    },
+    validation::{validate_handle, validate_display_name},
+    utils::structs::UserData,
     processors::document_keys::create_user_key,
 };
 use crate::list_docs;
@@ -30,46 +28,27 @@ use crate::IS_PLAYGROUND;
 /// 
 /// # Returns
 /// * `Result<(), String>` - Ok if validation passes, Err with detailed message if it fails
-pub async fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
-    // Step 1: Decode the user data structure
+pub fn assert_doc_user(context: &AssertSetDocContext) -> Result<(), String> {
+    // Step 1: Decode and validate user data
     let user_data: UserData = decode_doc_data(&context.data.data.proposed.data)
-        .map_err(|e| {
-            let err_msg = format!("[assert_set_doc] Failed to decode user data: key={}, error={}", 
-                context.data.key, e);
-            logger!("error", "{}", err_msg);
-            format!("Invalid user data format: {}", e)
-        })?;
+        .map_err(|e| format!("Failed to decode user data: {}", e))?;
+
+    // Step 2: Validate document key format
+    // First validate that the key is a valid ULID
+    crate::processors::ulid_generator::validate_ulid(&context.data.key)?;
     
-    // Step 2: Validate the document key by comparing with a freshly generated key
-    // Extract the ULID from usr_key if available, otherwise this is invalid
-    if let Some(usr_key) = &user_data.usr_key {
-        // Generate a key based on the document data
-        let expected_key = create_user_key(Some(usr_key), &user_data.username).await
-            .map_err(|e| {
-                let err_msg = format!("[assert_set_doc] Failed to generate comparisson key for validation: {}", e);
-                logger!("error", "{}", err_msg);
-                e
-            })?;
-        
-        // Compare the generated key with the provided key
-        if context.data.key != expected_key {
-            let err_msg = format!(
-                "[assert_set_doc] Document key mismatch. Provided: {}, Expected: {}",
-                context.data.key, expected_key
-            );
-            logger!("error", "{}", err_msg);
-            return Err(err_msg);
-        }
-        
-        logger!("debug", "[assert_set_doc] Document key validated successfully: {}", context.data.key);
-    } else {
-        let err_msg = format!("[assert_set_doc] Missing usr_key field in user data");
-        logger!("error", "{}", err_msg);
-        return Err(err_msg);
+    // Then check if the formatted key matches what was provided
+    let expected_key = crate::processors::document_keys::format_user_key(&context.data.key, &user_data.username)?;
+    if expected_key != context.data.key {
+        return Err(format!(
+            "Invalid document key format. Expected: {}, Got: {}", 
+            expected_key, 
+            context.data.key
+        ));
     }
-    
+
     // Step 3: Validate username format and restrictions
-    validate_username(&user_data.username)
+    validate_handle(&user_data.username)
         .map_err(|e| {
             let err_msg = format!("[assert_set_doc] Username validation failed: {}", e);
             logger!("error", "{}", err_msg);
@@ -90,24 +69,41 @@ pub async fn validate_user_document(context: &AssertSetDocContext) -> Result<(),
     let username_key_part = format!("_usrName_{}_", normalized_username);
     
     logger!("debug", "[validate_user_document] Checking username uniqueness with key pattern: {}", username_key_part);
-    
+
     // Check if we're updating an existing document
     let is_update = context.data.data.current.is_some();
     
     // Get documents that have this username pattern in their key
     // This lookup happens directly at the database level without loading everything into memory
-    if let Some(existing_doc) = junobuild_satellite::get_doc(String::from("users"), username_key_part) {
-        // If we found a document with this username
-        // Check if it's the same document (in case of update)
-        if !is_update || existing_doc.key != context.data.key {
-            // Found another document with the same username
-            let err_msg = format!(
-                "[assert_set_doc] Username '{}' is already taken. Please choose a different username.",
-                user_data.username
-            );
-            logger!("error", "{}", err_msg);
-            return Err(err_msg);
+    let results = junobuild_satellite::list_docs_store(
+        context.caller,
+        String::from("users"),
+        &ListParams {
+            matcher: Some(ListMatcher {
+                key: Some(username_key_part),  // Match the username part in the key
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+    )?;
+
+    // Check if we found any documents with this username
+    if results.items_length > 0 {
+        // If this is an update, it's ok if we found our own document
+        for (existing_key, _) in results.items {
+            if !is_update || existing_key != context.data.key {
+                // Found another document with this username
+                let err_msg = format!(
+                    "[assert_set_doc] Username '{}' is already taken. Please choose a different username.",
+                    user_data.username
+                );
+                logger!("error", "{}", err_msg);
+                return Err(err_msg);
+            }
         }
+    } else {
+        // No existing document with this username - this is good!
+        logger!("debug", "[assert_set_doc] Username '{}' is available", user_data.username);
     }
 
     // Step 6: In production mode, enforce one-document-per-identity rule
@@ -127,7 +123,7 @@ pub async fn validate_user_document(context: &AssertSetDocContext) -> Result<(),
         };
 
         let existing_docs = list_docs(String::from("users"), owner_params);
-        
+
         // Check if any existing documents are owned by this principal (excluding this document if it's an update)
         for (doc_key, doc) in existing_docs.items {
             if doc_key != context.data.key && doc.owner.to_string() == principal_string {

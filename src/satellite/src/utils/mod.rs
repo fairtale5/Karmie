@@ -12,6 +12,4 @@ pub mod reputation_calculations;
 pub mod structs;
 pub mod tag_calculations;
 pub mod time;
-pub mod validation;
-pub mod description_helpers;
-pub mod id_generator; 
+pub mod query_helpers; 

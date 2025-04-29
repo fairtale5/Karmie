@@ -41,7 +41,7 @@ use junobuild_shared::types::list::{ListMatcher, ListParams, ListResults};
 use junobuild_utils::decode_doc_data;
 use crate::utils::structs::{Tag, ReputationData, TagData};
 use crate::logger;
-use crate::utils::description_helpers;
+use crate::utils::query_helpers::{query_doc, KeySegment};
 
 /// Calculates the number of active users for a given tag
 /// 
@@ -72,25 +72,19 @@ pub async fn get_active_users_count(tag_key: &str) -> Result<u32, String> {
     logger!("info", "[get_active_users_count] Tag={} has reputation_threshold={}", tag_key, threshold);
 
     // Step 2: Get all reputations for this tag
-    // Query all reputation documents for this tag with proper description filter
-    // We need to use a description-based filter that matches all reputations with this tag
+    // Query all reputation documents for this tag 
+    // Query for active users in this tag
+    logger!("debug", "[get_active_users_count] Querying active users for tag={}", tag_key);
     
-    // Create properly formatted description using the DocumentDescription helper
-    // Since we want to match any reputation document with this tag, we only filter by the tag field
-    let mut desc = description_helpers::DocumentDescription::new();
-    desc.add_field("tag", tag_key);
-    let description_filter = desc.build();
+    // Use key-based query to find all users in this tag by using query_doc to find any document in 'reputations' collection that contains the tag key
+    let results = query_doc(
+        "reputations",
+        KeySegment::Tag,
+        tag_key
+    )?;
     
-    let reputations: ListResults<_> = list_docs(
-        String::from("reputations"),
-        ListParams {
-            matcher: Some(ListMatcher {
-                description: Some(description_filter),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
-    );
+    // Count users with active voting power
+    let active_count = results.items.len();
     
     // Log how many reputation documents we found
     logger!("info", "[get_active_users_count] Found {} total reputation documents for tag={}", 
@@ -100,19 +94,19 @@ pub async fn get_active_users_count(tag_key: &str) -> Result<u32, String> {
     let mut active_users = 0;
     let mut inactive_users = 0;
     
-    for (doc_key, doc) in &reputations.items {
+    for (doc_key, doc) in results.items {
         match decode_doc_data::<ReputationData>(&doc.data) {
             Ok(rep_data) => {
-                if rep_data.last_known_effective_reputation >= threshold {
+                if rep_data.reputation_total_effective >= threshold {
                     // Count active user
                     active_users += 1;
                     logger!("info", "[get_active_users_count] ACTIVE: user={}, rep={}, threshold={}",
-                        rep_data.user_key, rep_data.last_known_effective_reputation, threshold);
+                        rep_data.usr_key, rep_data.reputation_total_effective, threshold);
                 } else {
                     // Count inactive user
                     inactive_users += 1;
                     logger!("info", "[get_active_users_count] INACTIVE: user={}, rep={}, threshold={}",
-                        rep_data.user_key, rep_data.last_known_effective_reputation, threshold);
+                        rep_data.usr_key, rep_data.reputation_total_effective, threshold);
                 }
             },
             Err(e) => {
@@ -121,7 +115,7 @@ pub async fn get_active_users_count(tag_key: &str) -> Result<u32, String> {
             }
         }
     }
-
+    
     logger!("info", "[get_active_users_count] RESULT: tag={} has {} active users, {} inactive users (threshold={})",
         tag_key,
         active_users,

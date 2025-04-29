@@ -1,3 +1,10 @@
+use crate::logger;
+use junobuild_satellite::AssertSetDocContext;
+use crate::utils::structs::VoteData;
+use junobuild_utils::decode_doc_data;
+use junobuild_shared::types::list::{ListMatcher, ListParams};
+use crate::list_docs;
+
 /// Validates a vote document before creation or update
 /// 
 /// This function performs comprehensive validation of vote documents:
@@ -13,7 +20,7 @@
 /// 
 /// # Returns
 /// * `Result<(), String>` - Ok if validation passes, Err with detailed message if it fails
-fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
+pub fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
     logger!("debug", "[validate_vote_document] Starting vote validation: key={}", context.data.key);
 
     // Step 1: Access the full document structure and prepare it
@@ -91,16 +98,16 @@ fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
     logger!("debug", "[validate_vote_document] Found tag: {}", vote_data.tag_key);
 
     // Step 5: Validate no self-voting
-    if vote_data.author_key == vote_data.target_key {
+    if vote_data.usr_key == vote_data.tar_key {
         let err_msg = "[validate_vote_document]Users cannot vote on themselves";
         logger!("error", "{}", err_msg);
         return Err(err_msg.to_string());
     }
 
     logger!("info", "[validate_vote_document] Vote validation passed: author={} voted {} on target={} in tag={}",
-        vote_data.author_key,
+        vote_data.usr_key,
         vote_data.value,
-        vote_data.target_key,
+        vote_data.tar_key,
         vote_data.tag_key
     );
 

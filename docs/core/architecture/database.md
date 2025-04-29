@@ -36,7 +36,7 @@ Collection name: `users`
 ```typescript
 interface UserDocument {
     // Standard Juno fields (automatically managed)
-    key: string;                // Format: usr_{ulid}_usrName_{username}_ generated with ulid() src/lib/keys/create_ulid.ts
+    key: string;                // Format: usr_{ulid}_usrName_{username}_ generated with src/satellite/src/processors/document_keys.rs
     description: string;        // currently not used
     owner: Principal;           // Automatically set to user's Internet Identity Principal
     created_at: bigint;         // Creation timestamp in nanoseconds
@@ -115,7 +115,7 @@ Collection name: `tags`
 ```typescript
 interface TagDocument {
     // Standard Juno fields (automatically managed)
-    key: string;                // Format: usr_{userUlid}_tag_{tagUlid}_tagName_{tagName}_ generated with formatTagKey() 
+    key: string;                // Format: usr_{userUlid}_tag_{tagUlid}_tagName_{tagName}_ generated with formatTagKey() in src/satellite/src/processors/document_keys.rs
     description: string;        // currently not used
     owner: Principal;           // Automatically set to document creator's Principal
     created_at: bigint;         // Creation timestamp in nanoseconds
@@ -209,7 +209,7 @@ Collection name: `votes`
 ```typescript
 interface VoteDocument {
     // Standard Juno fields (automatically managed)
-    key: string;                // Format: usr_{ulid}_tag_{ulid}_tar_{ulid}_key_{ulid}_ generated with ulid()
+    key: string;                // Format: usr_{ulid}_tag_{ulid}_tar_{ulid}_key_{ulid}_ generated with src/satellite/src/processors/document_keys.rs
     description: string;        // currently not used
     owner: Principal;           // Automatically set to document creator's Principal
     created_at: bigint;         // Creation timestamp in nanoseconds
@@ -287,31 +287,51 @@ Collection name: `reputations`
 ```typescript
 interface ReputationDocument {
     // Standard Juno fields (automatically managed)
-    key: string;                // Format: usr_{ulid}_tag_{ulid}_ generated with ulid()
+    key: string;                // Format: usr_{ulid}_tag_{ulid}_ generated with src/satellite/src/processors/document_keys.rs
     description: string;        // currently not used
-    owner: Principal;           // Automatically set to canister Principal (ic_cdk::id())
+    owner: Principal;           // Set to canister Principal (ic_cdk::id())
     created_at: bigint;         // Creation timestamp in nanoseconds
     updated_at: bigint;         // Last update timestamp in nanoseconds
     version: bigint;            // Document version for concurrency control
-    data: {                     // Reputation-specific data
-        usr_key: ULID;          // Pure ULID of the user this reputation is for
-        tag_key: ULID;          // Pure ULID of the tag this reputation is for
-        reputation: number;      // Current reputation score
-        vote_weight: number;     // User's voting weight in this tag
-        activity_score: number;  // Activity level in this tag
-        received_votes: number;  // Count of votes received
-        cast_votes: number;      // Count of votes cast
-        last_vote_at: bigint;   // Timestamp of last vote cast
-        last_received_at: bigint; // Timestamp of last vote received
+    data: {                     // Reputation-specific data (see below)
+        usr_key: string;                     // ULID of the user this reputation is for
+        tag_key: string;                     // ULID of the tag this reputation is for
+        basis_reputation: number;            // Reputation from received votes
+        voting_rewards_reputation: number;   // Reputation from casting votes
+        effective_reputation: number;        // Final/cached reputation score (used as the user's reputation in this tag)
+        last_calculation: bigint;            // Timestamp of last reputation calculation (nanoseconds)
+        vote_weight: number;                 // User's voting weight in this tag (0.0 to 1.0)
+        has_voting_power: boolean;           // Whether the user has sufficient reputation to have voting power
+        vote_weight_value: number;           // User's voting weight as a float (redundant with vote_weight, for compatibility)
     }
 }
 ```
 
-Example Reputation Document:
+#### Field Descriptions
+
+- **usr_key**: ULID of the user this reputation is for (uppercase, no prefix)
+- **tag_key**: ULID of the tag this reputation is for (uppercase, no prefix)
+- **basis_reputation**: Reputation points earned from received votes
+- **voting_rewards_reputation**: Reputation points earned from casting votes (vote rewards)
+- **effective_reputation**: The final, cached reputation score for this user in this tag (used for all calculations and display)
+- **last_calculation**: Timestamp (nanoseconds) of the last time this reputation was recalculated
+- **vote_weight**: User's voting weight in this tag (float, 0.0 to 1.0)
+- **has_voting_power**: Boolean indicating if the user meets the threshold for voting power in this tag
+- **vote_weight_value**: User's voting weight as a float (may be redundant with `vote_weight`)
+
+#### Notes
+
+- Only the fields above are present in the actual code and persisted documents.
+- Fields such as `activity_score`, `received_votes`, `cast_votes`, `last_vote_at`, and `last_received_at` are **not** present in the current implementation and should not be relied upon.
+- The `effective_reputation` field in code serves the same purpose as the `reputation` field described in earlier documentation.
+- All timestamps are in nanoseconds.
+- ULIDs are always uppercase and without prefixes in the data fields.
+
+#### Example Reputation Document
 
 ```typescript
 {
-    key: "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW",
+    key: "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW_",
     description: "",
     owner: Principal.fromText("..."),  // Canister Principal
     created_at: 1234567890n,
@@ -320,13 +340,13 @@ Example Reputation Document:
     data: {
         usr_key: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
         tag_key: "01ARZ3NDEKTSV4RRFFQ69G5FAW",
-        reputation: 25.5,
+        basis_reputation: 10.0,
+        voting_rewards_reputation: 2.5,
+        effective_reputation: 12.5,
+        last_calculation: 1234567890n,
         vote_weight: 0.85,
-        activity_score: 0.75,
-        received_votes: 12,
-        cast_votes: 8,
-        last_vote_at: 1234567890n,
-        last_received_at: 1234567890n
+        has_voting_power: true,
+        vote_weight_value: 0.85
     }
 }
 ```
@@ -437,4 +457,150 @@ The description field uses a consistent bracket format that enables powerful que
    - All documents created by same user during testing
    - Author stored in description field
    - Will change to proper multi-user system later 
+
+## Query Performance and Memory Management
+
+### Memory Model
+Juno's memory is not a traditional database - it's a growable memory space indexed by collection and keys. Think of it like a cake or bucket where:
+- Data is organized first by collection
+- Then indexed by keys within each collection
+- Memory can be either heap (1GB max) or stable (400GB max)
+
+### Query Methods and Performance
+
+#### 1. Key-Based Queries
+**Most Efficient - No Full Memory Load**
+- `get_doc_store(collection, exact_key)`: Most efficient for single document retrieval
+- `list_docs_store(collection, key_pattern)`: Efficient for partial key matching
+- `query_doc(collection, segment, query)`: Type-safe key segment queries (recommended)
+- These operate at the storage layer using the key index
+- Example:
+  ```rust
+  // Efficient: Uses key index
+  get_doc_store(
+      caller,
+      "users",
+      "usr_123_usrName_john_"
+  )
+  
+  // Also efficient: Uses key pattern matching
+  list_docs_store(
+      caller,
+      "users",
+      ListParams {
+          matcher: Some(ListMatcher {
+              key: Some("usr_123_"), // Partial key match
+              ..Default::default()
+          })
+      }
+  )
+  ```
+  
+The `query_doc` function is the recommended way to query documents:
+```rust
+// Find user by handle
+query_doc("users", KeySegment::Handle, "johndoe")?;
+// Searches for pattern: "hdl_johndoe_"
+
+// Find votes by target user
+query_doc("votes", KeySegment::Target, "01ARZ3NDEKTSV4RRFFQ69G5FAV")?;
+// Searches for pattern: "tar_01ARZ3NDEKTSV4RRFFQ69G5FAV_"
+```
+
+Key Segment Types:
+- `User`: Matches `usr_{query}_` pattern
+- `Tag`: Matches `tag_{query}_` pattern
+- `Target`: Matches `tar_{query}_` pattern
+- `Handle`: Matches `hdl_{query}_` pattern
+- `Key`: Matches `key_{query}_` pattern
+
+Benefits of `query_doc`:
+- Type-safe query segments prevent errors
+- Consistent key pattern formatting
+- Efficient key-based indexing
+- No full collection memory load
+- Built-in logging and error handling
+
+#### 2. Description-Based Queries
+**Least Efficient - Requires Full Memory Load**
+- Queries using `description` field in ListMatcher
+- Loads ALL documents into memory before filtering
+- Can hit memory limits with large collections
+- Example of what NOT to do:
+  ```rust
+  // Inefficient: Loads all documents then filters
+  list_docs_store(
+      caller,
+      "users",
+      ListParams {
+          matcher: Some(ListMatcher {
+              description: Some("username=john"), // Requires full memory load
+              ..Default::default()
+          })
+      }
+  )
+  ```
+
+### Best Practices
+
+1. **Key Structure Design**
+   - Include searchable fields in the key
+   - Use consistent separators (underscores)
+   - Follow the standard patterns:
+     ```
+     Users:  usr_{ulid}_hdl_{handle}_
+     Tags:   usr_{ulid}_tag_{ulid}_hdl_{handle}_
+     Votes:  usr_{ulid}_tag_{ulid}_tar_{ulid}_key_{ulid}_
+     ```
+   - Use the `query_doc` function for type-safe queries with partial key matching
+
+2. **Query Optimization**
+   - Use `query_doc` for segment-based queries (recommended)
+   - Use `get_doc_store` for single document lookups
+   - Use `list_docs_store` with key patterns only when needed
+   - Avoid description-based filtering
+   - Structure keys to support your most common queries
+
+3. **Index Collections**
+   - For complex queries, create separate collections as indexes
+   - Use key patterns that support your query needs
+   - Example structure for vote queries:
+     ```
+     Collection: vote_by_owner
+     Key format: owner_{ownerUlid}_vote_{voteUlid}
+     
+     Collection: vote_by_tag
+     Key format: tag_{tagUlid}_vote_{voteUlid}
+     ```
+
+4. **Memory Considerations**
+   - Description field queries load entire collection
+   - Key-based queries only load matching segments
+   - Consider splitting large collections if needed
+   - Monitor memory usage during development
+
+### Query Method Comparison
+
+| Method | Memory Usage | Performance | Use Case |
+|--------|--------------|-------------|-----------|
+| `get_doc_store` with exact key | Minimal | Fastest | Single document lookup |
+| `list_docs_store` with key pattern | Partial | Fast | Filtered queries using key patterns |
+| `list_docs_store` with description | Full Collection | Slow | Avoid for large collections |
+| Multiple `get_doc_store` calls | Minimal | Fast but sequential | When you need specific documents |
+
+### Memory Limits and Performance Tips
+
+1. **Memory Limits**
+   - Heap Memory: 1GB maximum
+   - Stable Memory: 400GB maximum (minus heap size)
+   - Document Size: 2MB maximum
+   - Description Field: 1024 characters maximum
+   - Batch Operations: 100 documents maximum
+
+2. **Performance Tips**
+   - Use key patterns instead of description fields for filtering
+   - Structure keys to support your most common queries
+   - Consider index collections for complex query patterns
+   - Monitor memory usage during development
+   - Use appropriate memory type (heap vs stable) based on access patterns
 

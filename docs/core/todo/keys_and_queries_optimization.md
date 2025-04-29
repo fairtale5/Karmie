@@ -264,6 +264,11 @@ Important:
     - key: Unique vote ulid identifier (must be uppercase)
   - Format enables efficient querying by any combination of voter, tag, and target
 
+#### 5. Other Optimizations:
+- [ ] Refactor `assert_doc_user.rs` to extract the username uniqueness check into a reusable function
+  - [ ] Implement a function (e.g., `check_key_uniqueness(collection: &str, key_pattern: &str) -> Result<bool, String>`) that can be called from anywhere to check for uniqueness of any string in any collection by key search
+  - [ ] Replace the inline username uniqueness logic in `assert_doc_user.rs` with a call to this new function
+
 ## Required Updates
 
 ### Backend Changes

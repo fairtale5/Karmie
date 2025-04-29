@@ -16,7 +16,7 @@ mod assert_doc_vote;
 mod assert_doc_tag;
 mod assert_doc_reputation;
 
-pub use assert_doc_user::validate_user_document;
+pub use assert_doc_user::assert_doc_user;
 pub use assert_doc_vote::validate_vote_document;
 pub use assert_doc_tag::validate_tag_document;
 pub use assert_doc_reputation::validate_reputation_document;

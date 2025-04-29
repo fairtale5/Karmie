@@ -75,17 +75,17 @@ pub fn parse_key(key: &str) -> Result<HashMap<String, String>, String> {
                     return Err("Invalid usr_key format".to_string());
                 }
             },
-            "usrName" => {
-                // Extract username (might span multiple parts due to underscores in username)
-                let mut username = parts[i+1].to_string();
+            "hdl" => {
+                // Extract handle (might span multiple parts due to underscores in handle)
+                let mut handle = parts[i+1].to_string();
                 i += 2;
                 // Keep collecting until we hit another known component
-                while i < parts.len() && !["usr", "tag", "tar", "key", "usrName", "tagName"].contains(&parts[i]) {
-                    username.push('_');
-                    username.push_str(parts[i]);
+                while i < parts.len() && !["usr", "tag", "tar", "key", "hdl"].contains(&parts[i]) {
+                    handle.push('_');
+                    handle.push_str(parts[i]);
                     i += 1;
                 }
-                components.insert("username".to_string(), username);
+                components.insert("handle".to_string(), handle);
             },
             "tag" => {
                 if i + 1 < parts.len() && validate_ulid(parts[i+1]).is_ok() {
@@ -94,18 +94,6 @@ pub fn parse_key(key: &str) -> Result<HashMap<String, String>, String> {
                 } else {
                     return Err("Invalid tag_key format".to_string());
                 }
-            },
-            "tagName" => {
-                // Extract tag name (might span multiple parts)
-                let mut tagname = parts[i+1].to_string();
-                i += 2;
-                // Keep collecting until we hit another known component
-                while i < parts.len() && !["usr", "tag", "tar", "key", "usrName", "tagName"].contains(&parts[i]) {
-                    tagname.push('_');
-                    tagname.push_str(parts[i]);
-                    i += 1;
-                }
-                components.insert("tagname".to_string(), tagname);
             },
             "tar" => {
                 if i + 1 < parts.len() && validate_ulid(parts[i+1]).is_ok() {
@@ -135,77 +123,82 @@ pub fn parse_key(key: &str) -> Result<HashMap<String, String>, String> {
 
 // ===== Document-Specific Key Generation Functions =====
 
-/// Creates a user document key
-///
-/// Format: usr_{ulid}_usrName_{username}_
-///
+/// Create a new user document key with generated ULID
+/// 
 /// # Arguments
-/// * `ulid` - ULID for the user, must be uppercase
-/// * `username` - Username, will be sanitized
-///
+/// * `handle` - User's handle (username)
+/// 
 /// # Returns
-/// * `Result<String, String>` - Formatted key or error message
-pub async fn create_user_key(ulid: Option<&str>, username: &str) -> Result<String, String> {
-    // Validate or generate ULID
-    let user_ulid = match ulid {
-        Some(id) => {
-            validate_ulid(id)?;
-            id.to_string()
-        },
-        None => generate_ulid().await
-    };
-    
-    // Sanitize username
-    let sanitized_username = sanitize_for_key(username);
-    
-    // Validate username
-    if sanitized_username.len() < 3 || sanitized_username.len() > 30 {
-        return Err("Username must be between 3 and 30 characters".to_string());
-    }
-    
-    // Format key
-    Ok(format!("usr_{}_usrName_{}_", user_ulid, sanitized_username))
+/// * `Result<String, String>` - Formatted key or error
+/// 
+/// # Example
+/// ```rust
+/// // Creates: "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_hdl_johndoe_"
+/// let key = create_user_key("johndoe").await?;
+/// ```
+pub async fn create_user_key(handle: &str) -> Result<String, String> {
+    let user_ulid = generate_ulid().await;
+    format_user_key(&user_ulid, handle)
 }
 
-/// Creates a tag document key
-///
-/// Format: usr_{userUlid}_tag_{tagUlid}_tagName_{tagName}_
-///
+/// Format a user key with existing ULID
+/// 
 /// # Arguments
-/// * `user_ulid` - ULID of the user creating the tag
-/// * `tag_ulid` - Optional ULID for the tag, generated if None
-/// * `tag_name` - Name of the tag, will be sanitized
+/// * `ulid` - ULID for the user, must be uppercase
+/// * `handle` - Username, will be sanitized
 ///
 /// # Returns
-/// * `Result<String, String>` - Formatted key or error message
-pub async fn create_tag_key(user_ulid: &str, tag_ulid: Option<&str>, tag_name: &str) -> Result<String, String> {
-    // Validate user ULID
+/// * `Result<String, String>` - Formatted key or error
+pub fn format_user_key(ulid: &str, handle: &str) -> Result<String, String> {
+    validate_ulid(ulid)?;
+    let sanitized_handle = sanitize_for_key(handle);
+    
+    if sanitized_handle.len() < 3 || sanitized_handle.len() > 30 {
+        return Err("Handle must be between 3 and 30 characters".to_string());
+    }
+    
+    // Format: usr_ULID_hdl_handle_
+    Ok(format!("usr_{}_hdl_{}_", ulid, sanitized_handle))
+}
+
+/// Create a tag document key
+/// 
+/// # Arguments
+/// * `user_ulid` - ULID of the user creating the tag
+/// * `tag_name` - Name of the tag
+/// 
+/// # Returns
+/// * `Result<String, String>` - Formatted key or error
+pub async fn create_tag_key(user_ulid: &str, tag_name: &str) -> Result<String, String> {
+    let tag_ulid = generate_ulid().await;
+    format_tag_key(user_ulid, &tag_ulid, tag_name)
+}
+
+/// Format a tag key with existing ULIDs
+/// 
+/// # Arguments
+/// * `user_ulid` - ULID of the user creating the tag
+/// * `tag_ulid` - ULID for the tag
+/// * `tag_name` - Name of the tag
+/// 
+/// # Returns
+/// * `Result<String, String>` - Formatted key or error
+pub fn format_tag_key(user_ulid: &str, tag_ulid: &str, tag_name: &str) -> Result<String, String> {
     validate_ulid(user_ulid)?;
+    validate_ulid(tag_ulid)?;
+    let sanitized_name = sanitize_for_key(tag_name);
     
-    // Validate or generate tag ULID
-    let tag_id = match tag_ulid {
-        Some(id) => {
-            validate_ulid(id)?;
-            id.to_string()
-        },
-        None => generate_ulid().await
-    };
-    
-    // Sanitize tag name
-    let sanitized_tag_name = sanitize_for_key(tag_name);
-    
-    // Validate tag name
-    if sanitized_tag_name.len() < 3 || sanitized_tag_name.len() > 30 {
+    if sanitized_name.len() < 3 || sanitized_name.len() > 30 {
         return Err("Tag name must be between 3 and 30 characters".to_string());
     }
     
-    // Format key
-    Ok(format!("usr_{}_tag_{}_tagName_{}_", user_ulid, tag_id, sanitized_tag_name))
+    // Format: usr_ULID_tag_ULID_hdl_name_
+    Ok(format!("usr_{}_tag_{}_hdl_{}_", user_ulid, tag_ulid, sanitized_name))
 }
 
 /// Creates a reputation document key
 ///
-/// Format: usr_{userUlid}_tag_{tagUlid}
+/// Format: usr_{userUlid}_tag_{tagUlid}_
 ///
 /// # Arguments
 /// * `user_ulid` - ULID of the user
@@ -218,8 +211,8 @@ pub fn create_reputation_key(user_ulid: &str, tag_ulid: &str) -> Result<String, 
     validate_ulid(user_ulid)?;
     validate_ulid(tag_ulid)?;
     
-    // Format key
-    Ok(format!("usr_{}_tag_{}", user_ulid, tag_ulid))
+    // Format key with trailing underscore
+    Ok(format!("usr_{}_tag_{}_", user_ulid, tag_ulid))
 }
 
 /// Creates a vote document key
@@ -281,14 +274,14 @@ pub fn validate_user_key(key: &str) -> Result<(), String> {
     let components = parse_key(key)?;
     
     // Ensure required components are present
-    if !components.contains_key("usr_key") || !components.contains_key("username") {
+    if !components.contains_key("usr_key") || !components.contains_key("handle") {
         return Err("User key missing required components".to_string());
     }
     
     // Username validation
-    if let Some(username) = components.get("username") {
-        if username.len() < 3 || username.len() > 30 {
-            return Err("Username must be between 3 and 30 characters".to_string());
+    if let Some(handle) = components.get("handle") {
+        if handle.len() < 3 || handle.len() > 30 {
+            return Err("Handle must be between 3 and 30 characters".to_string());
         }
     }
     
@@ -304,7 +297,7 @@ pub fn validate_user_key(key: &str) -> Result<(), String> {
 /// * `Result<(), String>` - Ok if valid, Err with message if invalid
 pub fn validate_tag_key(key: &str) -> Result<(), String> {
     let tag_key_pattern = Regex::new(
-        r"^usr_[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}_tag_[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}_tagName_[a-z0-9\-]+_$"
+        r"^usr_[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}_tag_[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}_hdl_[a-z0-9\-]+_$"
     ).unwrap();
     
     if !tag_key_pattern.is_match(key) {
@@ -340,7 +333,7 @@ pub fn validate_tag_key(key: &str) -> Result<(), String> {
 /// * `Result<(), String>` - Ok if valid, Err with message if invalid
 pub fn validate_reputation_key(key: &str) -> Result<(), String> {
     let reputation_key_pattern = Regex::new(
-        r"^usr_[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}_tag_[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$"
+        r"^usr_[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}_tag_[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}_$"
     ).unwrap();
     
     if !reputation_key_pattern.is_match(key) {
@@ -392,58 +385,78 @@ pub fn validate_vote_key(key: &str) -> Result<(), String> {
 mod tests {
     use super::*;
     
+    #[test]
+    fn test_parse_key() {
+        // Test parse user key
+        let user_key = "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_hdl_johndoe_";
+        let components = parse_key(user_key).unwrap();
+        assert_eq!(components.get("usr_key").unwrap(), "01ARZ3NDEKTSV4RRFFQ69G5FAV");
+        assert_eq!(components.get("handle").unwrap(), "johndoe");
+        
+        // Test parse tag key
+        let tag_key = "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW_hdl_technical-skills_";
+        let components = parse_key(tag_key).unwrap();
+        assert_eq!(components.get("usr_key").unwrap(), "01ARZ3NDEKTSV4RRFFQ69G5FAV");
+        assert_eq!(components.get("tag_key").unwrap(), "01ARZ3NDEKTSV4RRFFQ69G5FAW");
+        assert_eq!(components.get("handle").unwrap(), "technical-skills");
+        
+        // Test parse reputation key
+        let rep_key = "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW_";
+        let components = parse_key(rep_key).unwrap();
+        assert_eq!(components.get("usr_key").unwrap(), "01ARZ3NDEKTSV4RRFFQ69G5FAV");
+        assert_eq!(components.get("tag_key").unwrap(), "01ARZ3NDEKTSV4RRFFQ69G5FAW");
+        
+        // Test parse vote key
+        let vote_key = "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW_tar_01ARZ3NDEKTSV4RRFFQ69G5FAX_key_01ARZ3NDEKTSV4RRFFQ69G5FAY_";
+        let components = parse_key(vote_key).unwrap();
+        assert_eq!(components.get("usr_key").unwrap(), "01ARZ3NDEKTSV4RRFFQ69G5FAV");
+        assert_eq!(components.get("tag_key").unwrap(), "01ARZ3NDEKTSV4RRFFQ69G5FAW");
+        assert_eq!(components.get("tar_key").unwrap(), "01ARZ3NDEKTSV4RRFFQ69G5FAX");
+        assert_eq!(components.get("vote_key").unwrap(), "01ARZ3NDEKTSV4RRFFQ69G5FAY");
+        
+        // Test invalid key
+        let invalid_key = "invalid_key_format";
+        assert!(parse_key(invalid_key).is_err());
+    }
+    
     #[tokio::test]
     async fn test_create_user_key() {
-        // Test with provided ULID
-        let key = create_user_key(
-            Some("01ARZ3NDEKTSV4RRFFQ69G5FAV"), 
-            "John Doe"
-        ).await.unwrap();
-        
-        assert!(key.starts_with("usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_usrName_johndoe_"));
-        assert!(validate_user_key(&key).is_ok());
-        
-        // Test with auto-generated ULID
-        let key = create_user_key(None, "Jane User").await.unwrap();
+        // Test with handle
+        let key = create_user_key("John Doe").await.unwrap();
         assert!(key.starts_with("usr_"));
-        assert!(key.contains("_usrName_janeuser_"));
+        assert!(key.ends_with("_hdl_johndoe_"));
         assert!(validate_user_key(&key).is_ok());
         
-        // Test with invalid username
-        let result = create_user_key(None, "ab").await;
+        // Test with invalid handle (too short)
+        let result = create_user_key("ab").await;
         assert!(result.is_err());
     }
     
     #[tokio::test]
     async fn test_create_tag_key() {
-        // Test with provided ULIDs
+        // Test with valid input
         let key = create_tag_key(
             "01ARZ3NDEKTSV4RRFFQ69G5FAV",
-            Some("01ARZ3NDEKTSV4RRFFQ69G5FAW"),
             "Technical-Skills"
         ).await.unwrap();
         
-        assert_eq!(
-            key, 
-            "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW_tagName_technical-skills_"
-        );
+        assert!(key.starts_with("usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_"));
+        assert!(key.ends_with("_hdl_technical-skills_"));
         assert!(validate_tag_key(&key).is_ok());
         
-        // Test with auto-generated tag ULID
+        // Test with another valid input
         let key = create_tag_key(
             "01ARZ3NDEKTSV4RRFFQ69G5FAV",
-            None,
             "Programming"
         ).await.unwrap();
         
         assert!(key.starts_with("usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_"));
-        assert!(key.contains("_tagName_programming_"));
+        assert!(key.ends_with("_hdl_programming_"));
         assert!(validate_tag_key(&key).is_ok());
         
-        // Test with invalid tag name
+        // Test with invalid tag name (too short)
         let result = create_tag_key(
             "01ARZ3NDEKTSV4RRFFQ69G5FAV",
-            None,
             "py"
         ).await;
         assert!(result.is_err());
@@ -459,7 +472,7 @@ mod tests {
         
         assert_eq!(
             key, 
-            "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW"
+            "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW_"
         );
         assert!(validate_reputation_key(&key).is_ok());
         
@@ -525,7 +538,7 @@ mod tests {
         assert_eq!(components.get("tagname").unwrap(), "technical-skills");
         
         // Test parse reputation key
-        let rep_key = "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW";
+        let rep_key = "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW_";
         let components = parse_key(rep_key).unwrap();
         assert_eq!(components.get("usr_key").unwrap(), "01ARZ3NDEKTSV4RRFFQ69G5FAV");
         assert_eq!(components.get("tag_key").unwrap(), "01ARZ3NDEKTSV4RRFFQ69G5FAW");

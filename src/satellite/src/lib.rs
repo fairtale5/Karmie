@@ -152,6 +152,7 @@ use junobuild_satellite::{
 
 use junobuild_shared::types::list::{ListMatcher, ListParams};
 use ic_cdk_macros::*;
+use ic_cdk;  // Add this import
 
 // IMPORTANT NOTE:
 // Any additional functionality needed (like data serialization, string manipulation, etc.)
@@ -188,14 +189,13 @@ use junobuild_utils::{decode_doc_data, encode_doc_data};
 
 // Import our utility modules
 use crate::utils::{
-    normalize::normalize_username,
+    normalize::normalize_handle,
     structs::{Vote, VoteData, Tag, Reputation, UserData, TagData, TimePeriod, ReputationData},
     reputation_calculations::{
         calculate_user_reputation, get_user_reputation_data,
         calculate_and_store_vote_weight,
         get_period_multiplier,
-    },
-    description_helpers::{DocumentDescription, create_vote_description, validate_description}
+    }
 };
 
 // =============================================================================
@@ -207,9 +207,12 @@ mod assert_set_doc;
 mod validation;
 mod processors;
 
+// Re-export query helpers for easy access
+pub use utils::query_helpers::{query_doc, KeySegment};
+
 // Use the moved validation function
 use assert_set_doc::{
-    validate_user_document,
+    assert_doc_user,
     validate_vote_document,
     validate_tag_document,
     validate_reputation_document,
@@ -266,9 +269,9 @@ async fn process_vote(context: &OnSetDocContext) -> Result<(), String> {
     
     // Log the vote details in a human-readable format
     logger!("info", "[process_vote] Processing new vote: author={} voted {} on target={} in tag={}",
-        vote_data.author_key,
+        vote_data.usr_key,
         vote_data.value,
-        vote_data.target_key,
+        vote_data.tar_key,
         vote_data.tag_key
     );
     
@@ -280,47 +283,47 @@ async fn process_vote(context: &OnSetDocContext) -> Result<(), String> {
     }
     
     // Step 1: Calculate and store the voting user's vote weight
-    logger!("info", "Step 1/3: Calculating vote weight for author: {}", vote_data.author_key);
-    let vote_weight = calculate_and_store_vote_weight(&vote_data.author_key, &vote_data.tag_key).await
+    logger!("info", "Step 1/3: Calculating vote weight for author: {}", vote_data.usr_key);
+    let vote_weight = calculate_and_store_vote_weight(&vote_data.usr_key, &vote_data.tag_key).await
         .map_err(|e| {
             logger!("error", "[process_vote] Failed to calculate vote weight: {}", e);
             e.to_string()
         })?;
-    logger!("info", "[process_vote] Step 1/3 COMPLETE: Vote weight for author={}: {}", vote_data.author_key, vote_weight);
+    logger!("info", "[process_vote] Step 1/3 COMPLETE: Vote weight for author={}: {}", vote_data.usr_key, vote_weight);
     
     // Step 2: Calculate reputation for the voting user (author)
-    logger!("info", "[process_vote] Step 2/3: Calculating reputation for author: {}", vote_data.author_key);
-    let author_rep = calculate_user_reputation(&vote_data.author_key, &vote_data.tag_key).await
+    logger!("info", "[process_vote] Step 2/3: Calculating reputation for author: {}", vote_data.usr_key);
+    let author_rep = calculate_user_reputation(&vote_data.usr_key, &vote_data.tag_key).await
         .map_err(|e| {
             logger!("error", "[process_vote] Failed to calculate author reputation: {}", e);
             e.to_string()
         })?;
     logger!("info", "[process_vote] Step 2/3 COMPLETE: Author={}: basisR={}, voteR={}, totalR={}, voting_power={}",
-        vote_data.author_key, 
-        author_rep.total_basis_reputation,
-        author_rep.total_voting_rewards_reputation,
-        author_rep.last_known_effective_reputation,
+        vote_data.usr_key, 
+        author_rep.reputation_basis,
+        author_rep.reputation_rewards,
+        author_rep.reputation_total_effective,
         author_rep.has_voting_power
     );
     
     // Step 3: Calculate reputation for the target user
-    logger!("info", "[process_vote] Step 3/3: Calculating reputation for target: {}", vote_data.target_key);
-    let target_rep = calculate_user_reputation(&vote_data.target_key, &vote_data.tag_key).await
+    logger!("info", "[process_vote] Step 3/3: Calculating reputation for target: {}", vote_data.tar_key);
+    let target_rep = calculate_user_reputation(&vote_data.tar_key, &vote_data.tag_key).await
         .map_err(|e| {
             logger!("error", "[process_vote] Failed to calculate target reputation: {}", e);
             e.to_string()
         })?;
     logger!("info", "[process_vote] Step 3/3 COMPLETE: Target={}: basisR={}, voteR={}, totalR={}, voting_power={}",
-        vote_data.target_key, 
-        target_rep.total_basis_reputation,
-        target_rep.total_voting_rewards_reputation,
-        target_rep.last_known_effective_reputation,
+        vote_data.tar_key, 
+        target_rep.reputation_basis,
+        target_rep.reputation_rewards,
+        target_rep.reputation_total_effective,
         target_rep.has_voting_power
     );
 
     logger!("info", "[process_vote] Completed - author={}, target={}, tag={}, vote_value={}, vote_weight={}",
-        vote_data.author_key, 
-        vote_data.target_key, 
+        vote_data.usr_key, 
+        vote_data.tar_key, 
         vote_data.tag_key, 
         vote_data.value, 
         vote_weight
@@ -332,34 +335,13 @@ async fn process_vote(context: &OnSetDocContext) -> Result<(), String> {
 /// Configuration flag for playground mode
 pub const IS_PLAYGROUND: bool = true;  // Set to false for production
 
-/// Description formats for Juno documents in the system
-/// All documents use a standardized description field format pattern to enable filtering
-/// 
-/// ## Description Field Format
-/// 
-/// All description fields follow a consistent pattern:
-/// * - Format: field1=value1;field2=value2;
-/// 
-/// The concrete implementation depends on the collection:
-/// 
-/// ### Users Collection
-/// * owner=key;username=normalized_username;
-/// 
-/// ### Votes Collection
-/// * owner=id;author=key;target=key;tag=key;
-/// 
-/// ### Tags Collection
-/// * owner=id;name=normalized_name;
-/// 
-/// ### Reputations Collection
-/// * owner=id;user=key;tag=key;
-/// 
+
 #[assert_set_doc(collections = ["users", "votes", "tags", "reputations"])]
 fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
     let result = match context.data.collection.as_str() {
         "users" => {
             logger!("debug", "[assert_set_doc] Validating user document: key={}", context.data.key);
-            validate_user_document(&context)
+            assert_doc_user(&context)
         },
         "votes" => {
             logger!("debug", "[assert_set_doc] Validating vote document: key={}", context.data.key);
@@ -375,7 +357,7 @@ fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
         },
         _ => {
             // This should never happen because we're specifying collections in the decorator
-            let err_msg = format!("Unexpected collection reached validation: {}", context.data.collection);
+            let err_msg = format!("Unexpected collection for validation: {}", context.data.collection);
             logger!("error", "[assert_set_doc] {}", err_msg);
             Err(err_msg)
         }
@@ -518,9 +500,9 @@ async fn get_user_reputation(user_key: String, tag_key: String) -> Result<f64, S
                 .map_err(|e| format!("Failed to decode reputation data: {}", e))?;
     
             logger!("info", "[get_user_reputation] Successfully retrieved reputation: user={}, tag={}, value={}", 
-                user_key, tag_key, reputation_data.last_known_effective_reputation);
+                user_key, tag_key, reputation_data.reputation_total_effective);
     
-            Ok(reputation_data.last_known_effective_reputation)
+            Ok(reputation_data.reputation_total_effective)
         },
         None => {
             let err_msg = format!("[get_user_reputation] User {} has no reputation in tag {}", user_key, tag_key);
@@ -647,10 +629,10 @@ pub async fn recalculate_reputation(user_key: String, tag_key: String) -> Result
     logger!("info", "[recalculate_reputation] Successfully recalculated reputation: user={}, tag={}, value={}", 
         user_key, 
         tag_key, 
-        reputation_data.last_known_effective_reputation
+        reputation_data.reputation_total_effective
     );
     
-    Ok(reputation_data.last_known_effective_reputation)
+    Ok(reputation_data.reputation_total_effective)
 }
 
 /// Creates a document key using the new ULID-based format
@@ -665,7 +647,7 @@ pub async fn recalculate_reputation(user_key: String, tag_key: String) -> Result
 #[query]
 pub async fn create_document_key_for_user(username: String) -> Result<String, String> {
     // Use our document_keys module to create a properly formatted key
-    crate::processors::document_keys::create_user_key(None, &username).await
+    crate::processors::document_keys::create_user_key(&username).await
 }
 
 /// Creates a document key for a tag using the new ULID-based format
@@ -679,7 +661,7 @@ pub async fn create_document_key_for_user(username: String) -> Result<String, St
 #[query]
 pub async fn create_document_key_for_tag(user_ulid: String, tag_name: String) -> Result<String, String> {
     // Use our document_keys module to create a properly formatted key
-    crate::processors::document_keys::create_tag_key(&user_ulid, None, &tag_name).await
+    crate::processors::document_keys::create_tag_key(&user_ulid, &tag_name).await
 }
 
 /// Creates a document key for a reputation entry using the new ULID-based format

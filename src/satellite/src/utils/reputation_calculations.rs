@@ -6,7 +6,7 @@ use std::collections::HashMap; // Import std::collections::HashMap
 use junobuild_utils::{encode_doc_data, decode_doc_data}; // Import junobuild_utils functions
 use crate::logger; // Import our logger from the utils module 
 use crate::utils::time::calculate_months_between; // Import time calculations
-use crate::utils::description_helpers::DocumentDescription; // Import DocumentDescription helper
+use crate::processors::document_keys::create_reputation_key;
 
 // Import our data structures
 use crate::utils::structs::{
@@ -16,9 +16,6 @@ use crate::utils::structs::{
 
 // Import tag calculations
 use crate::utils::tag_calculations::get_active_users_count;
-
-// Import id generator
-use crate::utils::id_generator::generate_random_doc_key;
 
 /// Retrieves a user's cached reputation data for a specific tag.
 ///
@@ -126,7 +123,7 @@ pub async fn get_user_reputation_slim(user_key: &str, tag_key: &str) -> Result<O
             
             // Return the slim author info
             Ok(Some(AuthorInfo {
-                effective_reputation: data.last_known_effective_reputation,
+                effective_reputation: data.reputation_total_effective,
                 vote_weight: data.vote_weight.clone(),
                 votes_active,
             }))
@@ -404,7 +401,7 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
             user_key, tag_key);
         
         // Generate a new document key using our random key generator
-        let new_key = generate_random_doc_key().await;
+        let new_key = create_reputation_key(user_key, tag_key).await;
         logger!("debug", "[calculate_and_store_vote_weight] Generated key={} for new reputation document", new_key);
         
         (new_key, None, None)
@@ -424,14 +421,15 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
     } else {
         // Create new data with all default values
         ReputationData {
-            user_key: user_key.to_string(),
+            usr_key: user_key.to_string(),
             tag_key: tag_key.to_string(),
-            total_basis_reputation: 0.0,
-            total_voting_rewards_reputation: 0.0,
-            last_known_effective_reputation: 0.0,
+            reputation_basis: 0.0,
+            reputation_rewards: 0.0,
+            reputation_total_effective: 0.0,
             last_calculation: ic_cdk::api::time(),
             vote_weight: vote_weight.clone(),
             has_voting_power: false,
+            vote_weight_value: 0.0,
         }
     };
 
@@ -441,7 +439,7 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
     
     // Create the description for the reputation document using proper format
     let mut desc = DocumentDescription::new();
-    desc.add_owner(&reputation_data.user_key)
+    desc.add_owner(&reputation_data.usr_key)
         .add_field("tag", &reputation_data.tag_key);
     let description = desc.build();
     
@@ -701,38 +699,38 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
             .map_err(|e| format!("Failed to deserialize vote: {}", e))?;
 
         // Skip if we already have this author's information
-        if author_index.contains_key(&vote_data.author_key) {
+        if author_index.contains_key(&vote_data.usr_key) {
             continue;
         }
 
         // Get author's reputation data
-        match get_user_reputation_slim(&vote_data.author_key, tag_key).await {
+        match get_user_reputation_slim(&vote_data.usr_key, tag_key).await {
             Ok(Some(author_info)) => {
                 // Skip if author's votes are not active
                 if !author_info.votes_active {
                     // Add  detailed info about why author is inactive
                     logger!("info", "[calculate_user_reputation] Author={} is inactive in tag={}: reputation={}, has_voting_power={}",
-                        vote_data.author_key, tag_key, author_info.effective_reputation, author_info.votes_active);
+                        vote_data.usr_key, tag_key, author_info.effective_reputation, author_info.votes_active);
                     continue;
                 }
                 
                 // Add info about active author - do this BEFORE inserting into HashMap
                 logger!("info", "[calculate_user_reputation] Active author={} in tag={}: reputation={}, vote_weight={}",
-                    vote_data.author_key, tag_key, author_info.effective_reputation, author_info.vote_weight.value());
+                    vote_data.usr_key, tag_key, author_info.effective_reputation, author_info.vote_weight.value());
 
                 // Store author information AFTER logging
                 author_index.insert(
-                    vote_data.author_key.clone(),
+                    vote_data.usr_key.clone(),
                     author_info, // Use the AuthorInfo directly
                 );
             }
             Ok(None) => {
                 logger!("warn", "No reputation data found for author in calculate_user_reputation: author={}, tag={}",
-                    vote_data.author_key, tag_key);
+                    vote_data.usr_key, tag_key);
             }
             Err(e) => {
                 logger!("error", "[calculate_user_reputation] Error getting author reputation: author={}, tag={}, error={}",
-                    vote_data.author_key, tag_key, e);
+                    vote_data.usr_key, tag_key, e);
                 continue;
             }
         }
@@ -762,11 +760,11 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
                 .map_err(|e| format!("Failed to deserialize vote: {}", e))?;
 
             // Get author's information from our index
-            let author_info = match author_index.get(&vote_data.author_key) {
+            let author_info = match author_index.get(&vote_data.usr_key) {
                 Some(info) => info,
                 None => {
                     logger!("warn", "[calculate_user_reputation - Iterate Votes] Warning: Author info not found in index to calculate vote, author={}",
-                        vote_data.author_key);
+                        vote_data.usr_key);
                     continue;
                 }
             };
@@ -978,7 +976,7 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
         logger!("info", "[calculate_user_reputation] No existing document found for user={} in tag={}, creating new",
             user_key, tag_key);
         // Generate a new random document key instead of using canister ID
-        let new_key = generate_random_doc_key().await;
+        let new_key = create_reputation_key(user_key, tag_key).await;
         logger!("debug", "[calculate_user_reputation] Generated new key={} for reputation document", new_key);
         
         (new_key, None, None)
@@ -996,14 +994,15 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
 
     // Create the reputation data with all calculated values
     let reputation_data = ReputationData {
-        user_key: user_key.to_string(),
+        usr_key: user_key.to_string(),
         tag_key: tag_key.to_string(),
-        total_basis_reputation,
-        total_voting_rewards_reputation,
-        last_known_effective_reputation: effective_reputation,
+        reputation_basis: total_basis_reputation,
+        reputation_rewards: total_voting_rewards_reputation,
+        reputation_total_effective: effective_reputation,
         last_calculation: ic_cdk::api::time(),
-        vote_weight: vote_weight.clone(), // Use the existing vote_weight variable we determined earlier
+        vote_weight: vote_weight.clone(),
         has_voting_power,
+        vote_weight_value: vote_weight.value(),
     };
 
     // Step 7.3: Store document
@@ -1021,9 +1020,9 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
 
                 // Add log to show what we're about to store
                 logger!("info", "[calculate_user_reputation] UPDATING: key={}, basisR={}, voteR={}, totalR={}, vote_weight={}",
-                    doc_key, reputation_data.total_basis_reputation, 
-                    reputation_data.total_voting_rewards_reputation,
-                    reputation_data.last_known_effective_reputation,
+                    doc_key, reputation_data.reputation_basis, 
+                    reputation_data.reputation_rewards,
+                    reputation_data.reputation_total_effective,
                     vote_weight.value());
 
                 // Store the document with version for updates
@@ -1061,9 +1060,9 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
 
                 // Add log to show what we're about to store
                 logger!("info", "[calculate_user_reputation] CREATING: key={}, basisR={}, voteR={}, totalR={}, vote_weight={}",
-                    doc_key, reputation_data.total_basis_reputation, 
-                    reputation_data.total_voting_rewards_reputation,
-                    reputation_data.last_known_effective_reputation,
+                    doc_key, reputation_data.reputation_basis, 
+                    reputation_data.reputation_rewards,
+                    reputation_data.reputation_total_effective,
                     vote_weight.value());
 
                 // Store the document with version: Some(0) for new documents
@@ -1280,14 +1279,15 @@ pub async fn update_reputation_on_vote(
         });
         
         let rep_data = ReputationData {
-            user_key: target_key.to_string(),
+            usr_key: target_key.to_string(),
             tag_key: tag_key.to_string(),
-            total_basis_reputation: 0.0,
-            total_voting_rewards_reputation: 0.0,
-            last_known_effective_reputation: 0.0,
+            reputation_basis: 0.0,
+            reputation_rewards: 0.0,
+            reputation_total_effective: 0.0,
             last_calculation: ic_cdk::api::time(),
             vote_weight: default_weight,
             has_voting_power: false,
+            vote_weight_value: 0.0,
         };
         
         // For new documents, we don't set a version
@@ -1297,7 +1297,7 @@ pub async fn update_reputation_on_vote(
     // Step 3: Update reputation based on vote
     // The basis reputation is directly affected by votes
     let contribution = vote_value * vote_weight;
-    reputation_data.total_basis_reputation += contribution;
+    reputation_data.reputation_basis += contribution;
     reputation_data.last_calculation = ic_cdk::api::time();
 
     // Add info about reputation update
@@ -1307,13 +1307,13 @@ pub async fn update_reputation_on_vote(
         contribution, 
         vote_value, 
         vote_weight, 
-        reputation_data.total_basis_reputation
+        reputation_data.reputation_basis
         );
 
     // Step 4: Create updated reputation document
     // Create the description using proper format
     let mut desc = DocumentDescription::new();
-    desc.add_owner(&reputation_data.user_key)
+    desc.add_owner(&reputation_data.usr_key)
         .add_field("tag", &reputation_data.tag_key);
     let description = desc.build();
     
@@ -1339,7 +1339,7 @@ pub async fn update_reputation_on_vote(
             logger!("info", "[update_reputation_on_vote] RESULT: Successfully updated reputation for target={} in tag={}: new_total_basis={}",
                 target_key, 
                 tag_key, 
-                reputation_data.total_basis_reputation
+                reputation_data.reputation_basis
                 );
             Ok(())
         },
