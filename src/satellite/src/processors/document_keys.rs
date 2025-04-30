@@ -5,8 +5,8 @@
 //! in the database schema documentation, utilizing ULIDs for unique identifiers.
 //!
 //! Each document type has specific key format requirements:
-//! - Users: `usr_{ulid}_usrName_{username}_`
-//! - Tags: `usr_{ulid}_tag_{ulid}_tagName_{tagName}_`
+//! - Users: `usr_{ulid}_hdl_{username}_`
+//! - Tags: `usr_{ulid}_tag_{ulid}_hdl_{tagName}_`
 //! - Reputations: `usr_{ulid}_tag_{ulid}`
 //! - Votes: `usr_{ulid}_tag_{ulid}_tar_{ulid}_key_{ulid}_`
 //!
@@ -278,7 +278,7 @@ pub async fn create_vote_key(
 /// * `Result<(), String>` - Ok if valid, Err with message if invalid
 pub fn validate_user_key(key: &str) -> Result<(), String> {
     let user_key_pattern = Regex::new(
-        r"^usr_[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}_usrName_[a-z0-9\-]+_$"
+        r"^usr_[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}_hdl_[a-z0-9\-]+_$"
     ).unwrap();
     
     if !user_key_pattern.is_match(key) {
@@ -325,12 +325,12 @@ pub fn validate_tag_key(key: &str) -> Result<(), String> {
     // Ensure required components are present
     if !components.contains_key("usr_key") || 
        !components.contains_key("tag_key") || 
-       !components.contains_key("tagname") {
+       !components.contains_key("handle") {
         return Err("Tag key missing required components".to_string());
     }
     
     // Tag name validation
-    if let Some(tagname) = components.get("tagname") {
+    if let Some(tagname) = components.get("handle") {
         if tagname.len() < 3 || tagname.len() > 30 {
             return Err("Tag name must be between 3 and 30 characters".to_string());
         }
@@ -540,17 +540,17 @@ mod tests {
     #[test]
     fn test_parse_key() {
         // Test parse user key
-        let user_key = "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_usrName_johndoe_";
+        let user_key = "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_hdl_johndoe_";
         let components = parse_key(user_key).unwrap();
         assert_eq!(components.get("usr_key").unwrap(), "01ARZ3NDEKTSV4RRFFQ69G5FAV");
-        assert_eq!(components.get("username").unwrap(), "johndoe");
+        assert_eq!(components.get("handle").unwrap(), "johndoe");
         
         // Test parse tag key
-        let tag_key = "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW_tagName_technical-skills_";
+        let tag_key = "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW_hdl_technical-skills_";
         let components = parse_key(tag_key).unwrap();
         assert_eq!(components.get("usr_key").unwrap(), "01ARZ3NDEKTSV4RRFFQ69G5FAV");
         assert_eq!(components.get("tag_key").unwrap(), "01ARZ3NDEKTSV4RRFFQ69G5FAW");
-        assert_eq!(components.get("tagname").unwrap(), "technical-skills");
+        assert_eq!(components.get("handle").unwrap(), "technical-skills");
         
         // Test parse reputation key
         let rep_key = "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW_";

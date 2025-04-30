@@ -5,6 +5,7 @@ use crate::{
     validation::{validate_handle, validate_display_name},
     utils::structs::UserData,
     processors::document_keys::create_user_key,
+    utils::query_helpers::{query_doc, KeySegment},
 };
 use crate::list_docs;
 use crate::logger;
@@ -66,26 +67,14 @@ pub fn assert_doc_user(context: &AssertSetDocContext) -> Result<(), String> {
     // Step 5: Ensure username uniqueness using direct key-based lookup
     // This is more efficient than loading the entire table into memory first
     let normalized_username = crate::processors::document_keys::sanitize_for_key(&user_data.username);
-    let username_key_part = format!("_usrName_{}_", normalized_username);
     
-    logger!("debug", "[validate_user_document] Checking username uniqueness with key pattern: {}", username_key_part);
+    logger!("debug", "[validate_user_document] Checking username uniqueness for handle: {}", normalized_username);
 
     // Check if we're updating an existing document
     let is_update = context.data.data.current.is_some();
     
-    // Get documents that have this username pattern in their key
-    // This lookup happens directly at the database level without loading everything into memory
-    let results = junobuild_satellite::list_docs_store(
-        context.caller,
-        String::from("users"),
-        &ListParams {
-            matcher: Some(ListMatcher {
-                key: Some(username_key_part),  // Match the username part in the key
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
-    )?;
+    // Use query_doc with KeySegment::Handle for a more semantic query
+    let results = query_doc("users", KeySegment::Handle, &normalized_username)?;
 
     // Check if we found any documents with this username
     if results.items_length > 0 {

@@ -3,7 +3,7 @@ import { validateUlid } from './ulid_types';
 
 /**
  * Formats a tag document key
- * Format: usr_{userUlid}_tag_{tagUlid}_tagName_{tagName}_
+ * Format: usr_{userUlid}_tag_{tagUlid}_hdl_{tagName}_
  * 
  * @param userUlid - ULID of the user who created the tag
  * @param tagUlid - ULID of the tag itself
@@ -18,5 +18,5 @@ export function formatTagKey(userUlid: ULID, tagUlid: ULID, tagName: string): st
     // Convert tag name to lowercase and sanitize for key usage
     const sanitizedTagName = tagName.toLowerCase();
     
-    return `usr_${userUlid}_tag_${tagUlid}_tagName_${sanitizedTagName}_`;
+    return `usr_${userUlid}_tag_${tagUlid}_hdl_${sanitizedTagName}_`;
 } 
