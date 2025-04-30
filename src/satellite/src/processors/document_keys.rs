@@ -196,7 +196,22 @@ pub fn format_tag_key(user_ulid: &str, tag_ulid: &str, tag_name: &str) -> Result
     Ok(format!("usr_{}_tag_{}_hdl_{}_", user_ulid, tag_ulid, sanitized_name))
 }
 
-/// Creates a reputation document key
+/// Creates a reputation document key with generated ULID for the reputation
+///
+/// # Arguments
+/// * `user_ulid` - ULID of the user
+/// * `tag_ulid` - ULID of the tag
+///
+/// # Returns
+/// * `Result<String, String>` - Formatted key or error message
+pub async fn create_reputation_key(user_ulid: &str, tag_ulid: &str) -> Result<String, String> {
+    format_reputation_key(user_ulid, tag_ulid)
+}
+
+/// Format a reputation key with existing ULIDs
+///
+/// Use this function for validation and key formatting that doesn't require 
+/// async operations or new ULIDs generation.
 ///
 /// Format: usr_{userUlid}_tag_{tagUlid}_
 ///
@@ -206,7 +221,7 @@ pub fn format_tag_key(user_ulid: &str, tag_ulid: &str, tag_name: &str) -> Result
 ///
 /// # Returns
 /// * `Result<String, String>` - Formatted key or error message
-pub fn create_reputation_key(user_ulid: &str, tag_ulid: &str) -> Result<String, String> {
+pub fn format_reputation_key(user_ulid: &str, tag_ulid: &str) -> Result<String, String> {
     // Validate ULIDs
     validate_ulid(user_ulid)?;
     validate_ulid(tag_ulid)?;

@@ -3,24 +3,22 @@ use junobuild_satellite::AssertSetDocContext;
 use junobuild_utils::decode_doc_data;
 use crate::utils::structs::ReputationData;
 use crate::IS_PLAYGROUND;
-use junobuild_shared::types::list::{ListMatcher, ListParams};
-use crate::list_docs;
+use crate::processors::document_keys::{validate_reputation_key, format_reputation_key};
 
 /// Validates a reputation document before creation or update
 /// 
 /// This function performs validation of reputation documents:
 /// 1. Verifies collection name is "reputations"
 /// 2. Decodes and validates the basic reputation data structure
-/// 3. Validates description format using DocumentDescription helper
+/// 3. Validates key format using document_keys validation src/satellite/src/processors/document_keys.rs
 /// 4. Validates field constraints (voting rewards non-negative, vote weight in range)
 /// 
 /// # Arguments
 /// * `context` - The validation context containing:
 ///   - caller: The Principal ID of the user making the request
 ///   - collection: Must be "reputations"
-///   - key: The document key (nanoid-generated)
+///   - key: The document key in format: usr_{ulid}_tag_{ulid}_
 ///   - data.data.proposed.data: The binary data of the proposed document
-///   - data.data.proposed.description: The description field
 /// 
 /// # Returns
 /// * `Result<(), String>` - Ok if validation passes, Err with detailed message if it fails
@@ -47,35 +45,29 @@ pub fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(),
             format!("Failed to decode reputation data: {}", e)
         })?;
 
-    // Step 3: Create and validate description using DocumentDescription helper
-    // This ensures the description follows our standardized format:
-    // - Playground mode: owner=user_key;tag=tag_key;
-    // - Production mode: owner=principal_id;tag=tag_key;
-    let mut desc = DocumentDescription::new();
-    let caller_string = context.caller.to_string(); // Create a string that lives for the duration of the function
-    desc.add_owner(if IS_PLAYGROUND {
-        &rep_data.usr_key
-    } else {
-        &caller_string
-    })
-    .add_field("tag", &rep_data.tag_key);
-
-    let expected_description = desc.build();
-
-    // Verify the description matches our expected format
-    if let Some(actual_description) = &context.data.data.proposed.description {
-        if actual_description != &expected_description {
-            let err_msg = format!(
-                "[validate_reputation_document] Invalid description format. Expected: {}, Got: {}",
-                expected_description, actual_description
-            );
-            logger!("error", "{}", err_msg);
-            return Err(err_msg);
-        }
-    } else {
-        let err_msg = "[validate_reputation_document] Description field is required for reputation documents";
+    // Step 3: Validate the key format using document_keys validation
+    // This ensures the key follows our standardized format: usr_{user.data.key}_tag_{tag.data.ulid}_
+    validate_reputation_key(&context.data.key)
+        .map_err(|e| {
+            logger!("error", "[validate_reputation_document] Invalid reputation key format: {}", e);
+            format!("Invalid reputation key format: {}", e)
+        })?;
+    
+    // Step 3.1: Verify the key matches the data
+    // Generate the expected key from the data and compare with actual key
+    let expected_key = format_reputation_key(&rep_data.usr_key, &rep_data.tag_key)
+        .map_err(|e| {
+            logger!("error", "[validate_reputation_document] Failed to format reputation key: {}", e);
+            format!("Failed to format reputation key: {}", e)
+        })?;
+    
+    if context.data.key != expected_key {
+        let err_msg = format!(
+            "[validate_reputation_document] Key does not match data. Expected: {}, Got: {}",
+            expected_key, context.data.key
+        );
         logger!("error", "{}", err_msg);
-        return Err(err_msg.to_string());
+        return Err(err_msg);
     }
 
     // Step 4: Validate field constraints
@@ -95,10 +87,12 @@ pub fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(),
     }
 
     // 4.3: Validate vote weight (must be between 0.0 and 1.0)
-    if rep_data.vote_weight.value() < 0.0 || rep_data.vote_weight.value() > 1.0 {
+    // Use vote_weight.value() to access the underlying f64 value for comparison
+    let weight_value = rep_data.vote_weight.value();
+    if weight_value < 0.0 || weight_value > 1.0 {
         let err_msg = format!(
             "[validate_reputation_document] Vote weight must be between 0.0 and 1.0 (got: {})",
-            rep_data.vote_weight.value()
+            weight_value
         );
         logger!("error", "{}", err_msg);
         return Err(err_msg);

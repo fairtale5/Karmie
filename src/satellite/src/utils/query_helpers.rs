@@ -97,9 +97,9 @@ pub fn query_doc(
     logger!("debug", "[query_doc] Querying collection={}, segment={:?}, pattern={}", 
         collection, segment, key_pattern);
 
-    // Use Juno's efficient key-based query
+    // Use Juno's efficient key-based query with canister ID for admin access
     list_docs_store(
-        ic_cdk::caller(),
+        ic_cdk::id(),  // Use canister's ID for admin/controller access
         collection.to_string(),
         &ListParams {
             matcher: Some(ListMatcher {
@@ -110,6 +110,57 @@ pub fn query_doc(
         },
     ).map_err(|e| {
         logger!("error", "[query_doc] Query failed: collection={}, pattern={}, error={}", 
+            collection, key_pattern, e);
+        e
+    })
+}
+
+/// Query documents by exact key pattern
+/// 
+/// This general-purpose function allows searching for documents using any key pattern.
+/// It performs an efficient key-based query without loading the entire collection.
+/// 
+/// # Arguments
+/// * `collection` - The collection to search in ("users", "tags", "votes", "reputations")
+/// * `key_pattern` - The exact key pattern to search for
+/// 
+/// # Returns
+/// * `Result<ListResults<Doc>, String>` - Matching documents or error
+/// 
+/// # Examples
+/// ```rust
+/// // Find all votes by a user in a tag
+/// query_doc_by_key("votes", &format!("usr_{}_tag_{}_", user_key, tag_key))?;
+/// 
+/// // Find all votes for a target user in a tag
+/// query_doc_by_key("votes", &format!("tag_{}_tar_{}_", tag_key, target_key))?;
+/// 
+/// // Find a specific vote by its key
+/// query_doc_by_key("votes", &format!("key_{}_", vote_key))?;
+/// 
+/// // Find a specific user by handle
+/// query_doc_by_key("users", &format!("hdl_{}_", handle))?;
+/// ```
+pub fn query_doc_by_key(
+    collection: &str,
+    key_pattern: &str
+) -> Result<ListResults<Doc>, String> {
+    logger!("debug", "[query_doc_by_key] Querying collection={} with key pattern: {}", 
+        collection, key_pattern);
+
+    // Use Juno's efficient key-based query
+    list_docs_store(
+        ic_cdk::id(),  // Use canister's ID for admin/controller access
+        collection.to_string(),
+        &ListParams {
+            matcher: Some(ListMatcher {
+                key: Some(key_pattern.to_string()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+    ).map_err(|e| {
+        logger!("error", "[query_doc_by_key] Query failed: collection={}, pattern={}, error={}", 
             collection, key_pattern, e);
         e
     })

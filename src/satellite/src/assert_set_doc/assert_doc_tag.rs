@@ -59,18 +59,18 @@ pub fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String
     if !existing_tags.items.is_empty() {
         for (doc_key, doc) in existing_tags.items {
             // Check if this is an update by looking at current data
-            let is_update = context.data.data.current.is_some();
-            
+    let is_update = context.data.data.current.is_some();
+    
             // For updates, skip if we're looking at the current document
-            if is_update && doc_key == context.data.key {
+        if is_update && doc_key == context.data.key {
                 logger!("debug", "[validate_tag_document] Skipping current document during update check");
-                continue;
-            }
-            
+            continue;
+        }
+        
             // If we get here, we found a duplicate tag
             let err_msg = format!("Tag with name '{}' already exists", tag_data.name);
             logger!("error", "[validate_tag_document] {}", err_msg);
-            return Err(err_msg);
+                        return Err(err_msg);
         }
     }
 

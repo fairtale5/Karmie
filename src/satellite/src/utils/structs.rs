@@ -228,14 +228,11 @@ pub struct ReputationData {
     pub last_calculation: u64,
 
     /// The user's vote weight (0.0 to 1.0, where 1.0 = 100%)
+    /// Access the value using vote_weight.value() method
     pub vote_weight: VoteWeight,
 
     /// Whether the user has sufficient reputation to have voting power (above threshold)
     pub has_voting_power: bool,
-    
-    /// User's voting weight in this tag
-    pub vote_weight_value: f64,
-
 }
 
 /// Represents a vote weight with constraints (0.0 to 1.0)

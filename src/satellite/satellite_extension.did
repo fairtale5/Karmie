@@ -2,20 +2,27 @@
 // Any modifications may be overwritten.
 
 type ReputationData = record {
-  total_voting_rewards_reputation : float64;
   last_calculation : nat64;
-  user_key : text;
+  reputation_basis : float64;
   tag_key : text;
+  reputation_rewards : float64;
   vote_weight : float64;
-  last_known_effective_reputation : float64;
   has_voting_power : bool;
-  total_basis_reputation : float64;
+  usr_key : text;
+  reputation_total_effective : float64;
 };
-type Result = variant { Ok : float64; Err : text };
-type Result_1 = variant { Ok : ReputationData; Err : text };
+type Result = variant { Ok : text; Err : text };
+type Result_1 = variant { Ok : float64; Err : text };
+type Result_2 = variant { Ok : ReputationData; Err : text };
+type Result_3 = variant { Ok : bool; Err : text };
 service : {
   build_version : () -> (text) query;
-  get_user_reputation : (text, text) -> (Result) query;
-  get_user_reputation_full : (text, text) -> (Result_1) query;
-  recalculate_reputation : (text, text) -> (Result);
+  create_document_key_for_reputation : (text, text) -> (Result) query;
+  create_document_key_for_tag : (text, text) -> (Result) query;
+  create_document_key_for_user : (text) -> (Result) query;
+  create_document_key_for_vote : (text, text, text) -> (Result) query;
+  get_user_reputation : (text, text) -> (Result_1) query;
+  get_user_reputation_full : (text, text) -> (Result_2) query;
+  recalculate_reputation : (text, text) -> (Result_1);
+  validate_document_key : (text, text) -> (Result_3) query;
 }

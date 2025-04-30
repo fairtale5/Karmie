@@ -32,7 +32,7 @@ pub fn assert_doc_user(context: &AssertSetDocContext) -> Result<(), String> {
     // Step 1: Decode and validate user data
     let user_data: UserData = decode_doc_data(&context.data.data.proposed.data)
         .map_err(|e| format!("Failed to decode user data: {}", e))?;
-
+    
     // Step 2: Validate document key format
     // First validate that the key is a valid ULID
     crate::processors::ulid_generator::validate_ulid(&context.data.key)?;
@@ -46,7 +46,7 @@ pub fn assert_doc_user(context: &AssertSetDocContext) -> Result<(), String> {
             context.data.key
         ));
     }
-
+    
     // Step 3: Validate username format and restrictions
     validate_handle(&user_data.username)
         .map_err(|e| {
@@ -93,13 +93,13 @@ pub fn assert_doc_user(context: &AssertSetDocContext) -> Result<(), String> {
         for (existing_key, _) in results.items {
             if !is_update || existing_key != context.data.key {
                 // Found another document with this username
-                let err_msg = format!(
-                    "[assert_set_doc] Username '{}' is already taken. Please choose a different username.",
-                    user_data.username
-                );
-                logger!("error", "{}", err_msg);
-                return Err(err_msg);
-            }
+                        let err_msg = format!(
+                            "[assert_set_doc] Username '{}' is already taken. Please choose a different username.",
+                            user_data.username
+                        );
+                        logger!("error", "{}", err_msg);
+                        return Err(err_msg);
+        }
         }
     } else {
         // No existing document with this username - this is good!

@@ -36,7 +36,7 @@ Collection name: `users`
 ```typescript
 interface UserDocument {
     // Standard Juno fields (automatically managed)
-    key: string;                // Format: usr_{ulid}_usrName_{username}_ generated with src/satellite/src/processors/document_keys.rs
+    key: string;                // Format: usr_{ulid}_hdl_{handle}_ generated with src/satellite/src/processors/document_keys.rs
     description: string;        // currently not used
     owner: Principal;           // Automatically set to user's Internet Identity Principal
     created_at: bigint;         // Creation timestamp in nanoseconds
@@ -64,9 +64,9 @@ interface UserDocument {
    - No character restrictions
 
 3. **Document Key Format**
-   - Format: `usr_{ulid}_usrName_{username}_`
+   - Format: `usr_{ulid}_hdl_{usernameHandle}_`
    - ULID: 26 characters, Crockford Base32
-   - Username: Lowercase, sanitized version
+   - Handle: Lowercase, sanitized version (username)
 
 4. **Description Format** // no longer used.
 
@@ -87,7 +87,7 @@ interface UserDocument {
 Example User Document:
 ```typescript
 {
-    key: "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_usrName_johndoe_",
+    key: "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_hdl_johndoe_",
     description: "",
     owner: Principal.fromText("..."),
     created_at: 1234567890n,
@@ -115,7 +115,7 @@ Collection name: `tags`
 ```typescript
 interface TagDocument {
     // Standard Juno fields (automatically managed)
-    key: string;                // Format: usr_{userUlid}_tag_{tagUlid}_tagName_{tagName}_ generated with formatTagKey() in src/satellite/src/processors/document_keys.rs
+    key: string;                // Format: usr_{userUlid}_tag_{tagUlid}_hdl_{tagHandle}_ generated with formatTagKey() in src/satellite/src/processors/document_keys.rs
     description: string;        // currently not used
     owner: Principal;           // Automatically set to document creator's Principal
     created_at: bigint;         // Creation timestamp in nanoseconds
@@ -140,7 +140,7 @@ interface TagDocument {
 Example Tag Document:
 ```typescript
 {
-    key: "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW_tagName_technicalskills_",
+    key: "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW_hdl_technicalskills_",
     description: "",
     owner: Principal.fromText("..."),
     created_at: 1234567890n,
@@ -176,10 +176,10 @@ Example Tag Document:
    - Stored in original case in the data.name field
 
 2. **Document Key Format**
-   - Format: `usr_{userUlid}_tag_{tagUlid}_tagName_{tagName}_`
+   - Format: `usr_{userUlid}_tag_{tagUlid}_hdl_{handle}_`
    - First ULID: Creator's user identifier (must be uppercase)
    - Second ULID: Tag's unique identifier (must be uppercase)
-   - Tag Name: Lowercase, sanitized version of tag name for easy querying
+   - Handle: Lowercase, sanitized version of tag name for easy querying (tagName)
 
 3. **Production Mode Rules**
    - Stricter validation rules apply
@@ -480,7 +480,7 @@ Juno's memory is not a traditional database - it's a growable memory space index
   get_doc_store(
       caller,
       "users",
-      "usr_123_usrName_john_"
+      "usr_123_hdl_johndoe_"
   )
   
   // Also efficient: Uses key pattern matching

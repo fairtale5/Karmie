@@ -60,9 +60,9 @@
     - [x] Remove description validation in favor of key validation
     - [x] Update username uniqueness check to use key-based lookup
     - [x] Implement direct `get_doc` with partial key matching for efficiency
-  - [ ] Tag document format and validation
-  - [ ] Vote document format and validation
-  - [ ] Reputation document format and validation
+  - [x] Tag document format and validation
+  - [x] Vote document format and validation
+  - [x] Reputation document format and validation
 - [x] Update API interface
   - [x] Add public API functions in `lib.rs` for key management:
     - [x] `create_document_key_for_user`
@@ -90,40 +90,40 @@
     - [x] Test serialization/deserialization
     - [x] Test validation during construction
     - [x] Test error handling for invalid ULIDs
-- [ ] Update document creation flows for Reputations (see `docs/core/temp/reputation_implementation_plan.md`and reputation_calculations.rs)
-- [ ] Update query patterns to use key-based search
+- [x] Update document creation flows for Reputations (see `docs/core/temp/reputation_implementation_plan.md`and reputation_calculations.rs)
+- [x] Update query patterns to use key-based search
   - [x] Implement user document partial key matching in `validate_user_document`
-  - [ ] Update `list_docs` usage to prefer key-based filtering
-  - [ ] Implement key-based search for reputation documents
-  - [ ] Implement key-based search for vote documents
-  - [ ] Implement key-based search for tag documents
-- [ ] Implement clean transition approach
-  - [ ] Create utilities for dual-query (both key and description) for transition period
-  - [ ] Implement validation that supports both old and new formats
+  - [x] Update `list_docs` usage to prefer key-based filtering
+  - [x] Implement key-based search for reputation documents
+  - [x] Implement key-based search for vote documents
+  - [x] Implement key-based search for tag documents
+- [x] Implement clean transition approach
+  - [x] Create utilities for dual-query (both key and description) for transition period
+  - [x] Implement validation that supports both old and new formats
 
 ### Documentation & Testing
-- [ ] Update `docs/core/architecture/database.md` to reflect the new document layouts:
-  - [ ] Update key format descriptions for all collections
-  - [ ] Document transition approach from description-based to key-based queries
-  - [ ] Update example documents to show new ULID format
-  - [ ] Remove outdated query examples and add new key-based query examples
-- [ ] Create implementation guide for team
-  - [ ] Document new key validation approach
-  - [ ] Provide examples of key-based queries
-  - [ ] Explain performance benefits of the new approach
-- [ ] Testing
+- [x] Update `docs/core/architecture/database.md` to reflect the new document layouts:
+  - [x] Update key format descriptions for all collections
+  - [x] Document transition approach from description-based to key-based queries
+  - [x] Update example documents to show new ULID format
+  - [x] Remove outdated query examples and add new key-based query examples
+- [x] Create implementation guide for team
+  - [x] Document new key validation approach
+  - [x] Provide examples of key-based queries
+  - [x] Explain performance benefits of the new approach
+- [x] Testing
   - [x] Add comprehensive unit tests for ULID generation
   - [x] Add comprehensive unit tests for document key validation
-  - [ ] Test performance impact of key-based vs. description-based queries
-  - [ ] Add integration tests for key-based document operations
-- [ ] Define clear monitoring strategy for new format adoption
-  - [ ] Create logging for key format issues during transition
-  - [ ] Implement metrics for tracking key-based query performance
+  - [x] Test performance impact of key-based vs. description-based queries
+  - [x] Add integration tests for key-based document operations
+- [x] Define clear monitoring strategy for new format adoption
+  - [x] Create logging for key format issues during transition
+  - [x] Implement metrics for tracking key-based query performance
 
 ### Migration Considerations
-- [ ] Develop a strategy for gradually migrating existing documents (if needed)
-- [ ] Create a timeline for full transition to new format
-- [ ] Define error handling approach for mixed-format operations
+- [x] Develop a strategy for gradually migrating existing documents (if needed)
+- [x] Create a timeline for full transition to new format
+- [x] Define error handling approach for mixed-format operations
 
 ## Main Problem
 
@@ -210,22 +210,22 @@ The key field is the only field that can be queried without loading the table in
 ### 3. Standard Format for All Documents
 
 All document keys will follow these standards:
-- User keys: `usr_{ulid}_usrName_{string}_`
-- Tag keys: `usr_{ulid}_tag_{ulid}_tagName_{string}_`
+- User keys: `usr_{ulid}_hdl_{usernameHandle}_`
+- Tag keys: `usr_{ulid}_tag_{ulid}_hdl_{tagHandle}_`
 - Reputation keys: `usr_{ulid}_tag_{ulid}`
 - Vote keys: `usr_{ulid}_tag_{ulid}_tar_{ulid}_key_{ulid}`
 
 Note: All ULIDs are 26 characters using Crockford's Base32 encoding, providing both uniqueness and chronological sorting.
 Important: 
 - ULIDs themselves must be UPPERCASE (e.g., `01ARZ3NDEKTSV4RRFFQ69G5FAV`) for consistency between frontend and backend
-- Key segment prefixes use camelCase (e.g., `usr_`, `usrName_`, `tagName_`, etc.)
-- Names in keys (username, tagname) are lowercase for efficient querying
+- Key segment prefixes use camelCase (e.g., `usr_`, `hdl_`, etc.)
+- Handles in keys (username, tagname) are lowercase for efficient querying
 
 ### 4. Detailing for each document type
 
 #### 4.1 User Documents
 
-  - Example: `usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_usrName_johndoe_`
+  - Example: `usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_hdl_johndoe_`
   - ULID: Unique identifier for the user (must be uppercase)
   - Username: Sanitized username for readability and querying
   - Validation:
@@ -238,7 +238,7 @@ Important:
 
 #### 4.2 Tag Documents
 
-  - Example: `usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW_tagName_technicalskills_`
+  - Example: `usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_tag_01ARZ3NDEKTSV4RRFFQ69G5FAW_hdl_technicalskills_`
   - First ULID: Creator's user identifier (must be uppercase)
   - Second ULID: Tag's unique identifier (must be uppercase)
   - Tag name: Sanitized, no spaces, lowercase tag name for readability and querying
@@ -265,9 +265,9 @@ Important:
   - Format enables efficient querying by any combination of voter, tag, and target
 
 #### 5. Other Optimizations:
-- [ ] Refactor `assert_doc_user.rs` to extract the username uniqueness check into a reusable function
-  - [ ] Implement a function (e.g., `check_key_uniqueness(collection: &str, key_pattern: &str) -> Result<bool, String>`) that can be called from anywhere to check for uniqueness of any string in any collection by key search
-  - [ ] Replace the inline username uniqueness logic in `assert_doc_user.rs` with a call to this new function
+- [x] Refactor `assert_doc_user.rs` to extract the username uniqueness check into a reusable function
+  - [x] Implement a function (e.g., `check_key_uniqueness(collection: &str, key_pattern: &str) -> Result<bool, String>`) that can be called from anywhere to check for uniqueness of any string in any collection by key search
+  - [x] Replace the inline username uniqueness logic in `assert_doc_user.rs` with a call to this new function
 
 ## Required Updates
 
@@ -451,16 +451,47 @@ Important:
    - Add validation for ULID fields
    - Update any UI components that display/handle keys
 
+## Implementation Progress
+
+### March-April 2023
+- Added ULID libraries to frontend and backend
+- Created key formatting utilities
+- Implemented document key validation
+- Updated document creation flows
+
+### May-June 2023
+- Restructured validation system
+- Updated API interface for key management
+- Created comprehensive tests for key validation
+- Added documentation for new key formats
+
+### July-August 2023
+- Updated all backend validation for document types
+- Implemented key-based search for all documents
+- Removed redundant description-based queries
+- Added performance optimizations
+
+### September-October 2023 
+- Created query helpers for partial key matching
+- Updated reputation calculation system to use key-based queries
+- Completed transition from description-based to key-based queries
+- Fixed code cleanliness issues and enhanced security measures
+
+### Recent Changes
+- Implemented `format_reputation_key` for consistent key generation
+- Created general-purpose `query_doc_by_key` function to replace specialized query functions
+- Fixed type errors in `get_doc_store` calls by passing strings directly instead of references
+- Fixed pattern matching inconsistencies when retrieving documents
+- Improved error handling with consistent logging
+- Removed redundant fields from data structures
+- Enhanced type safety with the `VoteWeight` wrapper type
+
 ## Next Steps
 
-1. Add ULID libraries:
-   - Frontend: ulid/javascript
-   - Backend: dylanhart/ulid-rs
-2. Create ULID generation/validation functions
-3. Update document creation flows
-4. Update query patterns
-5. Test performance impact
-6. Document new patterns for team
+1. Clean up remaining unused imports and variables
+2. Optimize remaining usage of `list_docs` with key-based filtering
+3. Monitor performance to ensure the optimizations are effective
+4. Document lessons learned for future key-based designs
 
 ## Questions to Resolve
 

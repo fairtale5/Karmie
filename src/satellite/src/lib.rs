@@ -48,29 +48,44 @@
  * - Strict validation rules
  * - Format: [field:{value}]
  * 
- * # Document Formats
+ * # Document Key Formats
  * 
- * Each collection uses specific description formats:
+ * Each collection uses specific key formats for efficient querying:
  * 
  * Users Collection:
  * ```text
- * [owner:{key}],[username:{normalized_username}]
- * ```
- * 
- * Votes Collection:
- * ```text
- * [owner:{id}],[author:{key}],[target:{key}],[tag:{key}]
+ * usr_{ulid}_hdl_{handle}_
  * ```
  * 
  * Tags Collection:
  * ```text
- * [owner:{id}],[name:{normalized_name}]
+ * usr_{userUlid}_tag_{tagUlid}_hdl_{handle}_
+ * ```
+ * 
+ * Votes Collection:
+ * ```text
+ * usr_{ulid}_tag_{ulid}_tar_{ulid}_key_{ulid}_
  * ```
  * 
  * Reputations Collection:
  * ```text
- * [owner:{id}],[user:{key}],[tag:{key}]
+ * usr_{ulid}_tag_{ulid}_
  * ```
+ * 
+ * # Key-Based Query System
+ * 
+ * The system uses key-based queries for efficient data retrieval:
+ * - Uses key patterns instead of description field filtering
+ * - Avoids loading entire collections into memory
+ * - Provides efficient partial key matching
+ * - Supports chronological sorting through ULID
+ * 
+ * Query segments available:
+ * - User (usr_): For user-based queries
+ * - Tag (tag_): For tag-based queries
+ * - Target (tar_): For target user queries
+ * - Handle (hdl_): For username/tagname queries
+ * - Key (key_): For specific document queries
  * 
  * # Logging Standards
  * 
@@ -675,7 +690,7 @@ pub async fn create_document_key_for_tag(user_ulid: String, tag_name: String) ->
 #[query]
 pub fn create_document_key_for_reputation(user_ulid: String, tag_ulid: String) -> Result<String, String> {
     // Use our document_keys module to create a properly formatted key
-    crate::processors::document_keys::create_reputation_key(&user_ulid, &tag_ulid)
+    crate::processors::document_keys::format_reputation_key(&user_ulid, &tag_ulid)
 }
 
 /// Creates a document key for a vote using the new ULID-based format
