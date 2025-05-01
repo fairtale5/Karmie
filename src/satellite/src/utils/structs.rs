@@ -42,7 +42,7 @@ pub struct UserData {
     /// ULID for this user, stored separately from the formatted key
     /// This is the raw ULID without username and prefixes
     /// Optional for backward compatibility during transition
-    pub usr_key: Option<String>,
+    pub user_key: Option<String>,
 
     /// Unique username (must be unique across all users)
     pub username: String,
@@ -89,7 +89,7 @@ pub struct TagData {
 
     /// ULID for the user who created this tag
     /// This is the raw ULID without prefixes, stored as uppercase
-    pub usr_key: String,
+    pub user_key: String,
 
     /// ULID for this tag
     /// This is the raw ULID without prefixes, stored as uppercase
@@ -151,11 +151,11 @@ pub struct VoteData {
 
     /// ULID for the user who cast this vote
     /// This is the raw ULID without prefixes, stored as uppercase
-    pub usr_key: String,
+    pub user_key: String,
 
     /// ULID for the target user receiving the vote
     /// This is the raw ULID without prefixes, stored as uppercase
-    pub tar_key: String,
+    pub target_key: String,
 
     /// ULID for the tag this vote is for
     /// This is the raw ULID without prefixes, stored as uppercase
@@ -209,7 +209,7 @@ pub struct ReputationData {
 
     /// ULID for the user this reputation is for
     /// This is the raw ULID without prefixes, stored as uppercase
-    pub usr_key: String,
+    pub user_key: String,
 
     /// ULID for the tag this reputation is for
     /// This is the raw ULID without prefixes, stored as uppercase

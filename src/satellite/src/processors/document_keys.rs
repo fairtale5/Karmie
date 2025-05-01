@@ -100,7 +100,7 @@ pub fn parse_key(key: &str) -> Result<HashMap<String, String>, String> {
                     components.insert("tar_key".to_string(), parts[i+1].to_string());
                     i += 2;
                 } else {
-                    return Err("Invalid tar_key format".to_string());
+                    return Err("Invalid target_key format".to_string());
                 }
             },
             "key" => {

@@ -66,7 +66,7 @@
 	let tagBeingEdited: Doc<{
 		name: string;
 		description: string;
-		usr_key?: ULID; // Replace author_key with usr_key using ULID type
+		user_key?: ULID; // Replace author_key with user_key using ULID type
 		tag_key?: ULID; // Add tag_key field for ULID of the tag itself
 		time_periods: Array<{ months: number; multiplier: number }>;
 		reputation_threshold: number;
@@ -96,7 +96,7 @@
 	let tags: Doc<{
 		name: string;
 		description: string;
-		usr_key?: ULID; // Replace author_key with usr_key
+		user_key?: ULID; // Replace author_key with user_key
 		tag_key?: ULID; // Add tag_key field
 		time_periods: Array<{ months: number; multiplier: number }>;
 		reputation_threshold: number;
@@ -107,7 +107,7 @@
 	// Form data for creating votes
 	let newVote = {
 		data: {
-			usr_key: '',
+			user_key: '',
 			target_key: '',
 			tag_key: '',
 			value: 1,
@@ -117,7 +117,7 @@
 
 	// List of all votes
 	let votes: Doc<{
-		usr_key: string;
+		user_key: string;
 		target_key: string;
 		tag_key: string;
 		value: number;
@@ -165,27 +165,20 @@
 				collection: COLLECTIONS.USERS
 			});
 			
-			// There are two approaches to fetching reputation data:
-			// 1. Bulk approach (current): Get all reputations for the tag at once with listDocs
-			//    - Pros: Fewer network requests, better for many users
-			//    - Cons: Returns more data than needed if we only want specific users
-			// 2. Individual approach: Use getUserReputationFull for each user
-			//    - Pros: More precise, only gets data for users we care about
-			//    - Cons: More network requests, worse for many users
-			//
-			// The bulk approach is more efficient for admin views where we need all user data
+			// Get the selected tag document to access its data
+			const selectedTagDoc = tags.find(tag => tag.key === tagKey);
+			if (!selectedTagDoc || !selectedTagDoc.data.tag_key) {
+				console.error('[Admin] Tag document not found or missing tag_key:', tagKey);
+				return;
+			}
 			
-			// Get the satellite actor
-			const actor = await getSatelliteExtendedActor<SatelliteActor>({
-				idlFactory
-			});
-			
-			// Get all reputations for this tag
+			// Use key-based filtering with proper pattern using the tag's ULID directly
+			// Reputation keys format: usr_{userUlid}_tag_{tagUlid}
 			const reputationsList = await listDocs<ReputationData>({
 				collection: COLLECTIONS.REPUTATIONS,
 				filter: {
 					matcher: {
-						key: `tag=${tagKey}`
+						key: `tag_${selectedTagDoc.data.tag_key}`
 					}
 				}
 			});
@@ -211,42 +204,6 @@
 				userReputations[user.key] = reputation;
 			}
 			
-			// Example of individual approach (not used but shown for reference):
-			// userReputations = {};
-			// for (const user of usersList.items) {
-			//     try {
-			//         const result = await getUserReputationFull(user.key, tagKey);
-			//         if ('Ok' in result) {
-			//             userReputations[user.key] = result.Ok;
-			//         } else {
-			//             // User has no reputation yet, use default values
-			//             userReputations[user.key] = {
-			//                 user_key: user.key,
-			//                 tag_key: tagKey,
-			//                 total_basis_reputation: 0,
-			//                 total_voting_rewards_reputation: 0,
-			//                 last_known_effective_reputation: 0,
-			//                 last_calculation: BigInt(0),
-			//                 vote_weight: 0,
-			//                 has_voting_power: false
-			//             };
-			//         }
-			//     } catch (error) {
-			//         console.error(`[Admin] Error loading reputation for user ${user.key}:`, error);
-			//         // Use default values on error
-			//         userReputations[user.key] = {
-			//             user_key: user.key,
-			//             tag_key: tagKey,
-			//             total_basis_reputation: 0,
-			//             total_voting_rewards_reputation: 0,
-			//             last_known_effective_reputation: 0,
-			//             last_calculation: BigInt(0),
-			//             vote_weight: 0,
-			//             has_voting_power: false
-			//         };
-			//     }
-			// }
-			
 			console.log('[Admin] Loaded reputations:', userReputations);
 		} catch (error) {
 			console.error('[Admin] Error loading reputations:', error);
@@ -265,9 +222,9 @@
 			} else {
 				// Load data if authenticated
 				loadUsers();
-				loadVotes();
-				loadTags();
-				loadReputations();
+				loadVotes(); // Initial load of all votes
+				loadTags(); // Initial load of all tags
+				loadReputations(); // Initial load of all reputations
 			}
 		});
 
@@ -279,7 +236,12 @@
 
 	// Watch for tag selection changes
 	$: if (selectedTag) {
+		// When a tag is selected, load reputations for that tag
 		loadUserReputations(selectedTag);
+		// Also update votes filtered by this tag
+		loadVotes();
+		// Load reputations filtered by this tag
+		loadReputations(undefined, selectedTag);
 	}
 
 	// Load users
@@ -288,7 +250,7 @@
 			const usersList = await listDocs<{
 				username: string;
 				display_name: string;
-				usr_key: ULID;
+				user_key: ULID;
 			}>({
 				collection: COLLECTIONS.USERS
 			});
@@ -302,53 +264,122 @@
 	// Load votes
 	async function loadVotes() {
 		try {
+			// If a tag is selected, filter votes by tag using key-based filtering
+			// Vote key format: usr_{ulid}_tag_{tagUlid}_tar_{ulid}_key_{ulid}_
+			let filter = {};
+			
+			if (selectedTag) {
+				// Get the selected tag document to access its data
+				const selectedTagDoc = tags.find(tag => tag.key === selectedTag);
+				if (selectedTagDoc && selectedTagDoc.data.tag_key) {
+					// Filter votes by tag ULID directly from the data field
+					filter = {
+						matcher: {
+							key: `tag_${selectedTagDoc.data.tag_key}`
+						}
+					};
+				}
+			}
+			
 			const votesList = await listDocs<{
-				usr_key: string;
+				user_key: string;
 				target_key: string;
 				tag_key: string;
 				value: number;
 				weight: number;
 			}>({
-				collection: COLLECTIONS.VOTES
+				collection: COLLECTIONS.VOTES,
+				...(Object.keys(filter).length > 0 && { filter })
 			});
-			console.log('Loaded votes:', votesList.items); // Debug log
+			
+			console.log('[Admin] Loaded votes:', votesList.items);
 			votes = votesList.items;
 		} catch (error) {
-			console.error('Error loading votes:', error);
+			console.error('[Admin] Error loading votes:', error);
 		}
 	}
 
 	// Load tags
-	async function loadTags() {
+	async function loadTags(userKey?: string) {
 		try {
+			// If a user key is provided, filter tags by user using key-based filtering
+			// Tag key format: usr_{userUlid}_tag_{tagUlid}_hdl_{tagName}_
+			let filter = {};
+			
+			if (userKey) {
+				// Get the user document to access its data
+				const userDoc = users.find(user => user.key === userKey);
+				if (userDoc && userDoc.data.user_key) {
+					// Filter tags by user ULID directly from the data field
+					filter = {
+						matcher: {
+							key: `usr_${userDoc.data.user_key}`
+						}
+					};
+				}
+			}
+			
 			const tagsList = await listDocs<{ 
 				name: string; 
 				description: string; 
-				usr_key?: ULID; // Use optional fields to handle both old and new formats
+				user_key?: ULID; // Use optional fields to handle both old and new formats
 				tag_key?: ULID;
 				time_periods: { months: number; multiplier: number }[];
 				reputation_threshold: number;
 				vote_reward: number;
 				min_users_for_threshold: number;
 			}>({
-				collection: COLLECTIONS.TAGS
+				collection: COLLECTIONS.TAGS,
+				...(Object.keys(filter).length > 0 && { filter })
 			});
+			
+			console.log('[Admin] Loaded tags:', tagsList.items);
 			tags = tagsList.items;
 		} catch (error) {
-			console.error('Error loading tags:', error);
+			console.error('[Admin] Error loading tags:', error);
 		}
 	}
 
 	// Load reputation documents
-	async function loadReputations() {
+	async function loadReputations(userKey?: string, tagKey?: string) {
 		try {
+			// If a user key or tag key is provided, filter reputations
+			// Reputation key format: usr_{userUlid}_tag_{tagUlid}
+			let filter = {};
+			
+			if (userKey) {
+				// Get the user document to access its data
+				const userDoc = users.find(user => user.key === userKey);
+				if (userDoc && userDoc.data.user_key) {
+					// Filter reputations by user ULID directly from the data field
+					filter = {
+						matcher: {
+							key: `usr_${userDoc.data.user_key}`
+						}
+					};
+				}
+			} else if (tagKey) {
+				// Get the tag document to access its data
+				const tagDoc = tags.find(tag => tag.key === tagKey);
+				if (tagDoc && tagDoc.data.tag_key) {
+					// Filter reputations by tag ULID directly from the data field
+					filter = {
+						matcher: {
+							key: `tag_${tagDoc.data.tag_key}`
+						}
+					};
+				}
+			}
+			
 			const reputationsList = await listDocs<ReputationData>({
-				collection: COLLECTIONS.REPUTATIONS
+				collection: COLLECTIONS.REPUTATIONS,
+				...(Object.keys(filter).length > 0 && { filter })
 			});
-			console.log('Loaded reputation documents:', reputationsList.items);
+			
+			console.log('[Admin] Loaded reputation documents:', reputationsList.items);
 			reputationDocs = reputationsList.items;
 		} catch (error) {
-			console.error('Error loading reputation documents:', error);
+			console.error('[Admin] Error loading reputation documents:', error);
 		}
 	}
 
@@ -394,7 +425,7 @@
 					data: {
 						username: userBeingEdited.data.username!.toString().trim(),
 						display_name: userBeingEdited.data.display_name!.toString().trim(),
-						usr_key: userDocKeyResult
+						user_key: userDocKeyResult
 					},
 					...(userDocVersion && { version: userDocVersion })
 				}
@@ -446,7 +477,7 @@
 		tagDoc: Doc<{
 			name: string;
 			description: string;
-			usr_key?: ULID;
+			user_key?: ULID;
 			tag_key?: ULID;
 			author_key?: string;
 			time_periods: Array<{ months: number; multiplier: number }>;
@@ -466,7 +497,7 @@
 			data: {
 				name: tagDoc.data.name,
 				description: tagDoc.data.description,
-				usr_key: tagDoc.data.usr_key, // Copy the usr_key field if it exists
+				user_key: tagDoc.data.user_key, // Copy the user_key field if it exists
 				tag_key: tagDoc.data.tag_key, // Copy the tag_key field if it exists
 				time_periods: [...tagDoc.data.time_periods],
 				reputation_threshold: tagDoc.data.reputation_threshold,
@@ -493,12 +524,12 @@
 				return;
 			}
 
-			// Find the selected user to get their usr_key
+			// Find the selected user to get their user_key
 			const selectedUser = users.find(u => u.key === selectedAuthorKey);
-			if (!selectedUser || !selectedUser.data.usr_key) {
+			if (!selectedUser || !selectedUser.data.user_key) {
 				errorGlobal = 'Selected user not found or missing ULID';
-						return;
-					}
+				return;
+			}
 
 			// For new documents: generate tag ULID and format key
 			let tagDocKey: string;
@@ -518,7 +549,7 @@
 			// Format the tag key using the proper pattern
 			if (!tagBeingEdited.key) {
 				tagDocKey = formatTagKey(
-					selectedUser.data.usr_key, 
+					selectedUser.data.user_key, 
 					tagDocUlid!, 
 					tagBeingEdited.data.name
 				);
@@ -532,7 +563,7 @@
 					data: {
 						name: tagBeingEdited.data.name,
 						description: tagBeingEdited.data.description,
-						usr_key: selectedUser.data.usr_key, // Store pure ULID in data
+						user_key: selectedUser.data.user_key, // Store pure ULID in data
 						tag_key: tagDocUlid, // Store the tag's own ULID
 						time_periods: tagBeingEdited.data.time_periods,
 						reputation_threshold: tagBeingEdited.data.reputation_threshold,
@@ -676,6 +707,12 @@
 	 */
 	async function saveVote() {
 		try {
+			// Validate inputs
+			if (!newVote.data.user_key || !newVote.data.target_key || !newVote.data.tag_key) {
+				errorGlobal = 'Please select author, target user, and tag';
+				return;
+			}
+
 			// Generate a new ULID for the vote
 			const voteUlid = createUlid();
 
@@ -684,15 +721,16 @@
 				collection: 'votes',
 				doc: {
 					key: formatVoteKey(
-						user?.key as ULID, 					// Use the authenticated user's key
-						newVote.data.tag_key as ULID, 		// Use the existing tag key
-						newVote.data.target_key as ULID, 	// Use the existing target key
-						voteUlid                            // Use the new ULID for the vote
+						newVote.data.user_key as ULID,     // Use the ULID from the author dropdown
+						newVote.data.tag_key as ULID,     // Use the ULID from the tag dropdown
+						newVote.data.target_key as ULID,  // Use the ULID from the target dropdown
+						voteUlid                          // New ULID for this vote
 					),
 					data: {
-						usr_key: user?.key, // Use the authenticated user's key
-						target_key: newVote.data.target_key,
-						tag_key: newVote.data.tag_key,
+						user_key: newVote.data.user_key,          // Voter's ULID
+						target_key: newVote.data.target_key,    // Target's ULID
+						tag_key: newVote.data.tag_key,          // Tag's ULID
+						vote_key: voteUlid,                     // This vote's ULID
 						value: newVote.data.value,
 						weight: newVote.data.weight
 					}
@@ -706,7 +744,7 @@
 
 			// Reset form
 			newVote.data = {
-				usr_key: '',
+				user_key: '',
 				target_key: '',
 				value: 1,
 				tag_key: '',
@@ -1158,11 +1196,11 @@
 			<form on:submit|preventDefault={saveVote} class="space-y-4">
 				<div>
 					<label for="author" class="block">Author (User Key):</label>
-					<select id="author" bind:value={newVote.data.usr_key} class="w-full border p-2">
+					<select id="author" bind:value={newVote.data.user_key} class="w-full border p-2">
 						<option value="">Select Author</option>
 						{#each users as user}
-							<option value={user.key}>
-								{user.data.display_name} ({user.data.username})
+							<option value={user.data.user_key}>
+								{user.data.display_name} ({user.data.username}) - ULID: {user.data.user_key}
 							</option>
 						{/each}
 					</select>
@@ -1173,8 +1211,8 @@
 					<select id="target" bind:value={newVote.data.target_key} class="w-full border p-2">
 						<option value="">Select Target</option>
 						{#each users as user}
-							<option value={user.key}>
-								{user.data.display_name} ({user.data.username})
+							<option value={user.data.user_key}>
+								{user.data.display_name} ({user.data.username}) - ULID: {user.data.user_key}
 							</option>
 						{/each}
 					</select>
@@ -1185,8 +1223,8 @@
 					<select id="tag" bind:value={newVote.data.tag_key} class="w-full border p-2" required>
 						<option value="">Select Tag</option>
 						{#each tags as tag}
-							<option value={tag.key}>
-								{tag.data.name}
+							<option value={tag.data.tag_key}>
+								{tag.data.name} - ULID: {tag.data.tag_key}
 							</option>
 						{/each}
 					</select>
@@ -1231,7 +1269,7 @@
 					</thead>
 					<tbody>
 						{#each votes.filter((v) => !selectedTag || v.data.tag_key === selectedTag) as vote}
-							{@const author = users.find((u) => u.key === vote.data.usr_key)}
+							{@const author = users.find((u) => u.key === vote.data.user_key)}
 							{@const target = users.find((u) => u.key === vote.data.target_key)}
 							{@const tag = tags.find((t) => t.key === vote.data.tag_key)}
 							<tr>
@@ -1267,7 +1305,7 @@
 												: 'Unknown'}
 										</div>
 										<div>Tag: {tag ? tag.data.name : 'No Tag'}</div>
-										<div class="font-mono text-xs">Author Key: {vote.data.usr_key}</div>
+										<div class="font-mono text-xs">Author Key: {vote.data.user_key}</div>
 										<div class="font-mono text-xs">Target Key: {vote.data.target_key}</div>
 										<div class="font-mono text-xs">Tag Key: {vote.data.tag_key || 'None'}</div>
 									</div>
@@ -1542,7 +1580,7 @@
 									<div class="space-y-1">
 										<div class="font-bold">{tag.data.name}</div>
 										<div class="text-sm opacity-75">{tag.data.description}</div>
-										<div class="font-mono text-xs">User ULID: {tag.data.usr_key}
+										<div class="font-mono text-xs">User ULID: {tag.data.user_key}
 										</div>
 										{#if tag.data.tag_key}
 											<div class="font-mono text-xs">Tag ULID: {tag.data.tag_key}</div>

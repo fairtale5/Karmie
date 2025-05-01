@@ -4,8 +4,8 @@ globs:
 alwaysApply: false
 ---
 git commits should always:
-- check if all files are staged, and warn if not all files are staged for commit.
-- check what files, and which code changed since the last commit
+- check if all files are staged, and either stage them or warn if not all files are staged for commit.
+- check what files, and which code changed since the last commit, by checking the lines of code changed.
 - write a logn commit message into commit_message.txt
 - use that file to commit the latest changes
 - delete the file afterwards

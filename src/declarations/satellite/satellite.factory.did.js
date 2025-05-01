@@ -7,12 +7,12 @@ export const idlFactory = ({ IDL }) => {
   const Result_1 = IDL.Variant({ 'Ok' : IDL.Float64, 'Err' : IDL.Text });
   const ReputationData = IDL.Record({
     'last_calculation' : IDL.Nat64,
+    'user_key' : IDL.Text,
     'reputation_basis' : IDL.Float64,
     'tag_key' : IDL.Text,
     'reputation_rewards' : IDL.Float64,
     'vote_weight' : IDL.Float64,
     'has_voting_power' : IDL.Bool,
-    'usr_key' : IDL.Text,
     'reputation_total_effective' : IDL.Float64,
   });
   const Result_2 = IDL.Variant({ 'Ok' : ReputationData, 'Err' : IDL.Text });

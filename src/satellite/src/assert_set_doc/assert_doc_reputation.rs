@@ -55,7 +55,7 @@ pub fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(),
     
     // Step 3.1: Verify the key matches the data
     // Generate the expected key from the data and compare with actual key
-    let expected_key = format_reputation_key(&rep_data.usr_key, &rep_data.tag_key)
+    let expected_key = format_reputation_key(&rep_data.user_key, &rep_data.tag_key)
         .map_err(|e| {
             logger!("error", "[validate_reputation_document] Failed to format reputation key: {}", e);
             format!("Failed to format reputation key: {}", e)

@@ -98,16 +98,16 @@ pub fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), Strin
     logger!("debug", "[validate_vote_document] Found tag: {}", vote_data.tag_key);
 
     // Step 5: Validate no self-voting
-    if vote_data.usr_key == vote_data.tar_key {
+    if vote_data.user_key == vote_data.target_key {
         let err_msg = "[validate_vote_document]Users cannot vote on themselves";
         logger!("error", "{}", err_msg);
         return Err(err_msg.to_string());
     }
 
     logger!("info", "[validate_vote_document] Vote validation passed: author={} voted {} on target={} in tag={}",
-        vote_data.usr_key,
+        vote_data.user_key,
         vote_data.value,
-        vote_data.tar_key,
+        vote_data.target_key,
         vote_data.tag_key
     );
 

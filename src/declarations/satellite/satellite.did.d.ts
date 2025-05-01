@@ -7,12 +7,12 @@ import type { IDL } from '@dfinity/candid';
 
 export interface ReputationData {
   'last_calculation' : bigint,
+  'user_key' : string,
   'reputation_basis' : number,
   'tag_key' : string,
   'reputation_rewards' : number,
   'vote_weight' : number,
   'has_voting_power' : boolean,
-  'usr_key' : string,
   'reputation_total_effective' : number,
 }
 export type Result = { 'Ok' : string } |

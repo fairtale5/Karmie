@@ -132,7 +132,7 @@ pub async fn get_active_users_count(tag_key: &str) -> Result<u32, String> {
                     logger!(
                         "info",
                         "[get_active_users_count] ACTIVE: user={}, rep={}, threshold={}",
-                        rep_data.usr_key,
+                        rep_data.user_key,
                         rep_data.reputation_total_effective,
                         threshold
                     );
@@ -142,7 +142,7 @@ pub async fn get_active_users_count(tag_key: &str) -> Result<u32, String> {
                     logger!(
                         "info",
                         "[get_active_users_count] INACTIVE: user={}, rep={}, threshold={}",
-                        rep_data.usr_key,
+                        rep_data.user_key,
                         rep_data.reputation_total_effective,
                         threshold
                     );

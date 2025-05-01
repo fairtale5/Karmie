@@ -1089,7 +1089,7 @@ checksum = "28d3b2b1366ec20994f1fd18c3c594f05c5dd4bc44d8bb0c1c632c8d6829481f"
 
 [[package]]
 name = "satellite"
-version = "0.0.2"
+version = "0.0.4"
 dependencies = [
  "candid",
  "hex",
@@ -1364,7 +1364,6 @@ version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "470dbf6591da1b39d43c14523b2b469c86879a53e8b758c8e090a470fe7b1fbe"
 dependencies = [
- "rand",
  "web-time",
 ]
 
