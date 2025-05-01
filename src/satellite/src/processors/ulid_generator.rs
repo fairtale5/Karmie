@@ -67,23 +67,23 @@ pub async fn generate_ulid() -> String {
 pub fn validate_ulid(ulid_str: &str) -> Result<(), String> {
     // Check length
     if ulid_str.len() != 26 {
-        return Err(format!("ULID must be exactly 26 characters, got {}", ulid_str.len()));
+        return Err(format!("[validate_ulid] ULID must be exactly 26 characters, got {}", ulid_str.len()));
     }
     
     // Check case
     if ulid_str != ulid_str.to_uppercase() {
-        return Err("ULID must be uppercase".to_string());
+        return Err("[validate_ulid] ULID must be uppercase".to_string());
     }
     
     // Check character set (Crockford Base32)
     if !ulid_str.chars().all(|c| "0123456789ABCDEFGHJKMNPQRSTVWXYZ".contains(c)) {
-        return Err("ULID contains invalid characters".to_string());
+        return Err("[validate_ulid] ULID contains invalid characters".to_string());
     }
     
     // Attempt to parse (validates format)
     match Ulid::from_string(ulid_str) {
         Ok(_) => Ok(()),
-        Err(e) => Err(format!("Invalid ULID: {}", e))
+        Err(e) => Err(format!("[validate_ulid] Invalid ULID: {}", e))
     }
 }
 
