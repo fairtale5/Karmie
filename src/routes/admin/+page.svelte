@@ -21,10 +21,12 @@
 		formatTagKey,
 		formatVoteKey,
 		formatReputationKey,
-		createUlid
+		createUlid,
+		validateUlid,
+		type ULID
 	} from '$lib/keys/keys_index';
-	import type { ULID } from '$lib/keys/ulid_types';
 	import type { Principal } from '@dfinity/principal';
+	import type { UserData, TagData, VoteData, ReputationData } from '$lib/types';
 
 	// Configuration Constants
 	const COLLECTIONS = {
@@ -46,33 +48,8 @@
 		{ months: 999, multiplier: 0.25 } // Period 8: Months 49+ (treated as infinity)
 	];
 
-	type UserData = Record<string, unknown>;
-	 
 	// User form data
 	let userBeingEdited: Doc<UserData> = {
-    key: '',
-    description: '',
-    owner: '',
-    created_at: BigInt(0),
-    updated_at: BigInt(0),
-    version: BigInt(0),
-    data: {}
-	};
-
-	// List of all users
-	let users: Doc<any>[] = [];
-
-	// Form data for creating/updating tags
-	let tagBeingEdited: Doc<{
-		name: string;
-		description: string;
-		user_key?: ULID; // Replace author_key with user_key using ULID type
-		tag_key?: ULID; // Add tag_key field for ULID of the tag itself
-		time_periods: Array<{ months: number; multiplier: number }>;
-		reputation_threshold: number;
-		vote_reward: number;
-		min_users_for_threshold: number;
-	}> = {
 		key: '',
 		description: '',
 		owner: '',
@@ -80,12 +57,32 @@
 		updated_at: BigInt(0),
 		version: BigInt(0),
 		data: {
-		name: '',
+			username: '',
+			display_name: '',
+			user_key: '' // Keep as string for now
+		}
+	};
+
+	// List of all users
+	let users: Doc<any>[] = [];
+
+	// Form data for creating/updating tags
+	let tagBeingEdited: Doc<TagData> = {
+		key: '',
 		description: '',
-		time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
-		reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
-		vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
-		min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
+		owner: '',
+		created_at: BigInt(0),
+		updated_at: BigInt(0),
+		version: BigInt(0),
+		data: {
+			user_key: '', // Keep as string for now
+			tag_key: '', // Keep as string for now
+			name: '',
+			description: '',
+			time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
+			reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
+			vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
+			min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
 		}
 	};
 
@@ -96,22 +93,22 @@
 	let tags: Doc<{
 		name: string;
 		description: string;
-		user_key?: ULID; // Replace author_key with user_key
-		tag_key?: ULID; // Add tag_key field
+		user_key: string;
+		tag_key: string;
 		time_periods: Array<{ months: number; multiplier: number }>;
 		reputation_threshold: number;
 		vote_reward: number;
 		min_users_for_threshold: number;
 	}>[] = [];
 
-	// Form data for creating votes
+	// Initialize newVote with proper structure
 	let newVote = {
 		data: {
 			user_key: '',
 			target_key: '',
 			tag_key: '',
 			value: 1,
-			weight: 1.0
+			weight: 1
 		}
 	};
 
@@ -134,19 +131,7 @@
 	// Add selected tag state
 	let selectedTag = '';
 
-	// Add this type definition at the top of the script section
-	type ReputationData = {
-		user_key: string;
-		tag_key: string;
-		total_basis_reputation: number;
-		total_voting_rewards_reputation: number;
-		last_known_effective_reputation: number;
-		last_calculation: bigint;
-		vote_weight: { _value: number } | number;
-		has_voting_power: boolean;
-	};
-
-	// Update the userReputations type
+	// Update the userReputations type to use string keys
 	let userReputations: Record<string, ReputationData> = {};
 
 	// Add a variable to store reputation documents
@@ -161,19 +146,18 @@
 			console.log('[Admin] Loading reputations for tag:', tagKey);
 			
 			// Get all users first
-			const usersList = await listDocs<{ username: string; display_name: string }>({
+			const usersList = await listDocs<UserData>({
 				collection: COLLECTIONS.USERS
 			});
 			
 			// Get the selected tag document to access its data
 			const selectedTagDoc = tags.find(tag => tag.key === tagKey);
-			if (!selectedTagDoc || !selectedTagDoc.data.tag_key) {
+			if (!selectedTagDoc?.data?.tag_key) {
 				console.error('[Admin] Tag document not found or missing tag_key:', tagKey);
 				return;
 			}
 			
-			// Use key-based filtering with proper pattern using the tag's ULID directly
-			// Reputation keys format: usr_{userUlid}_tag_{tagUlid}
+			// Use key-based filtering with proper pattern
 			const reputationsList = await listDocs<ReputationData>({
 				collection: COLLECTIONS.REPUTATIONS,
 				filter: {
@@ -184,16 +168,21 @@
 			});
 			
 			// Create a map of user_key to reputation data
-			const reputationMap = new Map(
-				reputationsList.items.map((item) => [item.data.user_key, item.data])
-			);
+			const reputationMap = new Map<string, ReputationData>();
+			for (const item of reputationsList.items) {
+				if (item.data.user_key) {
+					reputationMap.set(item.data.user_key, item.data);
+				}
+			}
 			
 			// Get reputation data for each user
 			userReputations = {};
 			for (const user of usersList.items) {
-				const reputation = reputationMap.get(user.key) || {
-					user_key: user.key,
-					tag_key: tagKey,
+				if (!user.data.user_key) continue;
+				
+				const reputation = reputationMap.get(user.data.user_key) || {
+					user_key: user.data.user_key,
+					tag_key: selectedTagDoc.data.tag_key,
 					total_basis_reputation: 0,
 					total_voting_rewards_reputation: 0,
 					last_known_effective_reputation: 0,
@@ -201,7 +190,7 @@
 					vote_weight: 0,
 					has_voting_power: false
 				};
-				userReputations[user.key] = reputation;
+				userReputations[user.data.user_key] = reputation;
 			}
 			
 			console.log('[Admin] Loaded reputations:', userReputations);
@@ -250,12 +239,12 @@
 			const usersList = await listDocs<{
 				username: string;
 				display_name: string;
-				user_key: ULID;
+				user_key: string;
 			}>({
 				collection: COLLECTIONS.USERS
 			});
 			users = usersList.items;
-			console.log('Loaded users:', users); // Debug log to verify data
+			console.log('Loaded users:', users);
 		} catch (error) {
 			console.error('Error loading users:', error);
 		}
@@ -322,8 +311,8 @@
 			const tagsList = await listDocs<{ 
 				name: string; 
 				description: string; 
-				user_key?: ULID; // Use optional fields to handle both old and new formats
-				tag_key?: ULID;
+				user_key: string;
+				tag_key: string;
 				time_periods: { months: number; multiplier: number }[];
 				reputation_threshold: number;
 				vote_reward: number;
@@ -425,7 +414,7 @@
 					data: {
 						username: userBeingEdited.data.username!.toString().trim(),
 						display_name: userBeingEdited.data.display_name!.toString().trim(),
-						user_key: userDocKeyResult
+						user_key: userDocKeyResult || userBeingEdited.data.user_key
 					},
 					...(userDocVersion && { version: userDocVersion })
 				}
@@ -445,7 +434,11 @@
 				created_at: BigInt(0),
 				updated_at: BigInt(0),
 				version: BigInt(0),
-				data: {}
+				data: {
+					username: '',
+					display_name: '',
+					user_key: '' // Keep as string for now
+				}
 			};
 			successGlobal = 'User saved successfully';
 
@@ -477,8 +470,8 @@
 		tagDoc: Doc<{
 			name: string;
 			description: string;
-			user_key?: ULID;
-			tag_key?: ULID;
+			user_key: string;
+			tag_key: string;
 			author_key?: string;
 			time_periods: Array<{ months: number; multiplier: number }>;
 			reputation_threshold: number;
@@ -527,13 +520,13 @@
 			// Find the selected user to get their user_key
 			const selectedUser = users.find(u => u.key === selectedAuthorKey);
 			if (!selectedUser || !selectedUser.data.user_key) {
-				errorGlobal = 'Selected user not found or missing ULID';
+				errorGlobal = 'Selected user not found or missing user key';
 				return;
 			}
 
 			// For new documents: generate tag ULID and format key
 			let tagDocKey: string;
-			let tagDocUlid: ULID | null = null;
+			let tagDocUlid: string | null = null;
 			let tagDocVersion = tagBeingEdited.version;
 
 			if (tagBeingEdited.key) {
@@ -544,13 +537,13 @@
 			} else {
 				// Creating new tag - generate new ULID for the tag
 				tagDocUlid = createUlid();
-			}
-
-			// Format the tag key using the proper pattern
-			if (!tagBeingEdited.key) {
+				const selectedUser = users.find(u => u.key === selectedAuthorKey);
+				if (!selectedUser?.data?.user_key) {
+					throw new Error('Selected user not found or missing user_key');
+				}
 				tagDocKey = formatTagKey(
-					selectedUser.data.user_key, 
-					tagDocUlid!, 
+					selectedUser.data.user_key,
+					tagDocUlid,
 					tagBeingEdited.data.name
 				);
 			}
@@ -563,8 +556,8 @@
 					data: {
 						name: tagBeingEdited.data.name,
 						description: tagBeingEdited.data.description,
-						user_key: selectedUser.data.user_key, // Store pure ULID in data
-						tag_key: tagDocUlid, // Store the tag's own ULID
+						user_key: selectedUser.data.user_key,
+						tag_key: tagDocUlid || tagBeingEdited.data.tag_key,
 						time_periods: tagBeingEdited.data.time_periods,
 						reputation_threshold: tagBeingEdited.data.reputation_threshold,
 						vote_reward: tagBeingEdited.data.vote_reward,
@@ -589,12 +582,14 @@
 				updated_at: BigInt(0),
 				version: BigInt(0),
 				data: {
-				name: '',
-				description: '',
-				time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
-				reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
-				vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
-				min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
+					user_key: '',
+					tag_key: '',
+					name: '',
+					description: '',
+					time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
+					reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
+					vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
+					min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
 				}
 			};
 			selectedAuthorKey = '';
@@ -707,51 +702,67 @@
 	 */
 	async function saveVote() {
 		try {
+			console.log('[Admin] Saving vote:', newVote);
+			
 			// Validate inputs
 			if (!newVote.data.user_key || !newVote.data.target_key || !newVote.data.tag_key) {
 				errorGlobal = 'Please select author, target user, and tag';
 				return;
 			}
 
+			// Find the user and target documents to get their user_key values
+			const authorDoc = users.find(u => u.key === newVote.data.user_key);
+			const targetDoc = users.find(u => u.key === newVote.data.target_key);
+			const tagDoc = tags.find(t => t.key === newVote.data.tag_key);
+
+			if (!authorDoc?.data.user_key || !targetDoc?.data.user_key || !tagDoc?.data.tag_key) {
+				errorGlobal = 'Could not find required keys for author, target, or tag';
+				return;
+			}
+
 			// Generate a new ULID for the vote
 			const voteUlid = createUlid();
 
-			// Create the vote document with proper structure
-			const voteDoc = {
-				collection: 'votes',
+			// Format the vote key using all required ULIDs
+			const voteKey = formatVoteKey(
+				authorDoc.data.user_key,
+				tagDoc.data.tag_key,
+				targetDoc.data.user_key,
+				voteUlid
+			);
+
+			// Create vote document with proper structure
+			const docData = {
+				collection: COLLECTIONS.VOTES,
 				doc: {
-					key: formatVoteKey(
-						newVote.data.user_key as ULID,     // Use the ULID from the author dropdown
-						newVote.data.tag_key as ULID,     // Use the ULID from the tag dropdown
-						newVote.data.target_key as ULID,  // Use the ULID from the target dropdown
-						voteUlid                          // New ULID for this vote
-					),
+					key: voteKey,
 					data: {
-						user_key: newVote.data.user_key,          // Voter's ULID
-						target_key: newVote.data.target_key,    // Target's ULID
-						tag_key: newVote.data.tag_key,          // Tag's ULID
-						vote_key: voteUlid,                     // This vote's ULID
+						user_key: authorDoc.data.user_key,
+						target_key: targetDoc.data.user_key,
+						tag_key: tagDoc.data.tag_key,
+						vote_key: voteUlid,
 						value: newVote.data.value,
-						weight: newVote.data.weight
+						weight: 1 // Fixed weight for now
 					}
 				}
 			};
 
-			// Log the document being saved
-			console.log('[Admin] Sending to setDoc:', voteDoc);
+			console.log('[Admin] Creating vote document:', docData);
+			await setDoc(docData);
 
-			await setDoc(voteDoc);
-
-			// Reset form
-			newVote.data = {
-				user_key: '',
-				target_key: '',
-				value: 1,
-				tag_key: '',
-				weight: 1.0
+			// Clear form and show success message
+			newVote = {
+				data: {
+					user_key: '',
+					target_key: '',
+					tag_key: '',
+					value: 1,
+					weight: 1
+				}
 			};
+			successGlobal = 'Vote created successfully!';
 
-			// Refresh votes list
+			// Reload the vote list
 			await loadVotes();
 		} catch (e) {
 			console.error('[Admin] Error saving vote:', e);
@@ -1078,7 +1089,11 @@
 									created_at: BigInt(0),
 									updated_at: BigInt(0),
 									version: BigInt(0),
-									data: {}
+									data: {
+										username: '',
+										display_name: '',
+										user_key: '' // Keep as string for now
+									}
 								};
 							}}
 						>
@@ -1199,8 +1214,8 @@
 					<select id="author" bind:value={newVote.data.user_key} class="w-full border p-2">
 						<option value="">Select Author</option>
 						{#each users as user}
-							<option value={user.data.user_key}>
-								{user.data.display_name} ({user.data.username}) - ULID: {user.data.user_key}
+							<option value={user.key}>
+								{user.data.display_name} ({user.data.username}) - {user.data.user_key}
 							</option>
 						{/each}
 					</select>
@@ -1211,8 +1226,8 @@
 					<select id="target" bind:value={newVote.data.target_key} class="w-full border p-2">
 						<option value="">Select Target</option>
 						{#each users as user}
-							<option value={user.data.user_key}>
-								{user.data.display_name} ({user.data.username}) - ULID: {user.data.user_key}
+							<option value={user.key}>
+								{user.data.display_name} ({user.data.username}) - {user.data.user_key}
 							</option>
 						{/each}
 					</select>
@@ -1223,8 +1238,8 @@
 					<select id="tag" bind:value={newVote.data.tag_key} class="w-full border p-2" required>
 						<option value="">Select Tag</option>
 						{#each tags as tag}
-							<option value={tag.data.tag_key}>
-								{tag.data.name} - ULID: {tag.data.tag_key}
+							<option value={tag.key}>
+								{tag.data.name} - {tag.data.tag_key}
 							</option>
 						{/each}
 					</select>
@@ -1232,14 +1247,24 @@
 
 				<div>
 					<fieldset>
-						<legend class="mb-2 block">Vote Value:</legend>
+						<legend class="block mb-2">Vote Type:</legend>
 						<div class="flex gap-4">
 							<label class="inline-flex items-center">
-								<input type="radio" bind:group={newVote.data.value} value={1} class="mr-2" />
+								<input
+									type="radio"
+									bind:group={newVote.data.value}
+									value={1}
+									class="mr-2"
+								/>
 								Positive (+1)
 							</label>
 							<label class="inline-flex items-center">
-								<input type="radio" bind:group={newVote.data.value} value={-1} class="mr-2" />
+								<input
+									type="radio"
+									bind:group={newVote.data.value}
+									value={-1}
+									class="mr-2"
+								/>
 								Negative (-1)
 							</label>
 						</div>
@@ -1520,12 +1545,14 @@
 									updated_at: BigInt(0),
 									version: BigInt(0),
 									data: {
-									name: '',
-									description: '',
-									time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
-									reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
-									vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
-									min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
+										user_key: '',
+										tag_key: '',
+										name: '',
+										description: '',
+										time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
+										reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
+										vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
+										min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
 									}
 								};
 								selectedAuthorKey = '';

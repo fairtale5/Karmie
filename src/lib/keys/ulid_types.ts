@@ -1,10 +1,10 @@
 import { isValid } from 'ulid';
 
 /**
- * Branded type for ULID strings
- * This ensures type safety by distinguishing ULID strings from regular strings at compile time
+ * Temporarily using string instead of branded type for ULID
+ * TODO: Restore branded type when proper ULID serialization is implemented
  */
-export type ULID = string & { readonly __brand: unique symbol };
+export type ULID = string;
 
 /**
  * Type for document key prefixes to ensure consistency

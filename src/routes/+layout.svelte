@@ -1,10 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { initJuno } from '$lib/juno';
 	import Header from '$lib/Header.svelte';
 
 	onMount(async () => {
-		await initJuno();
+		// Removed redundant initJuno() call
 	});
 </script>
 

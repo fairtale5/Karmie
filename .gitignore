@@ -20,3 +20,5 @@ vite.config.ts.timestamp-*
 static/workers
 
 target
+last_commit_message.txt
+commit_message.txt

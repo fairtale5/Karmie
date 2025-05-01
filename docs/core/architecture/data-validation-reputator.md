@@ -7,10 +7,11 @@
 ```typescript
 interface VoteData {
     key: string;           // Unique identifier
-    author_key: string;    // User who created the vote
+    user_key: string;      // User who created the vote
     target_key: string;    // User being voted on
     tag_key: string;       // Tag for the vote
-    is_positive: boolean;  // true = upvote, false = downvote
+    value: number;         // Vote value: +1 for upvote, -1 for downvote
+    weight: number;        // Vote weight (default: 1.0)
     created_at: bigint;    // Timestamp
     updated_at: bigint;    // Last update timestamp
     owner: Principal;      // Owner of the vote
@@ -53,16 +54,17 @@ function isVoteData(data: unknown): data is VoteData {
     
     return (
         typeof vote.key === 'string' &&
-        typeof vote.author_key === 'string' &&
+        typeof vote.user_key === 'string' &&
         typeof vote.target_key === 'string' &&
         typeof vote.tag_key === 'string' &&
-        typeof vote.is_positive === 'boolean' &&
+        typeof vote.value === 'number' &&
+        typeof vote.weight === 'number' &&
         typeof vote.created_at === 'bigint' &&
         typeof vote.updated_at === 'bigint' &&
         vote.owner instanceof Principal &&
         typeof vote.description === 'string' &&
         vote.description.length <= 1024 &&
-        vote.author_key !== vote.target_key // Prevent self-voting
+        vote.user_key !== vote.target_key // Prevent self-voting
     );
 }
 
@@ -75,7 +77,7 @@ const validateVote = (vote: any): boolean => {
         typeof vote.updated_at === 'bigint' &&
         typeof vote.version === 'bigint' &&
         typeof vote.data === 'object' &&
-        typeof vote.data.author_key === 'string' &&
+        typeof vote.data.user_key === 'string' &&
         typeof vote.data.target_key === 'string' &&
         typeof vote.data.tag_key === 'string' &&
         typeof vote.data.value === 'number' &&
@@ -294,7 +296,7 @@ function validateVote(vote: unknown): VoteData {
         );
     }
     
-    if (vote.author_key === vote.target_key) {
+    if (vote.user_key === vote.target_key) {
         throw new ValidationError(
             'Cannot vote on yourself',
             'target_key',
@@ -338,10 +340,11 @@ describe('Vote Validation', () => {
     test('validates correct vote data', () => {
         const validVote: VoteData = {
             key: 'vote1',
-            author_key: 'user1',
+            user_key: 'user1',
             target_key: 'user2',
             tag_key: 'gaming',
-            is_positive: true,
+            value: 1,
+            weight: 1.0,
             created_at: BigInt(Date.now()),
             updated_at: BigInt(Date.now()),
             owner: new Principal(),
@@ -354,10 +357,11 @@ describe('Vote Validation', () => {
     test('rejects invalid vote data', () => {
         const invalidVote = {
             key: 'vote1',
-            author_key: 'user1',
+            user_key: 'user1',
             target_key: 'user1', // Self-vote
             tag_key: 'gaming',
-            is_positive: true,
+            value: 1,
+            weight: 1.0,
             created_at: BigInt(Date.now()),
             updated_at: BigInt(Date.now()),
             owner: new Principal(),
@@ -376,10 +380,11 @@ describe('Vote Creation', () => {
     test('creates valid vote', async () => {
         const vote = await createVote({
             key: 'vote1',
-            author_key: 'user1',
+            user_key: 'user1',
             target_key: 'user2',
             tag_key: 'gaming',
-            is_positive: true,
+            value: 1,
+            weight: 1.0,
             created_at: BigInt(Date.now()),
             updated_at: BigInt(Date.now()),
             owner: new Principal(),
@@ -393,10 +398,11 @@ describe('Vote Creation', () => {
     test('rejects invalid vote', async () => {
         await expect(createVote({
             key: 'vote1',
-            author_key: 'user1',
+            user_key: 'user1',
             target_key: 'user1', // Self-vote
             tag_key: 'gaming',
-            is_positive: true,
+            value: 1,
+            weight: 1.0,
             created_at: BigInt(Date.now()),
             updated_at: BigInt(Date.now()),
             owner: new Principal(),
