@@ -3,27 +3,54 @@
 
 // @ts-expect-error
 export const idlFactory = ({ IDL }) => {
-  const Result = IDL.Variant({ 'Ok' : IDL.Float64, 'Err' : IDL.Text });
+  const Result = IDL.Variant({ 'Ok' : IDL.Text, 'Err' : IDL.Text });
+  const Result_1 = IDL.Variant({ 'Ok' : IDL.Float64, 'Err' : IDL.Text });
   const ReputationData = IDL.Record({
-    'total_voting_rewards_reputation' : IDL.Float64,
     'last_calculation' : IDL.Nat64,
     'user_key' : IDL.Text,
+    'reputation_basis' : IDL.Float64,
     'tag_key' : IDL.Text,
+    'reputation_rewards' : IDL.Float64,
     'vote_weight' : IDL.Float64,
-    'last_known_effective_reputation' : IDL.Float64,
     'has_voting_power' : IDL.Bool,
-    'total_basis_reputation' : IDL.Float64,
+    'reputation_total_effective' : IDL.Float64,
   });
-  const Result_1 = IDL.Variant({ 'Ok' : ReputationData, 'Err' : IDL.Text });
+  const Result_2 = IDL.Variant({ 'Ok' : ReputationData, 'Err' : IDL.Text });
+  const Result_3 = IDL.Variant({ 'Ok' : IDL.Bool, 'Err' : IDL.Text });
   return IDL.Service({
     'build_version' : IDL.Func([], [IDL.Text], ['query']),
-    'get_user_reputation' : IDL.Func([IDL.Text, IDL.Text], [Result], ['query']),
-    'get_user_reputation_full' : IDL.Func(
+    'create_document_key_for_reputation' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [Result],
+        ['query'],
+      ),
+    'create_document_key_for_tag' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [Result],
+        ['query'],
+      ),
+    'create_document_key_for_user' : IDL.Func([IDL.Text], [Result], ['query']),
+    'create_document_key_for_vote' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text],
+        [Result],
+        ['query'],
+      ),
+    'get_user_reputation' : IDL.Func(
         [IDL.Text, IDL.Text],
         [Result_1],
         ['query'],
       ),
-    'recalculate_reputation' : IDL.Func([IDL.Text, IDL.Text], [Result], []),
+    'get_user_reputation_full' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [Result_2],
+        ['query'],
+      ),
+    'recalculate_reputation' : IDL.Func([IDL.Text, IDL.Text], [Result_1], []),
+    'validate_document_key' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [Result_3],
+        ['query'],
+      ),
   });
 };
 // @ts-expect-error

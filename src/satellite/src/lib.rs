@@ -48,29 +48,44 @@
  * - Strict validation rules
  * - Format: [field:{value}]
  * 
- * # Document Formats
+ * # Document Key Formats
  * 
- * Each collection uses specific description formats:
+ * Each collection uses specific key formats for efficient querying:
  * 
  * Users Collection:
  * ```text
- * [owner:{key}],[username:{normalized_username}]
- * ```
- * 
- * Votes Collection:
- * ```text
- * [owner:{id}],[author:{key}],[target:{key}],[tag:{key}]
+ * usr_{ulid}_hdl_{handle}_
  * ```
  * 
  * Tags Collection:
  * ```text
- * [owner:{id}],[name:{normalized_name}]
+ * usr_{userUlid}_tag_{tagUlid}_hdl_{handle}_
+ * ```
+ * 
+ * Votes Collection:
+ * ```text
+ * usr_{ulid}_tag_{ulid}_tar_{ulid}_key_{ulid}_
  * ```
  * 
  * Reputations Collection:
  * ```text
- * [owner:{id}],[user:{key}],[tag:{key}]
+ * usr_{ulid}_tag_{ulid}_
  * ```
+ * 
+ * # Key-Based Query System
+ * 
+ * The system uses key-based queries for efficient data retrieval:
+ * - Uses key patterns instead of description field filtering
+ * - Avoids loading entire collections into memory
+ * - Provides efficient partial key matching
+ * - Supports chronological sorting through ULID
+ * 
+ * Query segments available:
+ * - User (usr_): For user-based queries
+ * - Tag (tag_): For tag-based queries
+ * - Target (tar_): For target user queries
+ * - Handle (hdl_): For username/tagname queries
+ * - Key (key_): For specific document queries
  * 
  * # Logging Standards
  * 
@@ -152,6 +167,7 @@ use junobuild_satellite::{
 
 use junobuild_shared::types::list::{ListMatcher, ListParams};
 use ic_cdk_macros::*;
+use ic_cdk;  // Add this import
 
 // IMPORTANT NOTE:
 // Any additional functionality needed (like data serialization, string manipulation, etc.)
@@ -179,7 +195,7 @@ use ic_cdk_macros::*;
 // With this setup, only `on_set_doc` must be implemented with custom logic,
 // and other hooks and assertions can be removed. They will not be included in your Satellite.
 
-//===========================================================================
+//============================================================================
 // Utility Imports
 // ===========================================================================
 
@@ -188,15 +204,13 @@ use junobuild_utils::{decode_doc_data, encode_doc_data};
 
 // Import our utility modules
 use crate::utils::{
-    normalize::normalize_username,
-    validation::{validate_username, validate_display_name, validate_tag_name},
+    normalize::normalize_handle,
     structs::{Vote, VoteData, Tag, Reputation, UserData, TagData, TimePeriod, ReputationData},
     reputation_calculations::{
         calculate_user_reputation, get_user_reputation_data,
         calculate_and_store_vote_weight,
         get_period_multiplier,
-    },
-    description_helpers::{DocumentDescription, create_vote_description, validate_description}
+    }
 };
 
 // =============================================================================
@@ -204,6 +218,20 @@ use crate::utils::{
 // =============================================================================
 
 mod utils;
+mod assert_set_doc;
+mod validation;
+mod processors;
+
+// Re-export query helpers for easy access
+pub use utils::query_helpers::{query_doc, KeySegment};
+
+// Use the moved validation function
+use assert_set_doc::{
+    assert_doc_user,
+    validate_vote_document,
+    validate_tag_document,
+    validate_reputation_document,
+};
 
 // =============================================================================
 // Active Hooks and Assertions
@@ -234,8 +262,9 @@ async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
             Ok(())
         }
         _ => {
+            // This should never happen because we're specifying collections in the decorator
             let err_msg = format!("Unknown collection: {}", context.data.collection);
-            logger!("error", "{}", err_msg);
+            logger!("error", "[on_set_doc] {}", err_msg);
             Err(err_msg)
         }
     }
@@ -255,7 +284,7 @@ async fn process_vote(context: &OnSetDocContext) -> Result<(), String> {
     
     // Log the vote details in a human-readable format
     logger!("info", "[process_vote] Processing new vote: author={} voted {} on target={} in tag={}",
-        vote_data.author_key,
+        vote_data.user_key,
         vote_data.value,
         vote_data.target_key,
         vote_data.tag_key
@@ -269,26 +298,26 @@ async fn process_vote(context: &OnSetDocContext) -> Result<(), String> {
     }
     
     // Step 1: Calculate and store the voting user's vote weight
-    logger!("info", "Step 1/3: Calculating vote weight for author: {}", vote_data.author_key);
-    let vote_weight = calculate_and_store_vote_weight(&vote_data.author_key, &vote_data.tag_key).await
+    logger!("info", "Step 1/3: Calculating vote weight for author: {}", vote_data.user_key);
+    let vote_weight = calculate_and_store_vote_weight(&vote_data.user_key, &vote_data.tag_key).await
         .map_err(|e| {
             logger!("error", "[process_vote] Failed to calculate vote weight: {}", e);
             e.to_string()
         })?;
-    logger!("info", "[process_vote] Step 1/3 COMPLETE: Vote weight for author={}: {}", vote_data.author_key, vote_weight);
+    logger!("info", "[process_vote] Step 1/3 COMPLETE: Vote weight for author={}: {}", vote_data.user_key, vote_weight);
     
     // Step 2: Calculate reputation for the voting user (author)
-    logger!("info", "[process_vote] Step 2/3: Calculating reputation for author: {}", vote_data.author_key);
-    let author_rep = calculate_user_reputation(&vote_data.author_key, &vote_data.tag_key).await
+    logger!("info", "[process_vote] Step 2/3: Calculating reputation for author: {}", vote_data.user_key);
+    let author_rep = calculate_user_reputation(&vote_data.user_key, &vote_data.tag_key).await
         .map_err(|e| {
             logger!("error", "[process_vote] Failed to calculate author reputation: {}", e);
             e.to_string()
         })?;
     logger!("info", "[process_vote] Step 2/3 COMPLETE: Author={}: basisR={}, voteR={}, totalR={}, voting_power={}",
-        vote_data.author_key, 
-        author_rep.total_basis_reputation,
-        author_rep.total_voting_rewards_reputation,
-        author_rep.last_known_effective_reputation,
+        vote_data.user_key, 
+        author_rep.reputation_basis,
+        author_rep.reputation_rewards,
+        author_rep.reputation_total_effective,
         author_rep.has_voting_power
     );
     
@@ -301,14 +330,14 @@ async fn process_vote(context: &OnSetDocContext) -> Result<(), String> {
         })?;
     logger!("info", "[process_vote] Step 3/3 COMPLETE: Target={}: basisR={}, voteR={}, totalR={}, voting_power={}",
         vote_data.target_key, 
-        target_rep.total_basis_reputation,
-        target_rep.total_voting_rewards_reputation,
-        target_rep.last_known_effective_reputation,
+        target_rep.reputation_basis,
+        target_rep.reputation_rewards,
+        target_rep.reputation_total_effective,
         target_rep.has_voting_power
     );
 
     logger!("info", "[process_vote] Completed - author={}, target={}, tag={}, vote_value={}, vote_weight={}",
-        vote_data.author_key, 
+        vote_data.user_key, 
         vote_data.target_key, 
         vote_data.tag_key, 
         vote_data.value, 
@@ -321,34 +350,13 @@ async fn process_vote(context: &OnSetDocContext) -> Result<(), String> {
 /// Configuration flag for playground mode
 pub const IS_PLAYGROUND: bool = true;  // Set to false for production
 
-/// Description formats for Juno documents in the system
-/// All documents use a standardized description field format pattern to enable filtering
-/// 
-/// ## Description Field Format
-/// 
-/// All description fields follow a consistent pattern:
-/// * - Format: field1=value1;field2=value2;
-/// 
-/// The concrete implementation depends on the collection:
-/// 
-/// ### Users Collection
-/// * owner=key;username=normalized_username;
-/// 
-/// ### Votes Collection
-/// * owner=id;author=key;target=key;tag=key;
-/// 
-/// ### Tags Collection
-/// * owner=id;name=normalized_name;
-/// 
-/// ### Reputations Collection
-/// * owner=id;user=key;tag=key;
-/// 
+
 #[assert_set_doc(collections = ["users", "votes", "tags", "reputations"])]
 fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
     let result = match context.data.collection.as_str() {
         "users" => {
             logger!("debug", "[assert_set_doc] Validating user document: key={}", context.data.key);
-            validate_user_document(&context)
+            assert_doc_user(&context)
         },
         "votes" => {
             logger!("debug", "[assert_set_doc] Validating vote document: key={}", context.data.key);
@@ -364,7 +372,7 @@ fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
         },
         _ => {
             // This should never happen because we're specifying collections in the decorator
-            let err_msg = format!("Unexpected collection reached validation: {}", context.data.collection);
+            let err_msg = format!("Unexpected collection for validation: {}", context.data.collection);
             logger!("error", "[assert_set_doc] {}", err_msg);
             Err(err_msg)
         }
@@ -377,583 +385,7 @@ fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
     }
     
     result
-}
-
-/// Validates a user document before creation or update
-/// 
-/// This function performs comprehensive validation of user documents:
-/// 1. Decodes and validates the basic user data structure
-/// 2. Validates username format and restrictions
-/// 3. Validates display name format and restrictions
-/// 4. Validates description format and referenced documents
-/// 5. Ensures username uniqueness across the system
-/// 6. Enforces one-document-per-identity rule in production mode
-/// 
-/// # Arguments
-/// * `context` - The validation context containing:
-///   - caller: The Principal ID of the user making the request
-///   - collection: Must be "users"
-///   - key: The document key (nanoid-generated)
-///   - data: The proposed document data
-/// 
-/// # Returns
-/// * `Result<(), String>` - Ok if validation passes, Err with detailed message if it fails
-fn validate_user_document(context: &AssertSetDocContext) -> Result<(), String> {
-    // Step 1: Decode and validate the basic user data structure
-    // This ensures the document contains all required fields in the correct format
-    let user_data: UserData = decode_doc_data(&context.data.data.proposed.data)
-        .map_err(|e| {
-            let err_msg = format!("[assert_set_doc] Failed to decode user data: key={}, error={}", 
-                context.data.key, e);
-            logger!("error", "{}", err_msg);
-            format!("Invalid user data format: {}", e)
-        })?;
-    
-    // Step 2: Validate username format and restrictions
-    validate_username(&user_data.username)
-        .map_err(|e| {
-            let err_msg = format!("[assert_set_doc] Username validation failed: {}", e);
-            logger!("error", "{}", err_msg);
-            e
-        })?;
-
-    // Step 3: Validate display name format and restrictions
-    validate_display_name(&user_data.display_name)
-        .map_err(|e| {
-            let err_msg = format!("[assert_set_doc] Display name validation failed: {}", e);
-            logger!("error", "{}", err_msg);
-            e
-        })?;
-
-    // Step 4: Validate description format and referenced documents
-    if let Some(description) = &context.data.data.proposed.description {
-        // Since validate_description is async, we'll validate the format synchronously
-        // and leave the document existence check to the on_set_doc hook
-        let mut desc = DocumentDescription::new();
-        if IS_PLAYGROUND {
-            desc.add_owner(&context.data.key);
-        } else {
-            desc.add_owner(&context.caller.to_string());
-        }
-        desc.add_field("username", &user_data.username);
-        
-        let expected_description = desc.build();
-        if description != &expected_description {
-            let err_msg = format!(
-                "Invalid description format. Expected: {}, Got: {}",
-                expected_description, description
-            );
-            logger!("error", "[assert_set_doc] {}", err_msg);
-            return Err(err_msg);
-        }
-    } else {
-        let err_msg = "Description field is required for user documents";
-        logger!("error", "[assert_set_doc] {} key={}", err_msg, context.data.key);
-        return Err(err_msg.to_string());
-    }
-
-    // Step 5: Ensure username uniqueness across the system
-    // First, normalize the username to lowercase for comparison
-    let normalized_username = user_data.username.to_lowercase();
-    
-    // Sanitize the username to match how it's stored in the description
-    let sanitized_username = crate::utils::description_helpers::DocumentDescription::sanitize_key(&normalized_username);
-    
-    // Build the search query to find any document with this username using the new format
-    // The pattern will match username=name; in the description string
-    let search_pattern = format!("username={};", sanitized_username);
-    logger!("debug", "[validate_user_document] Searching for username with pattern: {}", search_pattern);
-    
-    let params = ListParams {
-        matcher: Some(ListMatcher {
-            description: Some(search_pattern),
-            ..Default::default()
-        }),
-        ..Default::default()
-    };
-
-    // Call list_docs and handle potential errors
-    let existing_users = list_docs(String::from("users"), params);
-    logger!("info", "[validate_user_document] Found {} existing users with this username", existing_users.items.len());
-    
-    // When checking username uniqueness, we need to handle two cases:
-    // 1. New user: Check that NO existing document has this username
-    // 2. User update: Check that no OTHER document (except current) has this username
-    let is_update = context.data.data.current.is_some();
-    logger!("debug", "[validate_user_document] Document type: {}", if is_update { "updating existing user" } else { "creating new user" });
-    
-    for (doc_key, doc) in existing_users.items {
-        logger!("debug", "[validate_user_document] Checking username uniqueness against document: key={}, description={:?}", doc_key, doc.description);
-        
-        // When updating an existing user, their current document will be in the results
-        // Skip comparing against their own document to allow them to keep their username
-        if is_update && doc_key == context.data.key {
-            logger!("debug", "[validate_user_document] Skipping user's current document in username uniqueness check");
-            continue;
-        }
-        
-        // Parse the description using the DocumentDescription helper
-        if let Some(desc_str) = &doc.description {
-            if let Ok(desc) = crate::utils::description_helpers::DocumentDescription::parse(desc_str) {
-                // Check if the username field matches
-                if let Some(existing_username) = desc.get_field("username") {
-                    // Now compare the sanitized username values
-                    if existing_username == sanitized_username {
-                        let err_msg = format!(
-                            "[assert_set_doc] Username '{}' is already taken. Please choose a different username.",
-                            user_data.username
-                        );
-                        logger!("error", "{}", err_msg);
-                        return Err(err_msg);
-                    }
-                }
-            }
-        }
-    }
-
-    // Step 6: In production mode, enforce one-document-per-identity rule
-    if !IS_PLAYGROUND {
-        // In production mode, we search by Principal ID in the description
-        let mut desc = DocumentDescription::new();
-        desc.add_owner(&context.caller.to_string());
-        
-        let owner_params = ListParams {
-            matcher: Some(ListMatcher {
-                description: Some(desc.build()),
-                ..Default::default()
-            }),
-            ..Default::default()
-        };
-
-        // Call list_docs and handle potential errors
-        let existing_docs = list_docs(String::from("users"), owner_params);
-
-        // Check if we found any existing documents owned by this user
-        // Exclude the current document if we're updating
-        for (doc_key, _) in existing_docs.items {
-            if doc_key != context.data.key {
-                let err_msg = format!("[validate_user_document] Users can only have one account in production mode. key={}", context.data.key);
-                logger!("error", "{}", err_msg);
-                return Err(err_msg.to_string());
-            }
-        }
-    }
-
-    Ok(())
-}
-
-/// Validates a vote document before creation or update
-/// 
-/// This function performs comprehensive validation of vote documents:
-/// 1. Decodes and validates the basic vote data structure
-/// 2. Validates description format using DocumentDescription helper
-/// 3. Validates vote value constraints (+1 or -1)
-/// 4. Validates vote weight constraints (0.0 to 1.0)
-/// 5. Prevents self-voting
-/// 6. Verifies tag exists using ListMatcher by key
-/// 
-/// # Arguments
-/// * `context` - The validation context containing the document data
-/// 
-/// # Returns
-/// * `Result<(), String>` - Ok if validation passes, Err with detailed message if it fails
-fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), String> {
-    logger!("debug", "[validate_vote_document] Starting vote validation: key={}", context.data.key);
-
-    // Step 1: Access the full document structure and prepare it
-    
-    // Decode and validate the basic vote data structure
-    let vote_doc = &context.data.data.proposed;
-    let vote_data: VoteData = decode_doc_data(&context.data.data.proposed.data)
-        .map_err(|e| {
-            logger!("error", "[validate_vote_document] Failed to decode vote data: key={}, error={}", context.data.key, e);
-            format!("Invalid vote data format: {}", e)
-        })?;
-
-    // Step 2: Validate vote value constraints
-    // Vote value must be -1, 0, or 1 to:
-    // - Ensure votes have clear, binary meaning in the system
-    // - Prevent vote manipulation through arbitrary values
-    // - Maintain consistent reputation calculations
-    // - Keep the system simple and understandable
-    // - Enable clear upvote/downvote UI representation
-    if vote_data.value < -1.0 || vote_data.value > 1.0 {
-        let err_msg = format!(
-            "[validate_vote_document] Vote value must be -1, 0, or 1 (got: {})",
-            vote_data.value
-        );
-        logger!("error", "{}", err_msg);
-        return Err(err_msg);
-    }
-
-    // Step 3: Validate vote weight constraints
-    // Vote weight must be between 0.0 and 1.0 to:
-    // - Represent voter's proportional influence in the tag
-    // - Prevent any single voter from dominating
-    // - Scale impact based on reputation and activity
-    // - Ensure fair distribution of voting power
-    // - Enable time-based vote decay
-    // Weight is calculated from:
-    // - Author's reputation in the tag
-    // - Number of votes cast
-    // - Age of previous votes
-    if vote_data.weight < 0.0 || vote_data.weight > 1.0 {
-        let err_msg = format!(
-            "[validate_vote_document] Vote weight must be between 0.0 and 1.0 (got: {})",
-            vote_data.weight
-        );
-        logger!("error", "{}", err_msg);
-        return Err(err_msg);
-    }
-
-    // Step 4: Validate tag exists
-    logger!("debug", "[validate_vote_document] Verifying tag exists: {}", vote_data.tag_key);
-    
-    // First validate that tag_key is not empty
-    if vote_data.tag_key.trim().is_empty() {
-        let err_msg = "[validate_vote_document]Tag key cannot be empty";
-        logger!("error", "{}", err_msg);
-        return Err(err_msg.to_string());
-    }
-    
-    let params = ListParams {
-        matcher: Some(ListMatcher {
-            key: Some(vote_data.tag_key.clone()),
-            ..Default::default()
-        }),
-        ..Default::default()
-    };
-
-    // Search for the tag in the tags collection
-    let existing_tags = list_docs(String::from("tags"), params);
-    if existing_tags.items.is_empty() {
-        let err_msg = format!("[validate_vote_document] Tag not found: {}", vote_data.tag_key);
-        logger!("error", "{}", err_msg);
-        return Err(err_msg);
-    }
-    
-    logger!("debug", "[validate_vote_document] Found tag: {}", vote_data.tag_key);
-
-    // Step 5: Validate no self-voting
-    if vote_data.author_key == vote_data.target_key {
-        let err_msg = "[validate_vote_document]Users cannot vote on themselves";
-        logger!("error", "{}", err_msg);
-        return Err(err_msg.to_string());
-    }
-
-    logger!("info", "[validate_vote_document] Vote validation passed: author={} voted {} on target={} in tag={}",
-        vote_data.author_key,
-        vote_data.value,
-        vote_data.target_key,
-        vote_data.tag_key
-    );
-
-    Ok(())
-}
-
-/// Validates a tag document before creation or update
-/// 
-/// This function performs comprehensive validation of tag documents:
-/// 1. Decodes and validates the basic tag data structure
-/// 2. Validates tag name format and restrictions
-/// 3. Validates description length constraints
-/// 4. Validates time period configuration
-/// 5. Validates reputation and voting settings
-/// 
-/// # Arguments
-/// * `context` - The validation context containing:
-///   - caller: The Principal ID of the user making the request
-///   - collection: Must be "tags"
-///   - key: The document key (nanoid-generated)
-///   - data: The proposed document data
-/// 
-/// # Returns
-/// * `Result<(), String>` - Ok if validation passes, Err with detailed message if it fails
-fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String> {
-    // Step 1: Decode and validate the basic tag data structure
-    let tag_data: TagData = decode_doc_data(&context.data.data.proposed.data)
-        .map_err(|e| {
-            logger!("error", "[assert_set_doc] Failed to decode tag data: key={}, error={}", context.data.key, e);
-            format!("Invalid tag data format: {}", e)
-        })?;
-    
-    // Step 2: Validate tag name format and uniqueness
-    validate_tag_name(&tag_data.name)?;
-
-    // Check for tag name uniqueness (case-insensitive)
-    let normalized_name = tag_data.name.to_lowercase();
-    
-    // Sanitize the tag name to match how it's stored in the description
-    let sanitized_name = crate::utils::description_helpers::DocumentDescription::sanitize_key(&normalized_name);
-    
-    // Build the search query to find any document with this tag name using the new format
-    // The pattern will match name=tag_name; in the description string
-    let search_pattern = format!("name={};", sanitized_name);
-    logger!("debug", "[validate_tag_document] Searching for tag name with pattern: {}", search_pattern);
-    
-    let params = ListParams {
-        matcher: Some(ListMatcher {
-            description: Some(search_pattern),
-            ..Default::default()
-        }),
-        ..Default::default()
-    };
-
-    // Call list_docs and handle potential errors
-    let existing_tags = list_docs(String::from("tags"), params);
-    logger!("info", "[validate_tag_document] Found {} existing tags with this name", existing_tags.items.len());
-    
-    // Check if we found any existing tags with this normalized name
-    // For new tags (no key), we check all documents
-    // For updates (has key), we exclude the current document
-    let is_update = context.data.data.current.is_some();
-    logger!("debug", "[validate_tag_document] Is this an update? {}", is_update);
-    
-    for (doc_key, doc) in existing_tags.items {
-        logger!("debug", "[validate_tag_document] Checking document: key={}, description={:?}", doc_key, doc.description);
-        
-        // If this is an update and the document key matches, skip it
-        if is_update && doc_key == context.data.key {
-            logger!("debug", "[validate_tag_document] Skipping current document during update");
-            continue;
-        }
-        
-        // Parse the description using the DocumentDescription helper
-        if let Some(desc_str) = &doc.description {
-            if let Ok(desc) = crate::utils::description_helpers::DocumentDescription::parse(desc_str) {
-                // Check if the name field matches
-                if let Some(existing_name) = desc.get_field("name") {
-                    // Now compare the sanitized name values
-                    if existing_name == sanitized_name {
-                        let err_msg = format!(
-                            "[assert_set_doc] Tag name '{}' is already taken (case-insensitive comparison)",
-                            tag_data.name
-                        );
-                        logger!("error", "{}", err_msg);
-                        return Err(err_msg);
-                    }
-                }
-            }
-        }
-    }
-
-    // Step 3: Validate description length
-    if tag_data.description.len() > 1024 {
-        let err_msg = format!(
-            "[validate_tag_document]Tag description cannot exceed 1024 characters (current length: {})",
-            tag_data.description.len()
-        );
-        logger!("error", "{}", err_msg);
-        return Err(err_msg);
-    }
-
-    // Step 4: Validate time periods
-    validate_time_periods(&tag_data.time_periods)?;
-
-    // Step 5: Validate vote reward (0.0 to 1.0)
-    if tag_data.vote_reward < 0.0 || tag_data.vote_reward > 1.0 {
-        let err_msg = format!(
-            "[validate_tag_document] Vote reward must be between 0.0 and 1.0 (got: {})",
-            tag_data.vote_reward
-        );
-        logger!("error", "{}", err_msg);
-        return Err(err_msg);
-    }
-
-    // Step 6: Validate minimum users (must be greater than 0)
-    if tag_data.min_users_for_threshold == 0 {
-        let err_msg = format!(
-            "[validate_tag_document] Minimum users must be greater than 0 (got: {})",
-            tag_data.min_users_for_threshold
-        );
-        logger!("error", "{}", err_msg);
-        return Err(err_msg);
-    }
-
-    Ok(())
-}
-
-/// Validates a reputation document before creation or update
-/// 
-/// This function performs validation of reputation documents:
-/// 1. Verifies collection name is "reputations"
-/// 2. Decodes and validates the basic reputation data structure
-/// 3. Validates description format using DocumentDescription helper
-/// 4. Validates field constraints (voting rewards non-negative, vote weight in range)
-/// 
-/// # Arguments
-/// * `context` - The validation context containing:
-///   - caller: The Principal ID of the user making the request
-///   - collection: Must be "reputations"
-///   - key: The document key (nanoid-generated)
-///   - data.data.proposed.data: The binary data of the proposed document
-///   - data.data.proposed.description: The description field
-/// 
-/// # Returns
-/// * `Result<(), String>` - Ok if validation passes, Err with detailed message if it fails
-fn validate_reputation_document(context: &AssertSetDocContext) -> Result<(), String> {
-    // Step 1: Verify collection name
-    // This ensures we're only validating documents in the correct collection
-    if context.data.collection != "reputations" {
-        let err_msg = format!(
-            "[validate_reputation_document] Invalid collection: expected 'reputations', got '{}'",
-            context.data.collection
-        );
-        logger!("error", "{}", err_msg);
-        return Err(err_msg);
-    }
-
-    logger!("debug", "[validate_reputation_document] Validating reputation document: key={}", context.data.key );
-
-    // Step 2: Decode and validate the basic reputation data structure
-    // This ensures the document contains all required fields in the correct format
-    // and that we can properly access the reputation data for further validation
-    let rep_data: ReputationData = decode_doc_data(&context.data.data.proposed.data)
-        .map_err(|e| {
-            logger!("error", "[validate_reputation_document] Failed to decode reputation data: {}", e);
-            format!("Failed to decode reputation data: {}", e)
-        })?;
-
-    // Step 3: Create and validate description using DocumentDescription helper
-    // This ensures the description follows our standardized format:
-    // - Playground mode: owner=user_key;tag=tag_key;
-    // - Production mode: owner=principal_id;tag=tag_key;
-    let mut desc = DocumentDescription::new();
-    let caller_string = context.caller.to_string(); // Create a string that lives for the duration of the function
-    desc.add_owner(if IS_PLAYGROUND {
-        &rep_data.user_key
-    } else {
-        &caller_string
-    })
-    .add_field("tag", &rep_data.tag_key);
-
-    let expected_description = desc.build();
-
-    // Verify the description matches our expected format
-    if let Some(actual_description) = &context.data.data.proposed.description {
-        if actual_description != &expected_description {
-            let err_msg = format!(
-                "[validate_reputation_document] Invalid description format. Expected: {}, Got: {}",
-                expected_description, actual_description
-            );
-            logger!("error", "{}", err_msg);
-            return Err(err_msg);
-        }
-    } else {
-        let err_msg = "[validate_reputation_document] Description field is required for reputation documents";
-        logger!("error", "{}", err_msg);
-        return Err(err_msg.to_string());
-    }
-
-    // Step 4: Validate field constraints
-    // Check that the values are within acceptable ranges
-
-    // 4.1: Log total_basis_reputation (can be negative or positive)
-    logger!("debug", "[validate_reputation_document] Total basis reputation: {}", rep_data.total_basis_reputation );
-
-    // 4.2: Validate voting rewards (must be non-negative)
-    if rep_data.total_voting_rewards_reputation < 0.0 {
-        let err_msg = format!(
-            "[validate_reputation_document] Total voting rewards reputation cannot be negative (got: {})",
-            rep_data.total_voting_rewards_reputation
-        );
-        logger!("error", "{}", err_msg);
-        return Err(err_msg);
-    }
-
-    // 4.3: Validate vote weight (must be between 0.0 and 1.0)
-    if rep_data.vote_weight.value() < 0.0 || rep_data.vote_weight.value() > 1.0 {
-        let err_msg = format!(
-            "[validate_reputation_document] Vote weight must be between 0.0 and 1.0 (got: {})",
-            rep_data.vote_weight.value()
-        );
-        logger!("error", "{}", err_msg);
-        return Err(err_msg);
-    }
-
-    logger!("info", "[validate_reputation_document] Successfully validated reputation document: key={}", context.data.key );
-
-    Ok(())
-}
-
-/// Validates time periods configuration for tags
-/// 
-/// Time periods define how reputation ages over time in a tag.
-/// The configuration must follow specific rules to ensure:
-/// - Proper coverage of different time spans
-/// - Reasonable reputation decay
-/// - System stability
-/// 
-/// Requirements:
-/// 1. At least 1 period must be defined
-/// 2. Maximum 10 periods allowed
-/// 3. Last period must have 999 months duration
-/// 4. Valid multiplier values and increments
-/// 
-/// # Arguments
-/// * `periods` - Array of TimePeriod structs to validate
-/// 
-/// # Returns
-/// * `Result<(), String>` - Ok if validation passes, Err with detailed message if it fails
-fn validate_time_periods(periods: &[TimePeriod]) -> Result<(), String> {
-    // Step 1: Validate array length
-    if periods.is_empty() {
-        return Err("Tag must have at least 1 time period".to_string());
-    }
-    if periods.len() > 10 {
-        return Err(format!(
-            "Tag cannot have more than 10 time periods (got: {})",
-            periods.len()
-        ));
-    }
-
-    // Step 2: Validate last period is "infinity" (999 months)
-    let last_period = periods.last().unwrap();
-    if last_period.months != 999 {
-        return Err(format!(
-            "Last period must be 999 months (got: {})",
-            last_period.months
-        ));
-    }
-
-    // Step 3: Validate each period's configuration
-    for (i, period) in periods.iter().enumerate() {
-        // Validate multiplier range (0.05 to 10.0)
-        if period.multiplier < 0.05 || period.multiplier > 10.0 {
-            let err_msg = format!(
-                "[validate_time_periods]Multiplier for period {} must be between 0.05 and 10.0 (got: {})",
-                i + 1, period.multiplier
-            );
-            logger!("error", "{}", err_msg);
-            return Err(err_msg);
-        }
-
-        // Validate multiplier step increments (0.05) with floating-point tolerance
-        // We multiply by 100 to work with integers and avoid floating-point issues
-        let multiplier_int = (period.multiplier * 100.0).round();
-        let remainder = multiplier_int % 5.0;
-        if remainder > 0.000001 { // Allow for small floating-point rounding errors
-            let err_msg = format!(
-                "[validate_time_periods] Multiplier for period {} must use 0.05 step increments (got: {})",
-                i + 1, period.multiplier
-            );
-            logger!("error", "{}", err_msg);
-            return Err(err_msg);
-        }
-
-        // Validate month duration is greater than 0
-        if period.months == 0 {
-            let err_msg = format!(
-                "[validate_time_periods] Months for period {} must be greater than 0 (got: {})",
-                i + 1, period.months
-            );
-            logger!("error", "{}", err_msg);
-            return Err(err_msg);
-        }
-    }
-
-    Ok(())
-}
+}   
 
 // =============================================================================
 // Available Hooks and Assertions (Currently Disabled)
@@ -1083,9 +515,9 @@ async fn get_user_reputation(user_key: String, tag_key: String) -> Result<f64, S
                 .map_err(|e| format!("Failed to decode reputation data: {}", e))?;
     
             logger!("info", "[get_user_reputation] Successfully retrieved reputation: user={}, tag={}, value={}", 
-                user_key, tag_key, reputation_data.last_known_effective_reputation);
+                user_key, tag_key, reputation_data.reputation_total_effective);
     
-            Ok(reputation_data.last_known_effective_reputation)
+            Ok(reputation_data.reputation_total_effective)
         },
         None => {
             let err_msg = format!("[get_user_reputation] User {} has no reputation in tag {}", user_key, tag_key);
@@ -1171,11 +603,11 @@ async fn get_user_reputation_full(user_key: String, tag_key: String) -> Result<R
 /// 2. Verifies user exists in the tag
 /// 3. Triggers complete reputation recalculation
 /// 4. Updates all reputation components in storage
-/// 
+///
 /// # Arguments
 /// * `user_key` - The unique identifier of the user
 /// * `tag_key` - The unique identifier of the tag
-/// 
+///
 /// # Returns
 /// * `Result<f64, String>` - The updated effective reputation score or a detailed error message
 /// 
@@ -1212,10 +644,103 @@ pub async fn recalculate_reputation(user_key: String, tag_key: String) -> Result
     logger!("info", "[recalculate_reputation] Successfully recalculated reputation: user={}, tag={}, value={}", 
         user_key, 
         tag_key, 
-        reputation_data.last_known_effective_reputation
+        reputation_data.reputation_total_effective
     );
     
-    Ok(reputation_data.last_known_effective_reputation)
+    Ok(reputation_data.reputation_total_effective)
+}
+
+/// Creates a document key using the new ULID-based format
+/// This is a helper function that can be used during document creation
+/// to generate properly formatted keys according to the schema
+///
+/// # Arguments
+/// * `username` - The username to use in the key
+///
+/// # Returns
+/// * `Result<String, String>` - The formatted key or an error
+#[query]
+pub async fn create_document_key_for_user(username: String) -> Result<String, String> {
+    // Use our document_keys module to create a properly formatted key
+    crate::processors::document_keys::create_user_key(&username).await
+}
+
+/// Creates a document key for a tag using the new ULID-based format
+///
+/// # Arguments
+/// * `user_ulid` - The ULID of the user creating the tag
+/// * `tag_name` - The name of the tag
+///
+/// # Returns
+/// * `Result<String, String>` - The formatted key or an error
+#[query]
+pub async fn create_document_key_for_tag(user_ulid: String, tag_name: String) -> Result<String, String> {
+    // Use our document_keys module to create a properly formatted key
+    crate::processors::document_keys::create_tag_key(&user_ulid, &tag_name).await
+}
+
+/// Creates a document key for a reputation entry using the new ULID-based format
+///
+/// # Arguments
+/// * `user_ulid` - The ULID of the user
+/// * `tag_ulid` - The ULID of the tag
+///
+/// # Returns
+/// * `Result<String, String>` - The formatted key or an error
+#[query]
+pub fn create_document_key_for_reputation(user_ulid: String, tag_ulid: String) -> Result<String, String> {
+    // Use our document_keys module to create a properly formatted key
+    crate::processors::document_keys::format_reputation_key(&user_ulid, &tag_ulid)
+}
+
+/// Creates a document key for a vote using the new ULID-based format
+///
+/// # Arguments
+/// * `user_ulid` - The ULID of the voter
+/// * `tag_ulid` - The ULID of the tag
+/// * `target_ulid` - The ULID of the user receiving the vote
+///
+/// # Returns
+/// * `Result<String, String>` - The formatted key or an error
+#[query]
+pub async fn create_document_key_for_vote(
+    user_ulid: String, 
+    tag_ulid: String, 
+    target_ulid: String
+) -> Result<String, String> {
+    // Use our document_keys module to create a properly formatted key
+    crate::processors::document_keys::create_vote_key(&user_ulid, &tag_ulid, &target_ulid, None).await
+}
+
+/// Validates that a document key is properly formatted
+///
+/// # Arguments
+/// * `key` - The document key to validate
+/// * `doc_type` - The document type ("user", "tag", "reputation", or "vote")
+///
+/// # Returns
+/// * `Result<bool, String>` - Ok(true) if valid, Err with message if invalid
+#[query]
+pub fn validate_document_key(key: String, doc_type: String) -> Result<bool, String> {
+    match doc_type.as_str() {
+        "user" => {
+            crate::processors::document_keys::validate_user_key(&key)?;
+            Ok(true)
+        },
+        "tag" => {
+            crate::processors::document_keys::validate_tag_key(&key)?;
+            Ok(true)
+        },
+        "reputation" => {
+            crate::processors::document_keys::validate_reputation_key(&key)?;
+            Ok(true)
+        },
+        "vote" => {
+            crate::processors::document_keys::validate_vote_key(&key)?;
+            Ok(true)
+        },
+        _ => Err(format!("Unknown document type: {}", doc_type))
+    }
 }
 
 include_satellite!();

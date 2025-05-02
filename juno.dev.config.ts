@@ -55,14 +55,14 @@ export default defineDevConfig(() => ({
 				{
 					collection: "votes",
 					read: "public" as PermissionText,
-					write: "public" as PermissionText,
+					write: "private" as PermissionText,
 					memory: "stable" as MemoryText,
 					mutablePermissions: true
 				},
 				{
 					collection: "reputations",
-					read: "public" as PermissionText,
-					write: "public" as PermissionText,
+					read: "controllers" as PermissionText,
+					write: "controllers" as PermissionText,
 					memory: "stable" as MemoryText,
 					mutablePermissions: true
 				}

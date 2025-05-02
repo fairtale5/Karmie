@@ -6,24 +6,36 @@ import type { ActorMethod } from '@dfinity/agent';
 import type { IDL } from '@dfinity/candid';
 
 export interface ReputationData {
-  'total_voting_rewards_reputation' : number,
   'last_calculation' : bigint,
   'user_key' : string,
+  'reputation_basis' : number,
   'tag_key' : string,
+  'reputation_rewards' : number,
   'vote_weight' : number,
-  'last_known_effective_reputation' : number,
   'has_voting_power' : boolean,
-  'total_basis_reputation' : number,
+  'reputation_total_effective' : number,
 }
-export type Result = { 'Ok' : number } |
+export type Result = { 'Ok' : string } |
   { 'Err' : string };
-export type Result_1 = { 'Ok' : ReputationData } |
+export type Result_1 = { 'Ok' : number } |
+  { 'Err' : string };
+export type Result_2 = { 'Ok' : ReputationData } |
+  { 'Err' : string };
+export type Result_3 = { 'Ok' : boolean } |
   { 'Err' : string };
 export interface _SERVICE {
   'build_version' : ActorMethod<[], string>,
-  'get_user_reputation' : ActorMethod<[string, string], Result>,
-  'get_user_reputation_full' : ActorMethod<[string, string], Result_1>,
-  'recalculate_reputation' : ActorMethod<[string, string], Result>,
+  'create_document_key_for_reputation' : ActorMethod<[string, string], Result>,
+  'create_document_key_for_tag' : ActorMethod<[string, string], Result>,
+  'create_document_key_for_user' : ActorMethod<[string], Result>,
+  'create_document_key_for_vote' : ActorMethod<
+    [string, string, string],
+    Result
+  >,
+  'get_user_reputation' : ActorMethod<[string, string], Result_1>,
+  'get_user_reputation_full' : ActorMethod<[string, string], Result_2>,
+  'recalculate_reputation' : ActorMethod<[string, string], Result_1>,
+  'validate_document_key' : ActorMethod<[string, string], Result_3>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

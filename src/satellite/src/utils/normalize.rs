@@ -23,10 +23,10 @@
 /// 
 /// # Example
 /// ```
-/// let normalized = normalize_username("  UserName123  ");
+/// let normalized = normalize_handle("  UserName123  ");
 /// assert_eq!(normalized, "username123");
 /// ```
-pub fn normalize_username(username: &str) -> String {
+pub fn normalize_handle(username: &str) -> String {
     // First trim any whitespace and convert to lowercase
     let normalized = username.trim().to_lowercase();
     
@@ -44,15 +44,15 @@ mod tests {
     #[test]
     fn test_normalize_username() {
         // Test basic normalization
-        assert_eq!(normalize_username("UserName"), "username");
+        assert_eq!(normalize_handle("UserName"), "username");
         
         // Test whitespace handling
-        assert_eq!(normalize_username("  user  name  "), "username");
+        assert_eq!(normalize_handle("  user  name  "), "username");
         
         // Test special characters
-        assert_eq!(normalize_username("user@name!123"), "username123");
+        assert_eq!(normalize_handle("user@name!123"), "username123");
         
         // Test allowed special characters
-        assert_eq!(normalize_username("user_name-123"), "user_name-123");
+        assert_eq!(normalize_handle("user_name-123"), "user_name-123");
     }
 } 
