@@ -10,3 +10,164 @@ git commits should always:
 - use that file to commit the latest changes
 - delete the file afterwards
 - push the changes to github
+
+Example of what a good commit looks like:
+
+# Update 2024-03-19 - Tag Lookup and Frontend Display Fixes
+
+## Changes Made
+1. Fixed frontend reputation display in admin panel:
+   - Added null checks for all reputation data fields
+   - Added default values (0) for numeric fields before calling toFixed()
+   - Added 'N/A' display for missing string values
+   - Fixed timestamp display for missing last_calculation values
+
+2. Improved tag lookup in backend:
+   - Switched from direct key lookup to query_doc_by_key in get_tag_doc
+   - Updated tag key pattern matching to work with partial keys
+   - Added better error handling and logging for tag queries
+   - Fixed tag lookup pattern in vote validation
+
+3. Enhanced error handling and logging:
+   - Added more descriptive error messages
+   - Improved debug logging for tag lookups
+   - Added validation context to error messages
+
+## Files Changed
+1. `src/routes/admin/+page.svelte`
+   - Updated reputation display template with null checks
+   - Added default values for numeric fields
+   - Improved error handling for undefined values
+
+2. `src/satellite/src/utils/reputation_calculations.rs`
+   - Replaced get_tag with improved get_tag_doc implementation
+   - Updated tag lookup to use query_doc_by_key
+   - Added better error handling and logging
+
+3. `src/satellite/src/assert_set_doc/assert_doc_vote.rs`
+   - Updated tag lookup pattern in vote validation
+   - Improved error messages and logging
+   - Fixed tag key pattern matching
+
+4. `src/satellite/src/utils/query_helpers.rs`
+   - Added more examples for query_doc_by_key usage
+   - Improved function documentation
+
+## Testing
+- Verified reputation display works with missing/undefined values
+- Confirmed tag lookup works with partial key matches
+- Tested vote validation with various tag scenarios
+- Checked error handling and logging improvements
+
+
+Another example:
+
+# Update 2024-03-19 - Frontend Data Structure Alignment and Display Improvements
+
+## Changes Made
+1. Aligned Frontend Types with Backend:
+   - Updated ReputationData interface in types.ts:
+     * Renamed total_basis_reputation -> reputation_basis
+     * Renamed total_voting_rewards_reputation -> reputation_rewards
+     * Renamed last_known_effective_reputation -> reputation_total_effective
+     * Added has_voting_power boolean field
+     * Updated field comments for clarity
+     * Maintained bigint type for last_calculation
+     * Kept vote_weight as number (0.0 to 1.0)
+
+2. Fixed Admin Panel Data Display:
+   - Updated reputation display template in +page.svelte:
+     * Added null coalescing for userReputations lookup
+     * Updated default values structure:
+       ```typescript
+       {
+         reputation_basis: 0,
+         reputation_rewards: 0,
+         reputation_total_effective: 0,
+         vote_weight: 0,
+         has_voting_power: false,
+         last_calculation: BigInt(0)
+       }
+       ```
+     * Fixed number formatting with .toFixed(2) for all reputation values
+     * Added percentage display for vote_weight (multiplied by 100)
+
+3. Improved Tag-Based Filtering:
+   - Modified loadUserReputations function:
+     * Updated key pattern matching for tag filtering
+     * Added proper type checking for tag_key
+     * Improved error handling for missing tag data
+   - Enhanced loadVotes function:
+     * Fixed tag-based vote filtering
+     * Updated key pattern matching to use tag_key
+
+4. Enhanced UI Organization:
+   - Added conditional column rendering in users table:
+     * Hide reputation column when no tag selected
+     * Show reputation data only with selected tag
+     * Maintained table structure consistency
+   - Updated table headers and cell structure to match
+
+## Files Changed
+1. `src/lib/types.ts`
+   - Updated ReputationData interface
+   - Aligned field names with backend
+   - Added new fields and updated types
+
+2. `src/routes/admin/+page.svelte`
+   - Modified table structure for conditional rendering
+   - Updated reputation data display
+   - Fixed data loading and filtering functions
+   - Improved error handling and null checks
+
+## Testing
+- Verified reputation numbers display correctly with and without tag selection
+- Confirmed vote filtering works properly with tag selection
+- Tested reputation document display with all fields
+- Validated conditional column rendering
+- Checked all number formatting and calculations
+
+## Technical Details
+- Backend/Frontend field mapping:
+  * total_basis_reputation -> reputation_basis
+  * total_voting_rewards_reputation -> reputation_rewards
+  * last_known_effective_reputation -> reputation_total_effective
+  * Added: has_voting_power (boolean)
+  * Preserved: last_calculation (bigint), vote_weight (number)
+
+- Data Loading Changes:
+  * Updated reputationMap creation in loadUserReputations
+  * Modified vote filtering patterns in loadVotes
+  * Improved type safety in data access
+  * Added proper null handling for all reputation fields
+
+feat(admin): Fix reputation display and data loading issues
+
+Major fixes:
+- Fixed reputation numbers not displaying correctly in user list
+- Fixed votes not showing up when a tag is selected
+- Fixed reputation info not showing in reputation documents
+- Added conditional display of reputation column for better UX
+
+UI Improvements:
+- Hide reputation column in users table when no tag is selected
+- Only show reputation data when a specific tag is selected
+- Keep table layout consistent with conditional column rendering
+- Maintain data loading in background for smooth transitions
+
+This change fixes several data display issues in the admin interface and
+improves the UI by reducing visual clutter. The reputation column now only
+appears when it contains meaningful data (i.e., when a tag is selected),
+and all reputation numbers are correctly displayed.
+
+Technical changes:
+- Fixed reputation data loading and display logic
+- Corrected vote filtering when tag is selected
+- Added conditional rendering using Svelte's {#if} directives
+- Modified table structure to handle dynamic columns
+- Kept existing data loading logic intact for performance
+- Ensured proper field access for reputation values
+
+The changes make the admin interface more reliable by fixing data display
+issues and more focused by only showing relevant information based on the
+user's current context. 

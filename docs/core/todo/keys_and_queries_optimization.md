@@ -22,10 +22,11 @@
 - [x] Update Vote document creation in admin panel to use new key format
   - [x] Remove usage of `nanoid()` in vote creation
   - [x] Modify `saveVote()` to use `formatVoteKey`
-- [ ] Update document queries in frontend to use key-based search instead of description-based
-  - [ ] Update `loadUserReputations` to use key-based filtering instead of description-based filtering.
-  - [ ] Review `loadVotes` and `loadTags` for potential key-based filtering improvements.
-  - [ ] Ensure all queries are optimized for key-based search to improve efficiency.
+- [x] Update document queries in frontend to use key-based search instead of description-based
+  - [x] Update `loadUserReputations` to use key-based filtering with pattern `tag_{tagUlid}`
+  - [x] Update `loadVotes` to use key-based filtering with pattern `tag_{tagUlid}`
+  - [x] Update `loadTags` to use key-based filtering with pattern `usr_{userUlid}`
+  - [x] Ensure all queries are optimized for key-based search to improve efficiency
 
 ### Next Phase: Backend Changes
 - [x] Add ULID library (dylanhart/ulid-rs) to backend
