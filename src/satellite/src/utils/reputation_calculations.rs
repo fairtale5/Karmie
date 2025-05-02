@@ -1163,14 +1163,14 @@ async fn get_tag(tag_doc_key: &str) -> Result<Tag, String> {
     .ok_or_else(|| {
         logger!("error", "[get_tag] Tag not found: key={}",
             tag_doc_key);
-        format!("Tag not found: {}", tag_key)
+        format!("Tag not found: {}", tag_doc_key)
     })?;
 
     // Decode the tag data into TagData
     let tag_data: TagData = decode_doc_data(&tag_doc.data)
         .map_err(|e| {
             logger!("error", "[get_tag] Failed to deserialize tag data: key={}, error={}",
-                tag_key, e);
+                tag_doc_key, e);
             format!("Failed to deserialize tag: {}", e)
         })?;
         
