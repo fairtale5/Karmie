@@ -184,12 +184,12 @@
 				const reputation = reputationMap.get(user.data.user_key) || {
 					user_key: user.data.user_key,
 					tag_key: selectedTagDoc.data.tag_key,
-					total_basis_reputation: 0,
-					total_voting_rewards_reputation: 0,
-					last_known_effective_reputation: 0,
-					last_calculation: BigInt(0),
+					reputation_basis: 0,
+					reputation_rewards: 0,
+					reputation_total_effective: 0,
 					vote_weight: 0,
-					has_voting_power: false
+					has_voting_power: false,
+					last_calculation: BigInt(0)
 				};
 				userReputations[user.data.user_key] = reputation;
 			}
@@ -1121,16 +1121,18 @@
 						<tr>
 							<th>Document Info</th>
 							<th>User Data</th>
-							<th>Reputation Data</th>
+							{#if selectedTag}
+								<th>Reputation Data</th>
+							{/if}
 							<th>Actions</th>
 						</tr>
 					</thead>
 					<tbody>
 						{#each users as userSelected}
-							{@const reputation = userReputations[userSelected.key] ?? {
-								total_basis_reputation: 0,
-								total_voting_rewards_reputation: 0,
-								last_known_effective_reputation: 0,
+							{@const reputation = userReputations[userSelected.data.user_key] ?? {
+								reputation_basis: 0,
+								reputation_rewards: 0,
+								reputation_total_effective: 0,
 								vote_weight: 0,
 								has_voting_power: false,
 								last_calculation: BigInt(0)
@@ -1142,14 +1144,10 @@
 										<div class="font-mono text-xs">Description: {userSelected.description}</div>
 										<div class="font-mono text-xs">Owner: {userSelected.owner}</div>
 										<div class="text-xs">
-											Created: {new Date(
-												Number(userSelected.created_at) / 1_000_000
-											).toLocaleString()}
+											Created: {new Date(Number(userSelected.created_at) / 1_000_000).toLocaleString()}
 										</div>
 										<div class="text-xs">
-											Updated: {new Date(
-												Number(userSelected.updated_at) / 1_000_000
-											).toLocaleString()}
+											Updated: {new Date(Number(userSelected.updated_at) / 1_000_000).toLocaleString()}
 										</div>
 										<div class="text-xs">Version: {userSelected.version}</div>
 									</div>
@@ -1160,25 +1158,25 @@
 										<div class="text-sm opacity-75">{userSelected.data.display_name}</div>
 									</div>
 								</td>
-								<td>
-									<div class="space-y-1">
-										<div>Base Rep: {reputation.total_basis_reputation.toFixed(2)}</div>
-										<div>Vote Rep: {reputation.total_voting_rewards_reputation.toFixed(2)}</div>
-										<div>Total Rep: {reputation.last_known_effective_reputation.toFixed(2)}</div>
-										<div>Weight: {(Number(reputation.vote_weight) * 100).toFixed(4)}%</div>
-										<div>Status: {reputation.has_voting_power ? 'Active' : 'Inactive'}</div>
-										<div class="text-xs">
-											Last Calc: {new Date(
-												Number(reputation.last_calculation) / 1_000_000
-											).toLocaleString()}
+								{#if selectedTag}
+									<td>
+										<div class="space-y-1">
+											<div>Base Rep: {reputation.reputation_basis.toFixed(2)}</div>
+											<div>Vote Rep: {reputation.reputation_rewards.toFixed(2)}</div>
+											<div>Total Rep: {reputation.reputation_total_effective.toFixed(2)}</div>
+											<div>Weight: {(Number(reputation.vote_weight) * 100).toFixed(4)}%</div>
+											<div>Status: {reputation.has_voting_power ? 'Active' : 'Inactive'}</div>
+											<div class="text-xs">
+												Last Calc: {new Date(Number(reputation.last_calculation) / 1_000_000).toLocaleString()}
+											</div>
 										</div>
-									</div>
-								</td>
+									</td>
+								{/if}
 								<td>
 									<div class="flex justify-center gap-2">
 										<button
 											class="btn btn-xs btn-primary"
-											on:click={() => recalculateReputation(userSelected.key, selectedTag)}
+											on:click={() => recalculateReputation(userSelected.data.user_key, selectedTag)}
 											title="Recalculate reputation"
 										>
 											🔄
@@ -1294,10 +1292,10 @@
 						</tr>
 					</thead>
 					<tbody>
-						{#each votes.filter((v) => !selectedTag || v.data.tag_key === selectedTag) as vote}
-							{@const author = users.find((u) => u.key === vote.data.user_key)}
-							{@const target = users.find((u) => u.key === vote.data.target_key)}
-							{@const tag = tags.find((t) => t.key === vote.data.tag_key)}
+						{#each votes as vote}
+							{@const author = users.find((u) => u.data.user_key === vote.data.user_key)}
+							{@const target = users.find((u) => u.data.user_key === vote.data.target_key)}
+							{@const tag = tags.find((t) => t.data.tag_key === vote.data.tag_key)}
 							<tr>
 								<td>
 									<div class="space-y-1">
@@ -1686,15 +1684,13 @@
 									<div class="space-y-1">
 										<div>User Key: {doc.data.user_key || 'N/A'}</div>
 										<div>Tag Key: {doc.data.tag_key || 'N/A'}</div>
-										<div>Base Rep: {(doc.data.total_basis_reputation || 0).toFixed(2)}</div>
-										<div>Vote Rep: {(doc.data.total_voting_rewards_reputation || 0).toFixed(2)}</div>
-										<div>Total Rep: {(doc.data.last_known_effective_reputation || 0).toFixed(2)}</div>
+										<div>Base Rep: {(doc.data.reputation_basis || 0).toFixed(2)}</div>
+										<div>Vote Rep: {(doc.data.reputation_rewards || 0).toFixed(2)}</div>
+										<div>Total Rep: {(doc.data.reputation_total_effective || 0).toFixed(2)}</div>
 										<div>Vote Weight: {((Number(doc.data.vote_weight) || 0) * 100).toFixed(4)}%</div>
 										<div>Status: {doc.data.has_voting_power ? 'Active' : 'Inactive'}</div>
 										<div class="text-xs">
-											Last Calc: {new Date(
-												Number(doc.data.last_calculation || 0) / 1_000_000
-											).toLocaleString()}
+											Last Calc: {new Date(Number(doc.data.last_calculation || 0) / 1_000_000).toLocaleString()}
 										</div>
 									</div>
 								</td>

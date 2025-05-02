@@ -89,14 +89,14 @@ export interface VoteData {
  * - By exact combination: owner=user_123;tag=tag_789;
  */
 export interface ReputationData {
-    user_key: string;        // User this reputation is for (references Users collection) (temporarily string)
-    tag_key: string;         // Tag this reputation is for (references Tags collection) (temporarily string)
-    total_basis_reputation: number;          // Reputation from received votes
-    total_voting_rewards_reputation: number; // Reputation from casting votes
-    last_known_effective_reputation: number; // Final reputation score (cached value)
-    last_calculation: bigint;                // When the reputation was last calculated
-    vote_weight: number;                     // User's vote weight (0.0 to 1.0)
-    has_voting_power: boolean;               // Whether user has sufficient reputation
+    user_key: string;                       // User this reputation is for (references Users collection)
+    tag_key: string;                        // Tag this reputation is for (references Tags collection)
+    reputation_basis: number;               // Reputation from received votes
+    reputation_rewards: number;             // Reputation from casting votes
+    reputation_total_effective: number;     // Final reputation score (cached value)
+    last_calculation: bigint;               // When the reputation was last calculated
+    vote_weight: number;                    // User's vote weight (0.0 to 1.0)
+    has_voting_power: boolean;              // Whether user has sufficient reputation
 }
 
 // Helper type definitions for each collection
