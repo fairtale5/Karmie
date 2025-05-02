@@ -4,6 +4,8 @@ use crate::utils::structs::VoteData;
 use junobuild_utils::decode_doc_data;
 use junobuild_shared::types::list::{ListMatcher, ListParams};
 use crate::list_docs;
+use crate::utils::query_helpers::KeySegment;
+use crate::processors::ulid_timestamp_extract::extract_timestamp_ms;
 
 /// Validates a vote document before creation or update
 /// 
@@ -14,6 +16,7 @@ use crate::list_docs;
 /// 4. Validates vote weight constraints (0.0 to 1.0)
 /// 5. Prevents self-voting
 /// 6. Verifies tag exists using ListMatcher by key
+/// 7. Ensures vote timestamp is not backdated or in the future
 /// 
 /// # Arguments
 /// * `context` - The validation context containing the document data
@@ -33,23 +36,65 @@ pub fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), Strin
             format!("Invalid vote data format: {}", e)
         })?;
 
-    // Step 2: Validate vote value constraints
-    // Vote value must be -1, 0, or 1 to:
-    // - Ensure votes have clear, binary meaning in the system
+    // Step 2: Validate vote timestamp is not backdated or in the future
+    // Extract vote_key from the document key (it's the last ULID in the key)
+    let key_parts: Vec<&str> = context.data.key.split('_').collect();
+    if let Some(vote_ulid) = key_parts.last() {
+        // Extract timestamp from the ULID
+        let vote_timestamp = extract_timestamp_ms(vote_ulid)?;
+        
+        // Get current timestamp in milliseconds
+        let current_time = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|e| format!("[validate_vote_document] Failed to get system time: {}", e))?
+            .as_millis() as u64;
+        
+        // Allow for small clock skew (5 minutes in milliseconds)
+        const ALLOWED_SKEW_MS: u64 = 5 * 60 * 1000;
+        
+        // Check if vote timestamp is too far in the past
+        if vote_timestamp + ALLOWED_SKEW_MS < current_time {
+            let err_msg = format!(
+                "[validate_vote_document] Vote timestamp is backdated: vote_time={}, current_time={}, allowed_skew={}ms",
+                vote_timestamp, current_time, ALLOWED_SKEW_MS
+            );
+            logger!("error", "{}", err_msg);
+            return Err(err_msg);
+        }
+
+        // Check if vote timestamp is too far in the future
+        if vote_timestamp > current_time + ALLOWED_SKEW_MS {
+            let err_msg = format!(
+                "[validate_vote_document] Vote timestamp is in the future: vote_time={}, current_time={}, allowed_skew={}ms",
+                vote_timestamp, current_time, ALLOWED_SKEW_MS
+            );
+            logger!("error", "{}", err_msg);
+            return Err(err_msg);
+        }
+    } else {
+        let err_msg = format!("[validate_vote_document] Invalid vote key format: {}", context.data.key);
+        logger!("error", "{}", err_msg);
+        return Err(err_msg);
+    }
+
+    // Step 3: Validate vote value constraints
+    // Vote value must be exactly -1 or 1 to:
+    // - Ensure votes have clear, binary meaning in the system (upvote/downvote)
     // - Prevent vote manipulation through arbitrary values
     // - Maintain consistent reputation calculations
     // - Keep the system simple and understandable
     // - Enable clear upvote/downvote UI representation
-    if vote_data.value < -1.0 || vote_data.value > 1.0 {
+    // - No neutral votes (0) allowed to encourage clear stance
+    if vote_data.value != -1.0 && vote_data.value != 1.0 {
         let err_msg = format!(
-            "[validate_vote_document] Vote value must be -1, 0, or 1 (got: {})",
+            "[validate_vote_document] Vote value must be either -1 or 1 (got: {}). Neutral votes (0) are not allowed.",
             vote_data.value
         );
         logger!("error", "{}", err_msg);
         return Err(err_msg);
     }
 
-    // Step 3: Validate vote weight constraints
+    // Step 4: Validate vote weight constraints
     // Vote weight must be between 0.0 and 1.0 to:
     // - Represent voter's proportional influence in the tag
     // - Prevent any single voter from dominating
@@ -69,27 +114,30 @@ pub fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), Strin
         return Err(err_msg);
     }
 
-    // Step 4: Validate tag exists
+    // Step 5: Validate tag exists
     logger!("debug", "[validate_vote_document] Verifying tag exists: {}", vote_data.tag_key);
     
     // First validate that tag_key is not empty
     if vote_data.tag_key.trim().is_empty() {
-        let err_msg = "[validate_vote_document]Tag key cannot be empty";
+        let err_msg = "[validate_vote_document] Tag key cannot be empty";
         logger!("error", "{}", err_msg);
         return Err(err_msg.to_string());
     }
     
-    let params = ListParams {
-        matcher: Some(ListMatcher {
-            key: Some(vote_data.tag_key.clone()),
-            ..Default::default()
-        }),
-        ..Default::default()
-    };
-
-    // Search for the tag in the tags collection
-    let existing_tags = list_docs(String::from("tags"), params);
-    if existing_tags.items.is_empty() {
+    // Construct the key pattern to find the tag document
+    // Tag keys follow the pattern: tag_{ulid}_
+    // This pattern will match any document that contains this tag ULID segment
+    // For example: usr_123_tag_456_hdl_example_ would match with pattern "tag_456_"
+    let tag_key_pattern = format!("tag_{}_", vote_data.tag_key);
+    
+    // Query for the tag using the constructed key pattern
+    let tag_results = crate::utils::query_helpers::query_doc_by_key(
+        "tags",
+        &tag_key_pattern
+    )?;
+    
+    // Check if we found any matching tags
+    if tag_results.items.is_empty() {
         let err_msg = format!("[validate_vote_document] Tag not found: {}", vote_data.tag_key);
         logger!("error", "{}", err_msg);
         return Err(err_msg);
@@ -97,7 +145,7 @@ pub fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), Strin
     
     logger!("debug", "[validate_vote_document] Found tag: {}", vote_data.tag_key);
 
-    // Step 5: Validate no self-voting
+    // Step 6: Validate no self-voting
     if vote_data.user_key == vote_data.target_key {
         let err_msg = "[validate_vote_document]Users cannot vote on themselves";
         logger!("error", "{}", err_msg);

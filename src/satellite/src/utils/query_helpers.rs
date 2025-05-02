@@ -55,9 +55,18 @@ impl KeySegment {
 /// Query documents by key segment pattern
 /// Uses efficient key-based indexing without loading full collection
 /// 
-/// This function provides an efficient way to query documents by matching
-/// patterns in their keys. It uses Juno's key-based indexing system which
-/// avoids loading entire collections into memory.
+/// # DEPRECATION NOTICE
+/// This function is being phased out in favor of query_doc_by_key().
+/// query_doc_by_key() provides more flexibility and control over key patterns,
+/// while maintaining the same efficiency benefits.
+/// 
+/// Reasons for deprecation:
+/// - Less flexible than query_doc_by_key for complex queries
+/// - Harder to compose multiple key segments
+/// - More rigid pattern structure
+/// - query_doc_by_key is more universal and maintainable
+/// 
+/// Please use query_doc_by_key() for new code.
 /// 
 /// # Memory Efficiency
 /// - Uses key-based queries instead of description field filtering

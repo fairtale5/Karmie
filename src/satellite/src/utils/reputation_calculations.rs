@@ -1150,33 +1150,33 @@ pub async fn get_period_multiplier(vote_timestamp_ns: u64, tag_key: &str) -> Res
 /// It's more efficient than querying by description since it uses direct key lookup.
 /// 
 /// # Arguments
-/// * `tag_key` - The unique identifier of the tag to retrieve
+/// * `tag_doc_key` - The document key of the tag to retrieve (tag.key, not tag.data.tag_key)
 /// 
 /// # Returns
 /// * `Result<Tag, String>` - The tag document or an error message
-async fn get_tag(tag_key: &str) -> Result<Tag, String> {
-    // Get the document from Juno
+async fn get_tag(tag_doc_key: &str) -> Result<Tag, String> {
+    // Get the document from Juno using the document key
     let tag_doc = get_doc(
         String::from("tags"),      // Collection name first
-        tag_key.to_string(),       // Document key second
+        tag_doc_key.to_string(),       // Document key second
     )
     .ok_or_else(|| {
-        logger!("error", "[get_tag] Tag not found: tag={}",
-            tag_key);
+        logger!("error", "[get_tag] Tag not found: key={}",
+            tag_doc_key);
         format!("Tag not found: {}", tag_key)
     })?;
 
-    // Decode the tag data into TagData, not Tag
+    // Decode the tag data into TagData
     let tag_data: TagData = decode_doc_data(&tag_doc.data)
         .map_err(|e| {
-            logger!("error", "[get_tag] Failed to deserialize tag data: tag={}, error={}",
+            logger!("error", "[get_tag] Failed to deserialize tag data: key={}, error={}",
                 tag_key, e);
             format!("Failed to deserialize tag: {}", e)
         })?;
         
     // Construct a full Tag with both metadata and data
     let tag = Tag {
-        key: tag_key.to_string(),
+        key: tag_doc_key.to_string(),
         description: tag_doc.description.unwrap_or_default(),
         owner: tag_doc.owner,
         created_at: tag_doc.created_at,
