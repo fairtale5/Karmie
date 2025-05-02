@@ -149,6 +149,12 @@ pub fn query_doc(
 /// 
 /// // Find a specific user by handle
 /// query_doc_by_key("users", &format!("hdl_{}_", handle))?;
+/// 
+/// // Find all tags created by a user
+/// query_doc_by_key("tags", &format!("usr_{}_", user_key))?;
+/// 
+/// // Find a specific tag by its ID (matches anywhere in key)
+/// query_doc_by_key("tags", &format!("tag_{}_", tag_key))?;
 /// ```
 pub fn query_doc_by_key(
     collection: &str,

@@ -1684,16 +1684,16 @@
 								</td>
 								<td>
 									<div class="space-y-1">
-										<div>User Key: {doc.data.user_key}</div>
-										<div>Tag Key: {doc.data.tag_key}</div>
-										<div>Base Rep: {doc.data.total_basis_reputation.toFixed(2)}</div>
-										<div>Vote Rep: {doc.data.total_voting_rewards_reputation.toFixed(2)}</div>
-										<div>Total Rep: {doc.data.last_known_effective_reputation.toFixed(2)}</div>
-										<div>Vote Weight: {(Number(doc.data.vote_weight) * 100).toFixed(4)}%</div>
+										<div>User Key: {doc.data.user_key || 'N/A'}</div>
+										<div>Tag Key: {doc.data.tag_key || 'N/A'}</div>
+										<div>Base Rep: {(doc.data.total_basis_reputation || 0).toFixed(2)}</div>
+										<div>Vote Rep: {(doc.data.total_voting_rewards_reputation || 0).toFixed(2)}</div>
+										<div>Total Rep: {(doc.data.last_known_effective_reputation || 0).toFixed(2)}</div>
+										<div>Vote Weight: {((Number(doc.data.vote_weight) || 0) * 100).toFixed(4)}%</div>
 										<div>Status: {doc.data.has_voting_power ? 'Active' : 'Inactive'}</div>
 										<div class="text-xs">
 											Last Calc: {new Date(
-												Number(doc.data.last_calculation) / 1_000_000
+												Number(doc.data.last_calculation || 0) / 1_000_000
 											).toLocaleString()}
 										</div>
 									</div>

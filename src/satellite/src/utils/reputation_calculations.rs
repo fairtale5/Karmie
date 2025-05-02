@@ -6,7 +6,7 @@ use std::collections::HashMap; // Import std::collections::HashMap
 use junobuild_utils::{encode_doc_data, decode_doc_data}; // Import junobuild_utils functions
 use crate::logger; // Import our logger from the utils module 
 use crate::utils::time::calculate_months_between; // Import time calculations
-use crate::processors::document_keys::{create_reputation_key, format_reputation_key};
+use crate::processors::document_keys::{create_reputation_key, format_reputation_key, format_tag_key};
 use crate::utils::query_helpers::KeySegment;
 
 // Import our data structures
@@ -96,7 +96,7 @@ pub async fn get_user_reputation_slim(user_key: &str, tag_key: &str) -> Result<O
     let active_users = get_active_users_count(tag_key).await?;
     
     // Get tag to check threshold
-    let tag = get_tag(tag_key).await?;
+    let tag = get_tag_doc(tag_key).await?;
     let in_bootstrap_phase = active_users < tag.data.min_users_for_threshold;
     
     // Create reputation key format: usr_{user_ulid}_tag_{tag_ulid}_
@@ -264,7 +264,7 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
     // Step 1: Get Tag Configuration for the specified tag
     // ----------------------------
     logger!("debug", "[calculate_and_store_vote_weight] Step 1: Getting tag configuration for tag={}", tag_key);
-    let _tag = get_tag(tag_key).await?;
+    let _tag = get_tag_doc(tag_key).await?;
     logger!("debug", "[calculate_and_store_vote_weight] Successfully retrieved tag: {}", tag_key);
 
     // Step 2: Get User's Votes
@@ -618,7 +618,7 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
     logger!("info", "[calculate_user_reputation] START calculating reputation for user={}, tag={}", user_key, tag_key);
     
     // Get the tag once at the start - we'll reuse this for all calculations
-    let tag = get_tag(tag_key).await?;
+    let tag = get_tag_doc(tag_key).await?;
 
     // Step 1: Query Votes
     // ----------------------
@@ -1120,7 +1120,7 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
 /// - Returns multiplier of 1.2
 pub async fn get_period_multiplier(vote_timestamp_ns: u64, tag_key: &str) -> Result<f64, String> {
     // Get tag settings to access configured time periods
-    let tag = get_tag(tag_key).await?;
+    let tag = get_tag_doc(tag_key).await?;
     
     // Calculate months difference between vote and now
     let months_ago = calculate_months_between(vote_timestamp_ns, ic_cdk::api::time())?;
@@ -1144,40 +1144,51 @@ pub async fn get_period_multiplier(vote_timestamp_ns: u64, tag_key: &str) -> Res
     }
 }
 
-/// Gets a tag by its key
+/// Gets a tag by its ulid
 /// 
-/// This function retrieves a tag document directly by its key using Juno's get_doc.
-/// It's more efficient than querying by description since it uses direct key lookup.
+/// This function retrieves a tag document by its ULID using query_doc_by_key.
 /// 
 /// # Arguments
-/// * `tag_doc_key` - The document key of the tag to retrieve (tag.key, not tag.data.tag_key)
+/// * `tag_doc_ulid` - The ULID of the tag to retrieve
 /// 
 /// # Returns
 /// * `Result<Tag, String>` - The tag document or an error message
-async fn get_tag(tag_doc_key: &str) -> Result<Tag, String> {
-    // Get the document from Juno using the document key
-    let tag_doc = get_doc(
-        String::from("tags"),      // Collection name first
-        tag_doc_key.to_string(),       // Document key second
-    )
-    .ok_or_else(|| {
-        logger!("error", "[get_tag] Tag not found: key={}",
-            tag_doc_key);
-        format!("Tag not found: {}", tag_doc_key)
-    })?;
+async fn get_tag_doc(tag_doc_ulid: &str) -> Result<Tag, String> {
+    // Query for the tag using the tag ULID
+    logger!("debug", "[get_tag_doc] Looking up tag with ULID: {}", tag_doc_ulid);
+    
+    // Use query_doc_by_key with tag pattern
+    let tag_key_pattern = format!("tag_{}_", tag_doc_ulid);
+    logger!("debug", "[get_tag_doc] Using key pattern: {}", tag_key_pattern);
+    
+    let tag_results = crate::utils::query_helpers::query_doc_by_key(
+        "tags",
+        &tag_key_pattern
+    )?;
+    
+    // Check if we found any matching tags
+    if tag_results.items.is_empty() {
+        let err_msg = format!("Tag not found: {}", tag_doc_ulid);
+        logger!("error", "[get_tag_doc] {}", err_msg);
+        return Err(err_msg);
+    }
+    
+    // Get the first matching tag (there should only be one)
+    let (doc_key, tag_doc) = tag_results.items.first()
+        .ok_or_else(|| format!("Tag not found: {}", tag_doc_ulid))?;
 
     // Decode the tag data into TagData
     let tag_data: TagData = decode_doc_data(&tag_doc.data)
         .map_err(|e| {
-            logger!("error", "[get_tag] Failed to deserialize tag data: key={}, error={}",
-                tag_doc_key, e);
+            logger!("error", "[get_tag_doc] Failed to deserialize tag data: key={}, error={}",
+                tag_doc_ulid, e);
             format!("Failed to deserialize tag: {}", e)
         })?;
         
     // Construct a full Tag with both metadata and data
     let tag = Tag {
-        key: tag_doc_key.to_string(),
-        description: tag_doc.description.unwrap_or_default(),
+        key: doc_key.clone(), // Use the key from the query result
+        description: tag_doc.description.clone().unwrap_or_default(),
         owner: tag_doc.owner,
         created_at: tag_doc.created_at,
         updated_at: tag_doc.updated_at,

@@ -6,6 +6,8 @@ use junobuild_shared::types::list::{ListMatcher, ListParams};
 use crate::list_docs;
 use crate::utils::query_helpers::KeySegment;
 use crate::processors::ulid_timestamp_extract::extract_timestamp_ms;
+use ic_cdk;
+use crate::utils::query_helpers::{query_doc, query_doc_by_key};
 
 /// Validates a vote document before creation or update
 /// 
@@ -16,7 +18,7 @@ use crate::processors::ulid_timestamp_extract::extract_timestamp_ms;
 /// 4. Validates vote weight constraints (0.0 to 1.0)
 /// 5. Prevents self-voting
 /// 6. Verifies tag exists using ListMatcher by key
-/// 7. Ensures vote timestamp is not backdated or in the future
+/// 7. Ensures vote timestamp is not backdated or in the future using IC blockchain time
 /// 
 /// # Arguments
 /// * `context` - The validation context containing the document data
@@ -40,14 +42,11 @@ pub fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), Strin
     // Extract vote_key from the document key (it's the last ULID in the key)
     let key_parts: Vec<&str> = context.data.key.split('_').collect();
     if let Some(vote_ulid) = key_parts.last() {
-        // Extract timestamp from the ULID
+        // Extract timestamp from the ULID (in milliseconds)
         let vote_timestamp = extract_timestamp_ms(vote_ulid)?;
         
-        // Get current timestamp in milliseconds
-        let current_time = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_err(|e| format!("[validate_vote_document] Failed to get system time: {}", e))?
-            .as_millis() as u64;
+        // Get current IC time in milliseconds (convert from nanoseconds)
+        let current_time = ic_cdk::api::time() / 1_000_000;
         
         // Allow for small clock skew (5 minutes in milliseconds)
         const ALLOWED_SKEW_MS: u64 = 5 * 60 * 1000;
@@ -128,7 +127,7 @@ pub fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), Strin
     // Tag keys follow the pattern: tag_{ulid}_
     // This pattern will match any document that contains this tag ULID segment
     // For example: usr_123_tag_456_hdl_example_ would match with pattern "tag_456_"
-    let tag_key_pattern = format!("tag_{}_", vote_data.tag_key);
+    let tag_key_pattern = format!(".*tag_{}_.*", vote_data.tag_key);
     
     // Query for the tag using the constructed key pattern
     let tag_results = crate::utils::query_helpers::query_doc_by_key(
@@ -138,7 +137,7 @@ pub fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), Strin
     
     // Check if we found any matching tags
     if tag_results.items.is_empty() {
-        let err_msg = format!("[validate_vote_document] Tag not found: {}", vote_data.tag_key);
+        let err_msg = format!("[validate_vote_document] Tag not found: {}", &tag_key_pattern);
         logger!("error", "{}", err_msg);
         return Err(err_msg);
     }
@@ -147,7 +146,7 @@ pub fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), Strin
 
     // Step 6: Validate no self-voting
     if vote_data.user_key == vote_data.target_key {
-        let err_msg = "[validate_vote_document]Users cannot vote on themselves";
+        let err_msg = "[validate_vote_document] Users cannot vote on themselves";
         logger!("error", "{}", err_msg);
         return Err(err_msg.to_string());
     }
