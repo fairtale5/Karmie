@@ -152,12 +152,13 @@
 			
 			// Get the selected tag document to access its data
 			const selectedTagDoc = tags.find(tag => tag.key === tagKey);
-			if (!selectedTagDoc?.data?.tag_key) {
+			if (!selectedTagDoc || !selectedTagDoc.data.tag_key) {
 				console.error('[Admin] Tag document not found or missing tag_key:', tagKey);
 				return;
 			}
 			
-			// Use key-based filtering with proper pattern
+			// Use key-based filtering with proper pattern using the tag's ULID directly
+			// Reputation keys format: usr_{userUlid}_tag_{tagUlid}
 			const reputationsList = await listDocs<ReputationData>({
 				collection: COLLECTIONS.REPUTATIONS,
 				filter: {
