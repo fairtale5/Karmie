@@ -205,12 +205,14 @@ use junobuild_utils::{decode_doc_data, encode_doc_data};
 // Import our utility modules
 use crate::utils::{
     normalize::normalize_handle,
-    structs::{Vote, VoteData, Tag, Reputation, UserData, TagData, TimePeriod, ReputationData},
-    reputation_calculations::{
-        calculate_user_reputation, get_user_reputation_data,
-        calculate_and_store_vote_weight,
-        get_period_multiplier,
-    }
+    structs::{Vote, VoteData, Tag, Reputation, UserData, TagData, TimePeriod, ReputationData}
+};
+
+// Import our core modules
+use crate::core::{
+    calculate_user_reputation,
+    get_user_reputation_data,
+    calculate_and_store_vote_weight,
 };
 
 // =============================================================================
@@ -218,12 +220,13 @@ use crate::utils::{
 // =============================================================================
 
 mod utils;
+mod core;
 mod assert_set_doc;
 mod validation;
 mod processors;
 
 // Re-export query helpers for easy access
-pub use utils::query_helpers::{query_doc, KeySegment};
+pub use processors::document_queries::{query_doc, KeySegment};
 
 // Use the moved validation function
 use assert_set_doc::{

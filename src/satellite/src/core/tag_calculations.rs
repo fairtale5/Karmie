@@ -37,7 +37,7 @@
  */
 
 use crate::logger;
-use crate::utils::query_helpers::{query_doc, KeySegment};
+use crate::processors::document_queries::{query_doc, KeySegment};
 use crate::utils::structs::{ReputationData, Tag, TagData};
 use candid::Principal;
 use ic_cdk;

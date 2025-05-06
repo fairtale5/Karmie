@@ -5,7 +5,7 @@ use crate::{
     validation::{validate_handle, validate_display_name},
     utils::structs::UserData,
     processors::document_keys::create_user_key,
-    utils::query_helpers::{query_doc, KeySegment},
+    processors::document_queries::{query_doc, KeySegment},
 };
 use crate::list_docs;
 use crate::logger;

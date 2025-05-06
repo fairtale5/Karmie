@@ -7,7 +7,8 @@ use junobuild_utils::{encode_doc_data, decode_doc_data}; // Import junobuild_uti
 use crate::logger; // Import our logger from the utils module 
 use crate::utils::time::calculate_months_between; // Import time calculations
 use crate::processors::document_keys::{create_reputation_key, format_reputation_key, format_tag_key};
-use crate::utils::query_helpers::KeySegment;
+use crate::processors::document_queries::KeySegment;
+use crate::processors::document_queries::query_doc_by_key;
 
 // Import our data structures
 use crate::utils::structs::{
@@ -16,7 +17,7 @@ use crate::utils::structs::{
 };
 
 // Import tag calculations
-use crate::utils::tag_calculations::get_active_users_count;
+use crate::core::get_active_users_count;
 
 /// Retrieves a user's cached reputation data for a specific tag.
 ///
@@ -276,7 +277,7 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
     logger!("info", "[calculate_and_store_vote_weight] Using key pattern: {}", vote_key_pattern);
     
     // Use our general-purpose query helper with the formatted key pattern
-    let user_votes_result = crate::utils::query_helpers::query_doc_by_key(
+    let user_votes_result = query_doc_by_key(
         "votes",
         &vote_key_pattern
     )?;
@@ -630,7 +631,7 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
     logger!("info", "[calculate_user_reputation] Searching for votes targeting user with key pattern: {}", vote_key_pattern);
     
     // Execute the votes query using our key-based query helper
-    let vote_items_result = crate::utils::query_helpers::query_doc_by_key(
+    let vote_items_result = query_doc_by_key(
         "votes",
         &vote_key_pattern
     )?;
@@ -827,7 +828,7 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
     logger!("info", "[calculate_user_reputation] Searching for votes cast by user with key pattern: {}", vote_key_pattern);
 
     // Query the database for votes cast by the user using our helper
-    let user_votes_result = crate::utils::query_helpers::query_doc_by_key(
+    let user_votes_result = query_doc_by_key(
         "votes",
         &vote_key_pattern
     )?;
@@ -1161,7 +1162,7 @@ async fn get_tag_doc(tag_doc_ulid: &str) -> Result<Tag, String> {
     let tag_key_pattern = format!("tag_{}_", tag_doc_ulid);
     logger!("debug", "[get_tag_doc] Using key pattern: {}", tag_key_pattern);
     
-    let tag_results = crate::utils::query_helpers::query_doc_by_key(
+    let tag_results = query_doc_by_key(
         "tags",
         &tag_key_pattern
     )?;

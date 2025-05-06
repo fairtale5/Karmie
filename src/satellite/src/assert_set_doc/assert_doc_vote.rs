@@ -4,10 +4,10 @@ use crate::utils::structs::VoteData;
 use junobuild_utils::decode_doc_data;
 use junobuild_shared::types::list::{ListMatcher, ListParams};
 use crate::list_docs;
-use crate::utils::query_helpers::KeySegment;
+use crate::processors::document_queries::KeySegment;
+use crate::processors::document_queries::{query_doc, query_doc_by_key};
 use crate::processors::ulid_timestamp_extract::extract_timestamp_ms;
 use ic_cdk;
-use crate::utils::query_helpers::{query_doc, query_doc_by_key};
 
 /// Validates a vote document before creation or update
 /// 
@@ -130,7 +130,7 @@ pub fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), Strin
     let tag_key_pattern = format!(".*tag_{}_.*", vote_data.tag_key);
     
     // Query for the tag using the constructed key pattern
-    let tag_results = crate::utils::query_helpers::query_doc_by_key(
+    let tag_results = query_doc_by_key(
         "tags",
         &tag_key_pattern
     )?;

@@ -7,7 +7,7 @@ use crate::{
     list_docs,
     logger,
     utils::normalize::normalize_handle,
-    utils::query_helpers::{query_doc, KeySegment},
+    processors::document_queries::{query_doc, KeySegment},
 };
 
 /// Validates a tag document before creation or update
