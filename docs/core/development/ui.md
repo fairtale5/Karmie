@@ -4,10 +4,18 @@
 
 This document outlines the high-level UI/UX decisions and guidelines for the Reputator project. For specific component implementations, refer to the frontend code and its documentation.
 
-## Important Technical Requirements
+## Technical Stack
 
-### No Server-Side Rendering
-- The project uses static site generation with Juno
+### SvelteKit + Tailwind CSS
+- Using standard SvelteKit setup with Tailwind CSS
+- Static site generation (no server-side rendering)
+- Client-side routing and state management
+- Modern Tailwind v4 utilities and features
+
+### Important Technical Requirements
+
+#### Static Site Generation
+- Project uses static site generation with Juno
 - All routes must be pre-rendered at build time
 - Avoid using server-side only features:
   - No `+layout.server.ts` files
@@ -15,7 +23,14 @@ This document outlines the high-level UI/UX decisions and guidelines for the Rep
   - No `+layout.ts` files with server-side logic
   - No `actions` in forms
 - Use client-side alternatives where possible
-- Import global styles in the root page component (`src/routes/+page.svelte`)
+
+#### Route Configuration
+All routes in a Juno project should use these settings:
+```typescript
+export const prerender = true;  // Enable static generation
+export const ssr = false;       // Disable server-side rendering
+export const csr = true;        // Enable client-side rendering
+```
 
 ## Design Principles
 
@@ -74,16 +89,30 @@ This document outlines the high-level UI/UX decisions and guidelines for the Rep
 ## Styling Guidelines
 
 ### 1. Theme System
-- Use CSS variables for consistent styling
-- Support light and dark modes
-- Maintain consistent spacing
+- Use Tailwind CSS for consistent styling
+- Support light and dark modes through Tailwind
+- Use CSS variables for custom theming
 - Follow responsive design principles
 
 ### 2. Component Styling
-- Use consistent border radiuses
-- Maintain consistent spacing
-- Follow color system guidelines
-- Support responsive layouts
+- Use Tailwind utility classes for consistent styling
+- Follow Tailwind's spacing scale
+- Use Tailwind's color system
+- Leverage Tailwind's responsive utilities
+
+## CSS Structure
+
+### 1. Global Styles
+- Import Tailwind in `src/app.css`
+- Define custom theme variables in `app.css`
+- Keep global styles minimal
+- Use Tailwind's configuration for customization
+
+### 2. Component Styles
+- Use Tailwind utility classes primarily
+- Add custom styles through `<style>` when needed
+- Use `@apply` for complex utility combinations
+- Keep component styles scoped
 
 ## Future Improvements
 
@@ -110,63 +139,3 @@ This document outlines the high-level UI/UX decisions and guidelines for the Rep
 - Improve keyboard navigation
 - Enhance screen reader support
 - Add focus management
-
-## SvelteKit Integration Guidelines
-
-### Important Limitations
-- **No Server-Side Rendering (SSR)**
-  - Juno requires static site generation
-  - Avoid using server-side only features like:
-    - `+layout.server.ts` files
-    - `+page.server.ts` files
-    - `+layout.ts` files with server-side logic
-    - `actions` in forms
-  - Use client-side alternatives where possible
-  - All routes should be pre-rendered at build time
-
-### Recommended Patterns
-- Use static generation with `+page.ts` instead of server files
-- Handle authentication and data fetching on the client side
-- Use client-side routing for dynamic content
-
-## SvelteKit Route Configuration
-
-### Required Settings
-All routes in a Juno project should use these settings:
-```typescript
-export const prerender = true;  // Enable static generation
-export const ssr = false;       // Disable server-side rendering
-export const csr = true;        // Enable client-side rendering
-```
-
-### Why These Settings?
-- `prerender = true`: Required for Juno's static hosting
-- `ssr = false`: Juno doesn't support server-side rendering
-- `csr = true`: Enables client-side functionality
-
-### Common Issues
-- Never set `prerender = false` as it prevents static generation
-- Always keep `ssr = false` for Juno compatibility
-- Maintain consistent settings across all routes 
-
-## CSS and Styling
-
-### Tailwind Integration
-This project uses Juno's custom Tailwind 4 setup, which differs significantly from standard Tailwind:
-
-1. **Single Entry Point**
-   - CSS must be imported in root page (`src/routes/+page.svelte`)
-   - No global stylesheets in layout files
-   - No CSS imports in `app.html`
-
-2. **Build Process**
-   - Uses Rust-based processing through oxide packages
-   - No runtime CSS processing
-   - No JIT compilation
-
-3. **Configuration**
-   - Minimal PostCSS setup with single plugin
-   - No Tailwind config file needed
-   - Platform-specific optimizations handled automatically
-
-For detailed setup and troubleshooting, see `docs/core/development/tailwind.md`.
