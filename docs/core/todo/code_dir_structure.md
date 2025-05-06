@@ -4,7 +4,7 @@
 
 As the Reputator backend grows in complexity, there's a need to better organize the codebase with a more structured approach. Currently, some files like `reputation_calculations.rs` are becoming too large and complex, making maintenance and debugging challenging.
 
-## Current Directory Structure (2024-xx-xx)
+## Current Directory Structure
 
 ```
 src/satellite/src/
