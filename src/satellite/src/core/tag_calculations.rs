@@ -37,7 +37,7 @@
  */
 
 use crate::logger;
-use crate::processors::document_queries::{query_doc, KeySegment};
+use crate::processors::document_queries::query_doc_by_key;
 use crate::utils::structs::{ReputationData, Tag, TagData};
 use candid::Principal;
 use ic_cdk;
@@ -68,12 +68,8 @@ pub async fn get_active_users_count(tag_key: &str) -> Result<u32, String> {
         tag_key
     );
 
-    // Get tag configuration using query_doc with KeySegment::Tag
-    let tag_results = query_doc(
-        "tags",
-        KeySegment::Tag,
-        tag_key
-    )?;
+    // Get tag configuration using query_doc_by_key with tag pattern
+    let tag_results = query_doc_by_key("tags", &format!("tag_{}_", tag_key))?;
 
     // Check if we found any matching tags
     if tag_results.items.is_empty() {
@@ -99,7 +95,7 @@ pub async fn get_active_users_count(tag_key: &str) -> Result<u32, String> {
     );
 
     // Step 2: Get all users who have reputations in this tag
-    // Method: Get all reputations documents that have tag_{key} in the 'key' field
+    // Method: use query_doc_by_key to find any document in 'reputations' collection that contains the tag key
     logger!(
         "debug",
         "[get_active_users_count] Querying active users for tag={}",
@@ -107,8 +103,8 @@ pub async fn get_active_users_count(tag_key: &str) -> Result<u32, String> {
     );
 
     // Use key-based query to find all users in this tag
-    // Method: use query_doc to find any document in 'reputations' collection that contains the tag key
-    let results = query_doc("reputations", KeySegment::Tag, tag_key)?;
+    // Method: use query_doc_by_key to find any document in 'reputations' collection that contains the tag key
+    let results = query_doc_by_key("reputations", &format!("tag_{}_", tag_key))?;
 
     // Log how many reputation documents we found
     logger!(

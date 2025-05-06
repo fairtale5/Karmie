@@ -226,7 +226,7 @@ mod validation;
 mod processors;
 
 // Re-export query helpers for easy access
-pub use processors::document_queries::{query_doc, KeySegment};
+pub use processors::document_queries::query_doc_by_key;
 
 // Use the moved validation function
 use assert_set_doc::{

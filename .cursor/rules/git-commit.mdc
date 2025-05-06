@@ -13,189 +13,79 @@ git commits should always:
 
 Example of what a good commit looks like:
 
-# Update 2024-03-19 - Tag Lookup and Frontend Display Fixes
+# Example: Good Commit Message Structure
 
-## Changes Made
-1. Fixed frontend reputation display in admin panel:
-   - Added null checks for all reputation data fields
-   - Added default values (0) for numeric fields before calling toFixed()
-   - Added 'N/A' display for missing string values
-   - Fixed timestamp display for missing last_calculation values
+## 1. Title (Short, Clear, and Descriptive)
+Refactor: Remove KeySegment, Standardize on query_doc_by_key
 
-2. Improved tag lookup in backend:
-   - Switched from direct key lookup to query_doc_by_key in get_tag_doc
-   - Updated tag key pattern matching to work with partial keys
-   - Added better error handling and logging for tag queries
-   - Fixed tag lookup pattern in vote validation
+## 2. Summary/Context (Why)
+To simplify and standardize backend queries, we removed the now-unused KeySegment enum and the legacy query_doc function. This change reduces confusion, eliminates dead code, and ensures all key-based queries use a single, flexible function. This aligns with our migration plan in docs/core/todo/code_dir_structure.md and improves maintainability and clarity for all contributors.
 
-3. Enhanced error handling and logging:
-   - Added more descriptive error messages
-   - Improved debug logging for tag lookups
-   - Added validation context to error messages
+## 3. Detailed List of Changes (Per File)
 
-## Files Changed
-1. `src/routes/admin/+page.svelte`
-   - Updated reputation display template with null checks
-   - Added default values for numeric fields
-   - Improved error handling for undefined values
+- src/satellite/src/processors/document_queries.rs
+  - Why: KeySegment and query_doc were legacy patterns that complicated query logic and were no longer needed after recent refactors.
+  - What: Removed KeySegment enum, its impl, and all related tests and doc comments. Deleted the query_doc function. Updated all documentation and examples to use query_doc_by_key.
+  - Result: The file is now much simpler, with only one query function and no dead code.
 
-2. `src/satellite/src/utils/reputation_calculations.rs`
-   - Replaced get_tag with improved get_tag_doc implementation
-   - Updated tag lookup to use query_doc_by_key
-   - Added better error handling and logging
+- src/satellite/src/core/tag_calculations.rs
+  - Why: This file previously used query_doc and referenced KeySegment in comments and imports.
+  - What: Replaced all query_doc calls with query_doc_by_key and updated comments. Removed KeySegment from imports.
+  - Result: Query logic is now consistent and easier to follow.
 
-3. `src/satellite/src/assert_set_doc/assert_doc_vote.rs`
-   - Updated tag lookup pattern in vote validation
-   - Improved error messages and logging
-   - Fixed tag key pattern matching
+- src/satellite/src/core/reputation_calculations.rs
+  - Why: To remove all references to KeySegment and standardize on query_doc_by_key.
+  - What: Removed KeySegment import. Confirmed all queries use query_doc_by_key.
+  - Result: No more dead code or legacy imports.
 
-4. `src/satellite/src/utils/query_helpers.rs`
-   - Added more examples for query_doc_by_key usage
-   - Improved function documentation
+- src/satellite/src/assert_set_doc/assert_doc_user.rs
+  - Why: To eliminate legacy query patterns and imports.
+  - What: Replaced query_doc with query_doc_by_key. Removed KeySegment from imports.
+  - Result: Cleaner, more maintainable code.
 
-## Testing
-- Verified reputation display works with missing/undefined values
-- Confirmed tag lookup works with partial key matches
-- Tested vote validation with various tag scenarios
-- Checked error handling and logging improvements
+- src/satellite/src/assert_set_doc/assert_doc_tag.rs
+  - Why: To update query logic and remove unused imports.
+  - What: Replaced query_doc with query_doc_by_key. Removed KeySegment from imports. Updated comments.
+  - Result: Consistent query usage and no dead code.
 
+- src/satellite/src/assert_set_doc/assert_doc_vote.rs
+  - Why: To remove unused KeySegment import and ensure all queries use the new pattern.
+  - What: Removed KeySegment from imports. Confirmed all queries use query_doc_by_key.
+  - Result: No more legacy imports or patterns.
 
-Another example:
+- src/satellite/src/lib.rs
+  - Why: To clean up re-exports and ensure only the new query function is exposed.
+  - What: Removed KeySegment from pub use. Now only re-exports query_doc_by_key.
+  - Result: Cleaner public API for query helpers.
 
-# Update 2024-03-19 - Frontend Data Structure Alignment and Display Improvements
+- docs/core/todo/code_dir_structure.md
+  - Why: To document the migration and ensure future contributors understand the rationale and process.
+  - What: Updated to reflect the new query pattern and removal of KeySegment.
+  - Result: Documentation is now accurate and up to date.
 
-## Changes Made
-1. Aligned Frontend Types with Backend:
-   - Updated ReputationData interface in types.ts:
-     * Renamed total_basis_reputation -> reputation_basis
-     * Renamed total_voting_rewards_reputation -> reputation_rewards
-     * Renamed last_known_effective_reputation -> reputation_total_effective
-     * Added has_voting_power boolean field
-     * Updated field comments for clarity
-     * Maintained bigint type for last_calculation
-     * Kept vote_weight as number (0.0 to 1.0)
+## 4. Conclusion
+- All code now uses a single, flexible query function for key-based queries.
+- No dead code, legacy enums, or unused imports remain.
+- The codebase is easier to maintain, understand, and extend.
+- All changes were tested and verified to work as expected. No regressions observed.
 
-2. Fixed Admin Panel Data Display:
-   - Updated reputation display template in +page.svelte:
-     * Added null coalescing for userReputations lookup
-     * Updated default values structure:
-       ```typescript
-       {
-         reputation_basis: 0,
-         reputation_rewards: 0,
-         reputation_total_effective: 0,
-         vote_weight: 0,
-         has_voting_power: false,
-         last_calculation: BigInt(0)
-       }
-       ```
-     * Fixed number formatting with .toFixed(2) for all reputation values
-     * Added percentage display for vote_weight (multiplied by 100)
+---
 
-3. Improved Tag-Based Filtering:
-   - Modified loadUserReputations function:
-     * Updated key pattern matching for tag filtering
-     * Added proper type checking for tag_key
-     * Improved error handling for missing tag data
-   - Enhanced loadVotes function:
-     * Fixed tag-based vote filtering
-     * Updated key pattern matching to use tag_key
+# Commit Message Template
 
-4. Enhanced UI Organization:
-   - Added conditional column rendering in users table:
-     * Hide reputation column when no tag selected
-     * Show reputation data only with selected tag
-     * Maintained table structure consistency
-   - Updated table headers and cell structure to match
+1. Title (Short, Clear, and Descriptive)
 
-## Files Changed
-1. `src/lib/types.ts`
-   - Updated ReputationData interface
-   - Aligned field names with backend
-   - Added new fields and updated types
+2. Summary/Context (Why)
+- Explain why this change was made, what problem it solves, and what benefits it brings. Reference documentation or migration plan if possible.
 
-2. `src/routes/admin/+page.svelte`
-   - Modified table structure for conditional rendering
-   - Updated reputation data display
-   - Fixed data loading and filtering functions
-   - Improved error handling and null checks
+3. Detailed List of Changes (Per File)
+- For each file changed:
+  - Add the path and filename.
+  - Add bullet points explaining:
+    - Why the file was changed.
+    - What was changed, added, removed, or fixed.
+    - What is the result? Did it work, is it better?
 
-## Testing
-- Verified reputation numbers display correctly with and without tag selection
-- Confirmed vote filtering works properly with tag selection
-- Tested reputation document display with all fields
-- Validated conditional column rendering
-- Checked all number formatting and calculations
+4. Conclusion
+- Summarize the overall impact, what was tested, and any next steps or caveats.
 
-## Technical Details
-- Backend/Frontend field mapping:
-  * total_basis_reputation -> reputation_basis
-  * total_voting_rewards_reputation -> reputation_rewards
-  * last_known_effective_reputation -> reputation_total_effective
-  * Added: has_voting_power (boolean)
-  * Preserved: last_calculation (bigint), vote_weight (number)
-
-- Data Loading Changes:
-  * Updated reputationMap creation in loadUserReputations
-  * Modified vote filtering patterns in loadVotes
-  * Improved type safety in data access
-  * Added proper null handling for all reputation fields
-
-feat(admin): Fix reputation display and data loading issues
-
-Major fixes:
-- Fixed reputation numbers not displaying correctly in user list
-- Fixed votes not showing up when a tag is selected
-- Fixed reputation info not showing in reputation documents
-- Added conditional display of reputation column for better UX
-
-UI Improvements:
-- Hide reputation column in users table when no tag is selected
-- Only show reputation data when a specific tag is selected
-- Keep table layout consistent with conditional column rendering
-- Maintain data loading in background for smooth transitions
-
-This change fixes several data display issues in the admin interface and
-improves the UI by reducing visual clutter. The reputation column now only
-appears when it contains meaningful data (i.e., when a tag is selected),
-and all reputation numbers are correctly displayed.
-
-Technical changes:
-- Fixed reputation data loading and display logic
-- Corrected vote filtering when tag is selected
-- Added conditional rendering using Svelte's {#if} directives
-- Modified table structure to handle dynamic columns
-- Kept existing data loading logic intact for performance
-- Ensured proper field access for reputation values
-
-The changes make the admin interface more reliable by fixing data display
-issues and more focused by only showing relevant information based on the
-user's current context. 
-
-
-When making a git commit, always follow these steps:
-1. Stage all files, not just some files ALL FILES using git add .
-2. Check git status to be sure: git status
-3. Check all files for changes, look at the code changes.
-4. Write an overview of all changes to a documment in root called /git-message.txt
-5. Commit using /git-message.txt you created.
-6. Push to github
-7. Delete the /git-message.txt
-
-Template for /git-message.txt:
-
-Overview:
-Explain what we were trying to solve, and how we solved it.
-
-Changed files:
-List all the files that changed, like:
-- /folder/filename.ext
-- /folder/folder.filename.ext
-
-Details:
-List again all files, but this time add a list of bullets to each, explaining what changed, like:
-- /folder/filename.ext - changed variable X to Y to solve Z.
-- /folder/folder/filename.ext - changed function X and replaced it with Y, so now when ... happens it now does .... instead of ... This change solves the issue we were having with...
-
-Conclusion:
-- Add tests, what did we test and know is working? Is there anything we should still test before making the commit?

@@ -7,7 +7,7 @@ use crate::{
     list_docs,
     logger,
     utils::normalize::normalize_handle,
-    processors::document_queries::{query_doc, KeySegment},
+    processors::document_queries::query_doc_by_key,
 };
 
 /// Validates a tag document before creation or update
@@ -49,11 +49,7 @@ pub fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String
     let normalized_name = normalize_handle(&tag_data.name);
     
     // Query for existing tags with this handle
-    let existing_tags = query_doc(
-        "tags",
-        KeySegment::Handle,
-        &normalized_name
-    )?;
+    let existing_tags = query_doc_by_key("tags", &format!("hdl_{}_", normalized_name))?;
 
     // Check if any tags were found (excluding the current document if it's an update)
     if !existing_tags.items.is_empty() {

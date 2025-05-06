@@ -7,7 +7,6 @@ use junobuild_utils::{encode_doc_data, decode_doc_data}; // Import junobuild_uti
 use crate::logger; // Import our logger from the utils module 
 use crate::utils::time::calculate_months_between; // Import time calculations
 use crate::processors::document_keys::{create_reputation_key, format_reputation_key, format_tag_key};
-use crate::processors::document_queries::KeySegment;
 use crate::processors::document_queries::query_doc_by_key;
 
 // Import our data structures

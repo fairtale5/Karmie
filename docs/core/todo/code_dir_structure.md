@@ -1,3 +1,44 @@
+# Backend Code Structure Refactor: TODO Checklist
+
+**Progress Checklist:**
+- [x] Move `reputation_calculations.rs` and `tag_calculations.rs` from `utils/` to `core/`
+- [x] Rename `query_helpers.rs` to `document_queries.rs` and move to `processors/`
+- [x] Update all imports and `mod.rs` files to reflect the new structure and naming
+- [x] Adopt flat re-exports in `core/mod.rs` for consistent imports
+- [x] Clean up unnecessary re-exports and fix linter warnings
+- [x] Ensure all code uses idiomatic Rust imports for maintainability
+- [x] Remove KeySegment and standardize on `query_doc_by_key`
+- [ ] Split `structs.rs` into multiple files in a new `structs/` directory
+- [ ] Further split `reputation_calculations.rs` into smaller modules as described in the plan
+- [ ] Refine validation logic for more granular separation by domain
+- [ ] Update documentation and run tests after each major change
+
+**Note:**
+- All checked items are complete and included in the current codebase.
+- The remaining unchecked items are planned for future work and are not yet implemented.
+
+---
+
+# Commit: Backend Code Structure Refactor (Partial)
+
+This commit implements the first phase of the backend code reorganization as described below.
+
+**What was done:**
+- Moved `reputation_calculations.rs` and `tag_calculations.rs` from `utils/` to `core/`.
+- Renamed `query_helpers.rs` to `document_queries.rs` and moved it to `processors/`.
+- Updated all imports and `mod.rs` files to reflect the new structure and naming.
+- Adopted flat re-exports in `core/mod.rs` for consistent imports across the codebase.
+- Cleaned up unnecessary re-exports and fixed linter warnings.
+- Ensured all code uses idiomatic Rust imports for maintainability.
+
+**What is left for future commits:**
+- Split `structs.rs` into multiple files in a new `structs/` directory.
+- Further split `reputation_calculations.rs` into smaller modules as described in the plan.
+- Refine validation logic for more granular separation by domain.
+- Update documentation and run tests after each major change.
+
+---
+
 # Satellite Code Refactoring Plan
 
 ## Background

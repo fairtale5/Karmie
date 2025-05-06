@@ -5,7 +5,7 @@ use crate::{
     validation::{validate_handle, validate_display_name},
     utils::structs::UserData,
     processors::document_keys::create_user_key,
-    processors::document_queries::{query_doc, KeySegment},
+    processors::document_queries::query_doc_by_key,
 };
 use crate::list_docs;
 use crate::logger;
@@ -95,8 +95,8 @@ pub fn assert_doc_user(context: &AssertSetDocContext) -> Result<(), String> {
     // Check if we're updating an existing document
     let is_update = context.data.data.current.is_some();
     
-    // Use query_doc with KeySegment::Handle for a more semantic query
-    let results = query_doc("users", KeySegment::Handle, &normalized_username)
+    // Use query_doc_by_key with a more semantic query
+    let results = query_doc_by_key("users", &format!("hdl_{}_", normalized_username))
         .map_err(|e| {
             let err_msg = format!("[assert_doc_user] Failed to query existing usernames: {}", e);
             logger!("error", "{}", err_msg);

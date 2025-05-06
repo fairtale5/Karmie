@@ -4,8 +4,7 @@ use crate::utils::structs::VoteData;
 use junobuild_utils::decode_doc_data;
 use junobuild_shared::types::list::{ListMatcher, ListParams};
 use crate::list_docs;
-use crate::processors::document_queries::KeySegment;
-use crate::processors::document_queries::{query_doc, query_doc_by_key};
+use crate::processors::document_queries::query_doc_by_key;
 use crate::processors::ulid_timestamp_extract::extract_timestamp_ms;
 use ic_cdk;
 
