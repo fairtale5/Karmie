@@ -44,6 +44,5 @@ When you see me mention "compiler errors", "build errors", "runtime bugs", or sh
      - Why this fix resolves the issue
    - Update any relevant comments or documentation
    - **Do NOT suggest or discuss fixes for any other errors in this response.**
-
 ## Acknowledgment
 Start your response with: "**Applying debug-code rule**" to confirm you're following this process.

@@ -171,3 +171,31 @@ Technical changes:
 The changes make the admin interface more reliable by fixing data display
 issues and more focused by only showing relevant information based on the
 user's current context. 
+
+
+When making a git commit, always follow these steps:
+1. Stage all files, not just some files ALL FILES using git add .
+2. Check git status to be sure: git status
+3. Check all files for changes, look at the code changes.
+4. Write an overview of all changes to a documment in root called /git-message.txt
+5. Commit using /git-message.txt you created.
+6. Push to github
+7. Delete the /git-message.txt
+
+Template for /git-message.txt:
+
+Overview:
+Explain what we were trying to solve, and how we solved it.
+
+Changed files:
+List all the files that changed, like:
+- /folder/filename.ext
+- /folder/folder.filename.ext
+
+Details:
+List again all files, but this time add a list of bullets to each, explaining what changed, like:
+- /folder/filename.ext - changed variable X to Y to solve Z.
+- /folder/folder/filename.ext - changed function X and replaced it with Y, so now when ... happens it now does .... instead of ... This change solves the issue we were having with...
+
+Conclusion:
+- Add tests, what did we test and know is working? Is there anything we should still test before making the commit?
