@@ -1,4 +1,13 @@
-@import 'tailwindcss';
-@import '$lib/theme.css';
-
 /* Main CSS file for the application */
+@import 'tailwindcss';
+
+@import '@skeletonlabs/skeleton';
+@import '@skeletonlabs/skeleton/optional/presets';
+@import '@skeletonlabs/skeleton/themes/crimson';
+
+@import '../src/lib/themes/repu-crimson.css';
+
+@source '../node_modules/@skeletonlabs/skeleton-svelte/dist';
+
+/* Custom dark mode variant for Tailwind */
+@custom-variant dark (&:where([data-mode="dark"], [data-mode="dark"] *));
