@@ -2,9 +2,10 @@
 	import '../app.css';
 	import { onMount } from 'svelte';
 	import Header from '$lib/Header.svelte';
+	import { initJuno } from '$lib/juno';
 
 	onMount(async () => {
-		// Removed redundant initJuno() call
+		await initJuno();
 	});
 </script>
 

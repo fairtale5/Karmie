@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { initJuno } from '$lib/juno';
 	import { authSubscribe, signIn, signOut, type User } from '@junobuild/core';
 	import { goto } from '$app/navigation';
 	
@@ -10,22 +9,15 @@
 	let unsubscribe: (() => void) | undefined;
 	
 	onMount(() => {
-		// Initialize Juno and set up auth subscription
-		initJuno()
-			.then(() => {
-				initialized = true;
-				unsubscribe = authSubscribe((state) => {
-					user = state;
-					
-					// Redirect to admin when logged in
-					if (user !== null) {
-						goto('/admin');
-					}
-				});
-			})
-			.catch((err) => {
-				error = err instanceof Error ? err.message : 'Failed to initialize Juno';
-			});
+		// Set up auth subscription only (Juno is now initialized in layout)
+		unsubscribe = authSubscribe((state) => {
+			user = state;
+			
+			// Redirect to admin when logged in
+			if (user !== null) {
+				goto('/admin');
+			}
+		});
 
 		// Cleanup function
 		return (): void => {

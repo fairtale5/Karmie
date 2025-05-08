@@ -46,9 +46,10 @@
 		<div class="flex items-center gap-4">
 			<a href="/" class="text-2xl font-bold text-[var(--color-primary-700-300)]">Reputator</a>
 			<nav class="btn-group flex-col p-2 md:flex-row">
-				<button type="button" class="btn hover:preset-tonal text-[var(--color-primary-700-300)]">Home</button>
-				<button type="button" class="btn hover:preset-tonal text-[var(--color-primary-700-300)]">Admin</button>
-				<button type="button" class="btn hover:preset-tonal text-[var(--color-primary-700-300)]">Profile</button>
+				<a href="/" class="btn hover:preset-tonal text-[var(--color-primary-700-300)]">Home</a>
+				<a href="/reputations" class="btn hover:preset-tonal text-[var(--color-primary-700-300)]">Reputations</a>
+				<a href="/admin" class="btn hover:preset-tonal text-[var(--color-primary-700-300)]">Admin</a>
+				<a href="/profile" class="btn hover:preset-tonal text-[var(--color-primary-700-300)]">Profile</a>
 			</nav>
 		</div>
 		<div class="flex items-center gap-4">
