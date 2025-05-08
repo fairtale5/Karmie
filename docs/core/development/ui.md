@@ -4,6 +4,8 @@
 
 This document outlines the high-level UI/UX decisions and guidelines for the Reputator project. For specific component implementations, refer to the frontend code and its documentation.
 
+All info about frontend found in docs/resources/llms-svelte.md
+
 ## Technical Stack
 
 ### SvelteKit + Tailwind CSS
