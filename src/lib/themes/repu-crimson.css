@@ -1,4 +1,4 @@
-[data-theme='repucrimson'] {
+[data-theme='repu-crimson'] {
 	--text-scaling: 1.067;
 	--base-font-color: var(--color-surface-950);
 	--base-font-color-dark: var(--color-surface-50);
@@ -202,4 +202,10 @@
 	--color-surface-contrast-800: var(--color-surface-contrast-light);
 	--color-surface-contrast-900: var(--color-surface-contrast-light);
 	--color-surface-contrast-950: var(--color-surface-contrast-light);
+}
+
+body {
+	background-attachment: fixed;
+	background-image: radial-gradient(at 0% 25%, color-mix(in oklch, var(--color-primary-500) 20%, transparent) 0px, transparent 30%),
+					  radial-gradient(at 15% 6%, color-mix(in oklch, var(--color-success-500) 10%, transparent) 0px, transparent 30%);
 }

@@ -42,8 +42,8 @@
 </svelte:head>
 
 <header class="bg-[var(--color-surface-50-950)] border-b border-[color-mix(in oklab,var(--color-surface-500)20%,transparent)]">
-	<div class="container mx-auto p-4 flex justify-between items-center">
-		<div class="flex items-center gap-8">
+	<div class="container mx-auto p-3 flex justify-between items-center">
+		<div class="flex items-center gap-4">
 			<a href="/" class="text-2xl font-bold text-[var(--color-primary-700-300)]">Reputator</a>
 			<nav class="btn-group flex-col p-2 md:flex-row">
 				<button type="button" class="btn hover:preset-tonal text-[var(--color-primary-700-300)]">Home</button>

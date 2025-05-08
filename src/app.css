@@ -1,11 +1,14 @@
 /* Main CSS file for the application */
 @import 'tailwindcss';
 
+/* Import Skeleton base styles */
 @import '@skeletonlabs/skeleton';
-@import '@skeletonlabs/skeleton/optional/presets';
-@import '@skeletonlabs/skeleton/themes/crimson';
 
+/* Import your custom theme */
 @import '../src/lib/themes/repu-crimson.css';
+
+/* Import Skeleton presets after your theme to allow overrides */
+@import '@skeletonlabs/skeleton/optional/presets';
 
 @source '../node_modules/@skeletonlabs/skeleton-svelte/dist';
 
