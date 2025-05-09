@@ -2,8 +2,10 @@
 	import { Switch } from '@skeletonlabs/skeleton-svelte';
 	import { Sun, Moon } from 'lucide-svelte';
 	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
 
 	let checked = false;
+	$: currentPath = $page.url.pathname;
 
 	onMount(() => {
 		// Handle theme dark vs light mode:
@@ -44,12 +46,12 @@
 <header class="bg-[var(--color-surface-50-950)] border-b border-[color-mix(in oklab,var(--color-surface-500)20%,transparent)]">
 	<div class="container mx-auto p-3 flex justify-between items-center">
 		<div class="flex items-center gap-4">
-			<a href="/" class="text-2xl font-bold text-[var(--color-primary-700-300)]">Reputator</a>
-			<nav class="btn-group flex-col p-2 md:flex-row">
-				<a href="/" class="btn hover:preset-tonal text-[var(--color-primary-700-300)]">Home</a>
-				<a href="/reputations" class="btn hover:preset-tonal text-[var(--color-primary-700-300)]">Reputations</a>
-				<a href="/admin" class="btn hover:preset-tonal text-[var(--color-primary-700-300)]">Admin</a>
-				<a href="/profile" class="btn hover:preset-tonal text-[var(--color-primary-700-300)]">Profile</a>
+			<a href="/" class="text-2xl font-bold text-[var(--color-primary-500)]">Reputator</a>
+			<nav class="flex items-center gap-2">
+				<a href="/" class="btn hover:preset-tonal" class:text-primary-700-300={currentPath === '/'}>Home</a>
+				<a href="/reputations" class="btn hover:preset-tonal" class:text-primary-700-300={currentPath === '/reputations'}>Reputations</a>
+				<a href="/admin" class="btn hover:preset-tonal" class:text-primary-700-300={currentPath === '/admin'}>Admin</a>
+				<a href="/profile" class="btn hover:preset-tonal" class:text-primary-700-300={currentPath === '/profile'}>Profile</a>
 			</nav>
 		</div>
 		<div class="flex items-center gap-4">
@@ -62,6 +64,7 @@
 				{#snippet inactiveChild()}<Moon size={14} />{/snippet}
 				{#snippet activeChild()}<Sun size={14} />{/snippet}
 			</Switch>
+			<a href="/login" class="btn preset-filled-primary-500">Login</a>
 		</div>
 	</div>
-</header> 
+</header>

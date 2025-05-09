@@ -7,6 +7,8 @@ import { toaster } from '$lib/toaster-svelte-skeleton';
 // import Sigma from 'sigma';
 import SkeletonLoader from '$lib/components/SkeletonLoader.svelte';
 import { initJuno } from '$lib/juno';
+import { Avatar } from '@skeletonlabs/skeleton-svelte';
+import { UserRoundPen } from 'lucide-svelte';
 
 // --- State ---
 let loading = true;
@@ -169,18 +171,28 @@ function onTagChange(event: Event) {
 			{:else}
 				<ul class="space-y-2">
 					{#each topUsers as user, i}
-						<li class="flex items-center gap-2 relative">
-							<span class="w-24 font-mono z-10">{user.username}</span>
-							<span class="font-bold z-10">{user.score}</span>
-							<!-- Bar graph background -->
-							<span class="absolute left-0 top-0 h-full rounded bg-primary-500 opacity-20" style="width: {user.bar * 100}%"></span>
-							{#if i === 0}
-								<span class="ml-2 text-yellow-500">🥇</span>
-							{:else if i === 1}
-								<span class="ml-2 text-gray-400">🥈</span>
-							{:else if i === 2}
-								<span class="ml-2 text-orange-700">🥉</span>
-							{/if}
+						<li class="card shadow bg-surface-100-900 border border-surface-200-800 grid grid-cols-[auto_1fr_auto] items-center gap-4 p-4 relative">
+							<!-- Avatar with fallback icon -->
+							<Avatar name={user.username}>
+								<UserRoundPen class="w-8 h-8 text-surface-700" />
+							</Avatar>
+							<!-- User info -->
+							<div>
+								<p class="font-bold">{user.username}</p>
+								<p class="opacity-60 text-xs">@{user.username}</p>
+							</div>
+							<!-- Score and bar graph -->
+							<div class="flex flex-col items-end z-10">
+								<span class="font-bold">{user.score}</span>
+								<span class="absolute left-0 bottom-0 h-2 rounded bg-primary-500 opacity-20" style="width: {user.bar * 100}%;"></span>
+								{#if i === 0}
+									<span class="ml-2 text-yellow-500">🥇</span>
+								{:else if i === 1}
+									<span class="ml-2 text-gray-400">🥈</span>
+								{:else if i === 2}
+									<span class="ml-2 text-orange-700">🥉</span>
+								{/if}
+							</div>
 						</li>
 					{/each}
 				</ul>

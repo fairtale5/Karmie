@@ -10,14 +10,14 @@
 	
 	onMount(() => {
 		// Set up auth subscription only (Juno is now initialized in layout)
-		unsubscribe = authSubscribe((state) => {
-			user = state;
-			
-			// Redirect to admin when logged in
-			if (user !== null) {
-				goto('/admin');
-			}
-		});
+				unsubscribe = authSubscribe((state) => {
+					user = state;
+					
+					// Redirect to admin when logged in
+					if (user !== null) {
+						goto('/admin');
+					}
+			});
 
 		// Cleanup function
 		return (): void => {
