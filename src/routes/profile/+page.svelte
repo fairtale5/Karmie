@@ -2,25 +2,19 @@
     import { onMount } from 'svelte';
     import { authSubscribe, type User } from '@junobuild/core';
     import { goto } from '$app/navigation';
+    import { initJuno } from '$lib/juno';
 
     let user: User | null = null;
-    let unsubscribe: (() => void) | undefined;
 
-    onMount(() => {
-        unsubscribe = authSubscribe((state) => {
+    onMount(async () => {
+        await initJuno();
+        authSubscribe((state) => {
             user = state;
-            
             // Redirect to home if not logged in
             if (user === null) {
                 goto('/');
             }
         });
-
-        return () => {
-            if (unsubscribe) {
-                unsubscribe();
-            }
-        };
     });
 </script>
 

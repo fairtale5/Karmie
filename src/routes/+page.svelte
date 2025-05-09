@@ -2,28 +2,30 @@
 	import { onMount } from 'svelte';
 	import { authSubscribe, signIn, signOut, type User } from '@junobuild/core';
 	import { goto } from '$app/navigation';
+	import { initJuno } from '$lib/juno';
+	import { page } from '$app/stores';
 	
 	let initialized = false;
 	let user: User | null = null;
 	let error: string | null = null;
 	let unsubscribe: (() => void) | undefined;
+	$: currentPath = $page.url.pathname;
 	
 	onMount(() => {
-		// Set up auth subscription only (Juno is now initialized in layout)
-				unsubscribe = authSubscribe((state) => {
-					user = state;
-					
-					// Redirect to admin when logged in
-					if (user !== null) {
-						goto('/admin');
-					}
+		let unsub: (() => void) | undefined;
+		(async () => {
+			await initJuno();
+			unsub = authSubscribe((state) => {
+				user = state;
+				// Only redirect if on the homepage
+				if (user !== null && currentPath === '/') {
+					goto('/reputations');
+				}
 			});
-
-		// Cleanup function
-		return (): void => {
-			if (unsubscribe) {
-				unsubscribe();
-			}
+			initialized = true;
+		})();
+		return () => {
+			if (unsub) unsub();
 		};
 	});
 

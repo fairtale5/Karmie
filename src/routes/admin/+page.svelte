@@ -27,6 +27,7 @@
 	} from '$lib/keys/keys_index';
 	import type { Principal } from '@dfinity/principal';
 	import type { UserData, TagData, VoteData, ReputationData } from '$lib/types';
+	import { initJuno } from '$lib/juno';
 
 	// Configuration Constants
 	const COLLECTIONS = {
@@ -201,11 +202,10 @@
 	}
 
 	// Update onMount to load reputations when tag is selected
-	onMount(() => {
-		// Subscribe to auth state
-		const sub = authSubscribe((state) => {
+	onMount(async () => {
+		await initJuno();
+		authSubscribe((state) => {
 			user = state;
-			
 			// If user is not logged in, redirect to home
 			if (user === null) {
 				goto('/');
@@ -217,11 +217,6 @@
 				loadReputations(); // Initial load of all reputations
 			}
 		});
-
-		// Cleanup subscription on component destroy
-		return () => {
-			sub();
-		};
 	});
 
 	// Watch for tag selection changes
