@@ -131,14 +131,16 @@ function onTagChange(event: Event) {
 
 		<!-- User's Reputation in Selected Tag -->
 		{#if userReputation}
-			<div class="card p-4 mb-6 bg-surface-50-950 flex flex-col gap-2">
-				<div class="font-bold text-lg">Your Reputation</div>
-				<div>Score: <span class="font-mono">{userReputation.score}</span></div>
-				<div>Rank: <span class="font-mono">#{userReputation.rank}</span></div>
-				<div class="flex gap-2">
-					{#each userReputation.badges as badge}
-						<span class="badge badge-success">{badge}</span>
-					{/each}
+			<div class="card preset-tonal-primary grid grid-cols-1 items-center gap-4 p-4 mb-6 lg:grid-cols-[1fr_auto]">
+				<div>
+					<div class="font-bold text-lg">Your Reputation</div>
+					<div>Score: <span class="font-mono">{userReputation.score}</span></div>
+					<div>Rank: <span class="font-mono">#{userReputation.rank}</span></div>
+					<div class="flex gap-2">
+						{#each userReputation.badges as badge}
+							<span class="badge badge-success">{badge}</span>
+						{/each}
+					</div>
 				</div>
 			</div>
 		{/if}
