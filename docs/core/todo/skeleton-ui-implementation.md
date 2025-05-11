@@ -83,9 +83,11 @@ After examining the project's codebase, we've identified the current state of th
 
 ### Error Handling
 
-- Simple error handling with custom error displays
-- No consistent pattern for displaying validation errors
-- Missing proper integration with Skeleton's Toast or Alert components for error feedback
+- All error feedback for unauthenticated actions (such as attempting to submit a form while not logged in) will be handled exclusively via toast notifications using Skeleton UI's feedback system.
+- Redundant static warning divs (e.g., `<div class="text-center text-warning-700 mt-2">You must be logged in to set up your profile.</div>`) have been removed to avoid duplicate messaging and improve UX consistency.
+- The authentication state flag has been renamed from `authUserInitialized` to `authUserDoneInitializing` to clarify that it is only set to `true` after the async user fetch is fully complete and the user state is final. This prevents race conditions and UI flashes for logged-in users.
+- This approach aligns with Skeleton UI's best practices for transient, accessible feedback and keeps the UI clean.
+- Persistent errors or warnings are handled with Skeleton's Alert component.
 
 ### Layout Structure
 
@@ -554,6 +556,37 @@ Implementation example:
 - Are there any additional onboarding steps or user profile fields needed?
 - How should we handle avatar uploads and display (integration with Juno storage)?
 - What are the accessibility requirements for all layouts and components?
+
+---
+
+(Please review and add any further questions or considerations as we proceed.)
+
+## Authentication State & Header Button Implementation (2024-06-XX)
+
+### Global Auth State
+- Implemented a global Svelte store (`src/lib/stores/authUser.ts`) that subscribes to Juno's `authSubscribe`.
+- All components can now import and use `$authUser` for reactive authentication state.
+- Reference: [Juno Auth Subscription Docs](../../juno/docs/build/authentication/development.md#subscription)
+
+### Header Login/Logout Button
+- Header now uses `$authUser` to show either a "Login" (filled) or "Logout" (outlined) button, using Skeleton UI button classes.
+- On login, calls `signIn()` and redirects to `LOGIN_REDIRECT_URL` (default: `/reputations`).
+- On logout, calls `signOut()` and redirects to `LOGOUT_REDIRECT_URL` (default: `/`).
+- Error handling and accessibility attributes included.
+- Reference: [Skeleton UI Button Presets](https://www.skeleton.dev/docs/components/button#presets)
+
+### Configurable Redirects
+- Added `LOGIN_REDIRECT_URL` and `LOGOUT_REDIRECT_URL` to `src/lib/settings.ts` for easy future changes.
+
+### Incremental Rollout
+- Header implementation complete and ready for review.
+- Next: Update homepage and other pages to use the global store, then remove old local auth logic.
+
+### Toast Notifications for Auth Feedback
+- Migrated from inline error messages in the header to Skeleton Toast notifications for login/logout feedback.
+- Uses a shared toaster instance (`src/lib/toaster-skeleton.ts`) and the `<Toaster>` component in the root layout.
+- Login and logout now use `toaster.promise()` for async feedback: loading, success, and error states.
+- Reference: [Skeleton Toast Docs](https://www.skeleton.dev/docs/components/toast/svelte)
 
 ---
 

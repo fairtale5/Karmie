@@ -3,10 +3,17 @@
 	import { Sun, Moon } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
+	import { authUser } from '$lib/stores/authUser';
+	import { signIn, signOut, getDoc } from '@junobuild/core';
+	import { goto } from '$app/navigation';
+	import { LOGIN_REDIRECT_URL, LOGOUT_REDIRECT_URL } from '$lib/settings';
+	import { toaster } from '$lib/toaster-skeleton';
+	import type { UserData } from '$lib/types';
 
 	let checked = false;
 	$: currentPath = $page.url.pathname;
-
+	let error: string | null = null;
+	
 	onMount(() => {
 		// Handle theme dark vs light mode:
 		// 1. Check if user has a stored preference ("last used on last visit")
@@ -28,6 +35,70 @@
 		document.documentElement.setAttribute('data-mode', mode);
 		localStorage.setItem('mode', mode);
 		checked = event.checked;
+	}
+
+	/**
+	 * Handles login and redirects based on user document existence.
+	 * If user has no document, redirects to onboarding.
+	 * If user has document, redirects to reputations.
+	 */
+	async function handleLogin() {
+		try {
+			// First attempt login
+			await toaster.promise(
+				signIn(),
+				{
+					loading: { title: 'Logging in...' },
+					success: { title: 'Login successful!' },
+					error: { title: 'Login failed', description: 'Please try again.' }
+				}
+			);
+
+			// After successful login, check for user document
+			const user = $authUser;
+			if (!user) {
+				throw new Error('Login succeeded but user state is not available');
+			}
+
+			try {
+				const userDoc = await getDoc<UserData>({ collection: 'users', key: user.key });
+				if (!userDoc || !userDoc.data?.username) {
+					// No user document or incomplete - redirect to onboarding
+					goto('/onboarding');
+				} else {
+					// User document exists - redirect to reputations
+					goto(LOGIN_REDIRECT_URL);
+				}
+			} catch (e) {
+				// If we can't check user document, default to onboarding
+				console.error('Failed to check user document:', e);
+				goto('/onboarding');
+			}
+		} catch (e) {
+			if (e instanceof Error && e.message.includes('Login succeeded')) {
+				// This is our custom error about auth state, show appropriate message
+				toaster.error({ 
+					title: 'Authentication Error', 
+					description: 'Please try logging in again.' 
+				});
+			}
+			// Other errors are already handled by the toaster.promise above
+		}
+	}
+
+	/**
+	 * Handles logout and redirects on success, with Skeleton toast notifications.
+	 */
+	async function handleLogout() {
+		await toaster.promise(
+			signOut(),
+			{
+				loading: { title: 'Logging out...' },
+				success: { title: 'Logged out' },
+				error: { title: 'Logout failed', description: 'Please try again.' }
+			}
+		);
+		goto(LOGOUT_REDIRECT_URL);
 	}
 </script>
 
@@ -51,6 +122,7 @@
 				<a href="/" class="btn hover:preset-tonal" class:text-primary-700-300={currentPath === '/'}>Home</a>
 				<a href="/reputations" class="btn hover:preset-tonal" class:text-primary-700-300={currentPath === '/reputations'}>Reputations</a>
 				<a href="/admin" class="btn hover:preset-tonal" class:text-primary-700-300={currentPath === '/admin'}>Admin</a>
+				<a href="/onboarding" class="btn hover:preset-tonal" class:text-primary-700-300={currentPath === '/onboarding'}>Onboarding</a>
 				<a href="/profile" class="btn hover:preset-tonal" class:text-primary-700-300={currentPath === '/profile'}>Profile</a>
 			</nav>
 		</div>
@@ -64,7 +136,25 @@
 				{#snippet inactiveChild()}<Moon size={14} />{/snippet}
 				{#snippet activeChild()}<Sun size={14} />{/snippet}
 			</Switch>
-			<a href="/login" class="btn preset-filled-primary-500">Login</a>
+			{#if $authUser === null}
+				<button
+					type="button"
+					class="btn preset-filled-primary-500"
+					on:click={handleLogin}
+					aria-label="Login with Internet Identity"
+				>
+					Login
+				</button>
+			{:else}
+				<button
+					type="button"
+					class="btn preset-outlined-primary-500"
+					on:click={handleLogout}
+					aria-label="Logout"
+				>
+					Logout
+				</button>
+			{/if}
 		</div>
 	</div>
 </header>

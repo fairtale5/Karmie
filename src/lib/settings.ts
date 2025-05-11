@@ -75,4 +75,14 @@ export const REPUTATION_SETTINGS = {
         DECIMAL_PLACES: 1,              // Number of decimal places to show for reputation scores
         WHOLE_NUMBERS: true,            // Whether to show reputation as whole numbers
     } as UISettings
-}; 
+};
+
+/**
+ * URL to redirect to after successful login
+ */
+export const LOGIN_REDIRECT_URL = '/reputations';
+
+/**
+ * URL to redirect to after logout
+ */
+export const LOGOUT_REDIRECT_URL = '/'; 

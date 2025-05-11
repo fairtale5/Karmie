@@ -9,6 +9,7 @@ import SkeletonLoader from '$lib/components/SkeletonLoader.svelte';
 import { initJuno } from '$lib/juno';
 import { Avatar } from '@skeletonlabs/skeleton-svelte';
 import { UserRoundPen } from 'lucide-svelte';
+import NotLoggedInAlert from '$lib/components/NotLoggedInAlert.svelte';
 
 // --- State ---
 let loading = true;
@@ -99,6 +100,9 @@ function onTagChange(event: Event) {
 	fetchTagData();
 }
 </script>
+
+<!-- Show warning if not logged in -->
+<NotLoggedInAlert />
 
 <!-- Main Container -->
 <div class="container mx-auto p-4">

@@ -28,6 +28,8 @@
 	import type { Principal } from '@dfinity/principal';
 	import type { UserData, TagData, VoteData, ReputationData } from '$lib/types';
 	import { initJuno } from '$lib/juno';
+	import NotLoggedInAlert from '$lib/components/NotLoggedInAlert.svelte';
+	import { authUser, authUserDoneInitializing } from '$lib/stores/authUser';
 
 	// Configuration Constants
 	const COLLECTIONS = {
@@ -206,16 +208,14 @@
 		await initJuno();
 		authSubscribe((state) => {
 			user = state;
-			// If user is not logged in, redirect to home
-			if (user === null) {
-				goto('/');
-			} else {
+			if (user !== null) {
 				// Load data if authenticated
 				loadUsers();
 				loadVotes(); // Initial load of all votes
 				loadTags(); // Initial load of all tags
 				loadReputations(); // Initial load of all reputations
 			}
+			// If not authenticated, do not redirect; allow browsing
 		});
 	});
 
@@ -918,7 +918,19 @@
 	}
 </script>
 
-{#if user}
+<!-- Show warning if not logged in -->
+<NotLoggedInAlert />
+
+{#if !user && !$authUserDoneInitializing}
+	<!-- Loading placeholder for admin page -->
+	<div class="container mx-auto p-4 animate-pulse">
+		<div class="h-8 bg-surface-300-700 rounded w-1/2 mb-4"></div>
+		<div class="h-4 bg-surface-200-800 rounded w-3/4 mb-2"></div>
+		<div class="h-4 bg-surface-200-800 rounded w-2/3 mb-2"></div>
+		<div class="h-10 bg-surface-200-800 rounded w-full mb-4"></div>
+		<div class="h-10 bg-surface-200-800 rounded w-full"></div>
+	</div>
+{:else}
 	<div class="container mx-auto p-4">
 		<!-- Admin Tools Section -->
 		<div class="bg-base-200 mb-8 rounded-lg p-4">
@@ -1713,9 +1725,5 @@
 				</table>
 			</div>
 		</div>
-	</div>
-{:else}
-	<div class="container mx-auto p-4">
-		<p>Please log in to access the admin interface.</p>
 	</div>
 {/if} 

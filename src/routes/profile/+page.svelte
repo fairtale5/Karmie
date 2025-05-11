@@ -3,6 +3,7 @@
     import { authSubscribe, type User } from '@junobuild/core';
     import { goto } from '$app/navigation';
     import { initJuno } from '$lib/juno';
+    import NotLoggedInAlert from '$lib/components/NotLoggedInAlert.svelte';
 
     let user: User | null = null;
 
@@ -17,6 +18,9 @@
         });
     });
 </script>
+
+<!-- Show warning if not logged in -->
+<NotLoggedInAlert />
 
 <div class="container mx-auto p-4">
     <h1 class="text-3xl font-bold mb-6">Profile</h1>
