@@ -6,7 +6,7 @@
 	import { authSubscribe, getDoc, type User } from '@junobuild/core';
 	import { goto } from '$app/navigation';
 	import { Toaster } from '@skeletonlabs/skeleton-svelte';
-	import { toaster } from '$lib/toaster-skeleton';
+	import { toaster } from '$lib/skeletonui/toaster-skeleton';
 	import { authUser, authUserDoneInitializing } from '$lib/stores/authUser';
 	import { page } from '$app/stores';
 	import type { UserData } from '$lib/types';
@@ -29,7 +29,7 @@
 			if (user && !checkedOnboarding && !EXEMPT_PATHS.includes(currentPath)) {
 				try {
 					const userDoc = await getDoc<UserData>({ collection: 'users', key: user.key });
-					if (!userDoc || !userDoc.data?.username) {
+					if (!userDoc || !userDoc.data?.user_handle) {
 						checkedOnboarding = true;
 						goto('/onboarding');
 					}

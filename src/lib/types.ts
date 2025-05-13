@@ -1,5 +1,3 @@
-import type { ULID } from './keys/ulid_types';
-
 // Standard Juno document interface
 // Temporarily comment out ULID import until we implement serialization
 // import type { ULID } from './keys/ulid_types';
@@ -24,21 +22,21 @@ export interface JunoDocument<T> {
  *
  * - user_handle: Unique username/handle (required)
  * - display_name: Display name (optional)
- * - user_key: ULID for this user (required, ULID type)
+ * - user_key: ULID for this user (required, string)
  * - avatar_url: Optional avatar URL
  */
 export interface UserData {
     user_handle: string;    // Unique username/handle (required)
     display_name?: string;  // Display name (optional)
-    user_key: ULID;         // ULID for this user (required)
+    user_key: string;       // ULID for this user (required, string)
     avatar_url?: string;    // Optional avatar URL
 }
 
 /**
  * Tag data interface
  *
- * - user_key: ULID of the creator (required, ULID type)
- * - tag_key: ULID for this tag (required, ULID type)
+ * - user_key: ULID of the creator (required, string)
+ * - tag_key: ULID for this tag (required, string)
  * - tag_handle: Tag handle (required)
  * - description: Description of the tag's purpose
  * - time_periods: Array of time period objects
@@ -47,8 +45,8 @@ export interface UserData {
  * - min_users_for_threshold: Minimum users needed before vote rewards are restricted
  */
 export interface TagData {
-    user_key: ULID;         // ULID key of the creator (references Users collection)
-    tag_key: ULID;          // ULID for this tag (required)
+    user_key: string;         // ULID key of the creator (references Users collection)
+    tag_key: string;          // ULID for this tag (required)
     tag_handle: string;     // Tag handle (required)
     description: string;    // Description of the tag's purpose 
     time_periods: Array<{   // Array of time period objects
@@ -71,9 +69,9 @@ export interface TagData {
  * Example: "owner=user_123;tag=tag_789;target=user_456;"
  */
 export interface VoteData {
-    user_key: ULID;       // User key who cast the vote (references Users collection)
-    target_key: ULID;     // User key being voted on (references Users collection)
-    tag_key: ULID;        // Tag key this vote is for (references Tags collection)
+    user_key: string;       // User key who cast the vote (references Users collection)
+    target_key: string;     // User key being voted on (references Users collection)
+    tag_key: string;        // Tag key this vote is for (references Tags collection)
     value: number;        // Vote value (+1 for upvote, -1 for downvote)
     weight: number;       // Vote weight (default: 1.0)
     created_at?: bigint;  // Creation timestamp in nanoseconds

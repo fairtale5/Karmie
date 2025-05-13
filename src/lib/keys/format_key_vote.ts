@@ -11,7 +11,7 @@ import { validateUlid, ulidToString } from './ulid_types';
  * @param voteUlid - The vote's ULID (ULID type)
  * @returns {string} The formatted vote document key
  */
-export function formatVoteKey(userUlid: ULID, tagUlid: ULID, targetUlid: ULID, voteUlid: ULID): string {
+export function formatVoteKey(userUlid: string, tagUlid: string, targetUlid: string, voteUlid: string): string {
     if (!validateUlid(userUlid)) {
         throw new Error('Invalid user ULID provided for vote key formatting');
     }
@@ -25,5 +25,5 @@ export function formatVoteKey(userUlid: ULID, tagUlid: ULID, targetUlid: ULID, v
         throw new Error('Invalid vote ULID provided for vote key formatting');
     }
     // Compose the key in the required format, converting ULIDs to string
-    return `usr_${ulidToString(userUlid)}_tag_${ulidToString(tagUlid)}_tar_${ulidToString(targetUlid)}_key_${ulidToString(voteUlid)}_`;
+    return `usr_${userUlid}_tag_${tagUlid}_tar_${targetUlid}_key_${voteUlid}_`;
 } 

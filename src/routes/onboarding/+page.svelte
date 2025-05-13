@@ -4,7 +4,7 @@
   import type { UserData } from '$lib/types';
   import { FileUpload } from '@skeletonlabs/skeleton-svelte';
   import { authUser, authUserDoneInitializing } from '$lib/stores/authUser';
-  import { toaster } from '$lib/toaster-skeleton';
+  import { toaster } from '$lib/skeletonui/toaster-skeleton';
   import NotLoggedInAlert from '$lib/components/NotLoggedInAlert.svelte';
 
   let user_handle = '';

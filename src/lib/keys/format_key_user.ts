@@ -6,11 +6,11 @@ import { validateUlid, ulidToString } from './ulid_types';
  * Format: _prn_{principal}_usr_{userUlid}_hdl_{username}_
  *
  * @param principal - The user's Internet Identity principal (string)
- * @param userUlid - The user's ULID (ULID type, must be uppercase, 26 chars)
+ * @param userUlid - The user's ULID (strng type, must be uppercase, 26 chars)
  * @param username - The user's username (string, original case)
  * @returns {string} The formatted user document key
  */
-export function formatUserKey(principal: string, userUlid: ULID, username: string): string {
+export function formatUserKey(principal: string, userUlid: string, username: string): string {
     if (!validateUlid(userUlid)) {
         throw new Error('Invalid ULID provided for user key formatting');
     }

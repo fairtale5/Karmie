@@ -60,9 +60,9 @@
 		updated_at: BigInt(0),
 		version: BigInt(0),
 		data: {
-			username: '',
+			user_handle: '',
 			display_name: '',
-			user_key: '' // Keep as string for now
+			user_key: '' 
 		}
 	};
 
@@ -80,7 +80,7 @@
 		data: {
 			user_key: '', // Keep as string for now
 			tag_key: '', // Keep as string for now
-			name: '',
+			tag_handle: '',
 			description: '',
 			time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
 			reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
@@ -94,7 +94,7 @@
 
 	// List of all tags
 	let tags: Doc<{
-		name: string;
+		tag_handle: string;
 		description: string;
 		user_key: string;
 		tag_key: string;
@@ -233,7 +233,7 @@
 	async function loadUsers() {
 		try {
 			const usersList = await listDocs<{
-				username: string;
+				user_handle: string;
 				display_name: string;
 				user_key: string;
 			}>({
@@ -288,7 +288,7 @@
 	async function loadTags(userKey?: string) {
 		try {
 			// If a user key is provided, filter tags by user using key-based filtering
-			// Tag key format: usr_{userUlid}_tag_{tagUlid}_hdl_{tagName}_
+			// Tag key format: usr_{userUlid}_tag_{tagUlid}_hdl_{tagHandle}_
 			let filter = {};
 			
 			if (userKey) {
@@ -305,7 +305,7 @@
 			}
 			
 			const tagsList = await listDocs<{ 
-				name: string; 
+				tag_handle: string; 
 				description: string; 
 				user_key: string;
 				tag_key: string;
@@ -374,7 +374,7 @@
 		doc: {
 			key: string;
 			data: {
-				username: string;
+				user_handle: string;
 				display_name: string;
 			};
 			description: string;
@@ -396,10 +396,10 @@
 	async function saveUser() {
 		try {
 			// For new documents: generate key with ULID
-			const userDocUsername = userBeingEdited.data.username!.toString().trim();
+			const userDocUserHandle = userBeingEdited.data.user_handle!.toString().trim();
 			const userDocKeyResult = !userBeingEdited.key ? createUlid() : null;
 			const userDocumentKey =
-				userBeingEdited.key || formatUserKey(userDocKeyResult!, userDocUsername);
+				userBeingEdited.key || formatUserKey(user?.key ?? '', userDocKeyResult!, userDocUserHandle);
 			const userDocVersion = userBeingEdited.version;
 
 			// Create the document data with required fields
@@ -408,7 +408,7 @@
 				doc: {
 					key: userDocumentKey,
 					data: {
-						username: userBeingEdited.data.username!.toString().trim(),
+						user_handle: userBeingEdited.data.user_handle!.toString().trim(),
 						display_name: userBeingEdited.data.display_name!.toString().trim(),
 						user_key: userDocKeyResult || userBeingEdited.data.user_key
 					},
@@ -431,7 +431,7 @@
 				updated_at: BigInt(0),
 				version: BigInt(0),
 				data: {
-					username: '',
+					user_handle: '',
 					display_name: '',
 					user_key: '' // Keep as string for now
 				}
@@ -445,8 +445,8 @@
 			
 			// Enhanced error handling
 			if (e instanceof Error) {
-				if (e.message.includes('Username')) {
-					errorGlobal = 'This username is already taken. Please choose a different one.';
+				if (e.message.includes('user_handle')) {
+					errorGlobal = 'This user-handle is already taken. Please choose a different one.';
 				} else if (e.message.includes('Invalid user data format')) {
 					errorGlobal = 'Invalid user data format. Please check your input and try again.';
 				} else {
@@ -464,7 +464,7 @@
 	 */
 	function editTag(
 		tagDoc: Doc<{
-			name: string;
+			tag_handle: string;
 			description: string;
 			user_key: string;
 			tag_key: string;
@@ -484,7 +484,7 @@
 			updated_at: tagDoc.updated_at,
 			version: tagDoc.version,
 			data: {
-				name: tagDoc.data.name,
+				tag_handle: tagDoc.data.tag_handle,
 				description: tagDoc.data.description,
 				user_key: tagDoc.data.user_key, // Copy the user_key field if it exists
 				tag_key: tagDoc.data.tag_key, // Copy the tag_key field if it exists
@@ -508,7 +508,7 @@
 			console.log('[Admin] Saving tag:', tagBeingEdited);
 			
 			// Validate inputs
-			if (!tagBeingEdited.data.name || !tagBeingEdited.data.description || !selectedAuthorKey) {
+			if (!tagBeingEdited.data.tag_handle || !tagBeingEdited.data.description || !selectedAuthorKey) {
 				errorGlobal = 'Please fill in all required fields, including selecting an author';
 				return;
 			}
@@ -537,10 +537,13 @@
 				if (!selectedUser?.data?.user_key) {
 					throw new Error('Selected user not found or missing user_key');
 				}
+				if (!tagDocUlid) {
+					throw new Error('Tag ULID key is missing');
+				}
 				tagDocKey = formatTagKey(
 					selectedUser.data.user_key,
 					tagDocUlid,
-					tagBeingEdited.data.name
+					tagBeingEdited.data.tag_handle
 				);
 			}
 
@@ -550,7 +553,7 @@
 				doc: {
 					key: tagDocKey!,
 					data: {
-						name: tagBeingEdited.data.name,
+						name: tagBeingEdited.data.tag_handle,
 						description: tagBeingEdited.data.description,
 						user_key: selectedUser.data.user_key,
 						tag_key: tagDocUlid || tagBeingEdited.data.tag_key,
@@ -580,7 +583,7 @@
 				data: {
 					user_key: '',
 					tag_key: '',
-					name: '',
+					tag_handle: '',
 					description: '',
 					time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
 					reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
@@ -964,7 +967,7 @@
 				<option value="">Show all data</option>
 				{#each tags as tag}
 					<option value={tag.key}>
-						{tag.data.name}
+						{tag.data.tag_handle}
 					</option>
 				{/each}
 			</select>
@@ -1007,7 +1010,7 @@
 								</tr>
 								<tr>
 									<td class="font-bold">Name</td>
-									<td>{selectedTagDoc.data.name}</td>
+									<td>{selectedTagDoc.data.tag_handle}</td>
 								</tr>
 								<tr>
 									<td class="font-bold">Description</td>
@@ -1060,11 +1063,11 @@
 				{/if}
 
 				<div>
-					<label for="username" class="block">Username:</label>
+					<label for="user_handle" class="block">Username Handle:</label>
 					<input
 						type="text"
-						id="username"
-						bind:value={userBeingEdited.data.username}
+						id="user_handle"
+						bind:value={userBeingEdited.data.user_handle}
 						class="w-full border p-2"
 						placeholder="Enter username"
 					/>
@@ -1098,7 +1101,7 @@
 									updated_at: BigInt(0),
 									version: BigInt(0),
 									data: {
-										username: '',
+										user_handle: '',
 										display_name: '',
 										user_key: '' // Keep as string for now
 									}
@@ -1161,7 +1164,7 @@
 								</td>
 								<td>
 									<div class="space-y-1">
-										<div class="font-bold">{userSelected.data.username}</div>
+										<div class="font-bold">{userSelected.data.user_handle}</div>
 										<div class="text-sm opacity-75">{userSelected.data.display_name}</div>
 									</div>
 								</td>
@@ -1221,7 +1224,7 @@
 						<option value="">Select Author</option>
 						{#each users as user}
 							<option value={user.key}>
-								{user.data.display_name} ({user.data.username}) - {user.data.user_key}
+								{user.data.display_name} ({user.data.user_handle}) - {user.data.user_key}
 							</option>
 						{/each}
 					</select>
@@ -1233,7 +1236,7 @@
 						<option value="">Select Target</option>
 						{#each users as user}
 							<option value={user.key}>
-								{user.data.display_name} ({user.data.username}) - {user.data.user_key}
+								{user.data.display_name} ({user.data.user_handle}) - {user.data.user_key}
 							</option>
 						{/each}
 					</select>
@@ -1245,7 +1248,7 @@
 						<option value="">Select Tag</option>
 						{#each tags as tag}
 							<option value={tag.key}>
-								{tag.data.name} - {tag.data.tag_key}
+								{tag.data.tag_handle} - {tag.data.tag_key}
 							</option>
 						{/each}
 					</select>
@@ -1327,15 +1330,15 @@
 									<div class="space-y-1">
 										<div>
 											Author: {author
-												? `${author.data.display_name} (${author.data.username})`
+												? `${author.data.display_name} (${author.data.user_handle})`
 												: 'Unknown'}
 										</div>
 										<div>
 											Target: {target
-												? `${target.data.display_name} (${target.data.username})`
+												? `${target.data.display_name} (${target.data.user_handle})`
 												: 'Unknown'}
 										</div>
-										<div>Tag: {tag ? tag.data.name : 'No Tag'}</div>
+										<div>Tag: {tag ? tag.data.tag_handle : 'No Tag'}</div>
 										<div class="font-mono text-xs">Author Key: {vote.data.user_key}</div>
 										<div class="font-mono text-xs">Target Key: {vote.data.target_key}</div>
 										<div class="font-mono text-xs">Tag Key: {vote.data.tag_key || 'None'}</div>
@@ -1390,7 +1393,7 @@
 						<option value="">Select Author</option>
 						{#each users as user}
 							<option value={user.key}>
-								{user.data.display_name} ({user.data.username})
+								{user.data.display_name} ({user.data.user_handle})
 							</option>
 						{/each}
 					</select>
@@ -1402,7 +1405,7 @@
 					<input
 						type="text"
 						id="tagName"
-						bind:value={tagBeingEdited.data.name}
+						bind:value={tagBeingEdited.data.tag_handle}
 						class="w-full border p-2"
 						placeholder="e.g., Technical Skills"
 					/>
@@ -1553,7 +1556,7 @@
 									data: {
 										user_key: '',
 										tag_key: '',
-										name: '',
+										tag_handle: '',
 										description: '',
 										time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
 										reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
@@ -1611,7 +1614,7 @@
 								</td>
 								<td>
 									<div class="space-y-1">
-										<div class="font-bold">{tag.data.name}</div>
+										<div class="font-bold">{tag.data.tag_handle}</div>
 										<div class="text-sm opacity-75">{tag.data.description}</div>
 										<div class="font-mono text-xs">User ULID: {tag.data.user_key}
 										</div>

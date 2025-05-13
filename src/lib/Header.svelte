@@ -7,7 +7,7 @@
 	import { signIn, signOut, getDoc } from '@junobuild/core';
 	import { goto } from '$app/navigation';
 	import { LOGIN_REDIRECT_URL, LOGOUT_REDIRECT_URL } from '$lib/settings';
-	import { toaster } from '$lib/toaster-skeleton';
+	import { toaster } from '$lib/skeletonui/toaster-skeleton';
 	import type { UserData } from '$lib/types';
 
 	let checked = false;
