@@ -45,7 +45,7 @@ pub struct UserData {
     pub user_key: Option<String>,
 
     /// Unique username (must be unique across all users)
-    pub username: String,
+    pub user_handle: String,
 
     /// Display name (not required to be unique)
     pub display_name: String,
@@ -96,7 +96,7 @@ pub struct TagData {
     pub tag_key: String,
 
     /// Display name of the tag
-    pub name: String,
+    pub tag_handle: String,
 
     /// Description of the tag's purpose
     pub description: String,

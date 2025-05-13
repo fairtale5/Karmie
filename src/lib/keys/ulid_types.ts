@@ -1,30 +1,38 @@
-import { isValid } from 'ulid';
+// NOTE: Do not add ULID generation here. Use src/lib/keys/create_ulid.ts for all ULID creation.
+import { isValid, ulid as ulidGen } from 'ulid';
 
 /**
- * Temporarily using string instead of branded type for ULID
- * TODO: Restore branded type when proper ULID serialization is implemented
+ * Branded type for ULID (Crockford Base32, 26 chars, uppercase)
+ * Matches the ulid crate: https://docs.rs/ulid/latest/ulid/struct.Ulid.html
  */
-export type ULID = string;
+export type ULID = string & { readonly __ulid: unique symbol };
 
 /**
- * Type for document key prefixes to ensure consistency
+ * Converts a string to a ULID type, with validation.
+ * Throws if the string is not a valid ULID.
+ * @param str - The string to convert
+ * @returns {ULID} The branded ULID type
  */
-export type DocumentPrefix = 'USR' | 'TAG' | 'TAR' | 'KEY';
-
-/**
- * Helper type for parsed document key components
- */
-export interface ParsedDocumentKey {
-    prefix: DocumentPrefix;
-    ulid: ULID;
-    rest?: string;
+export function stringToUlid(str: string): ULID {
+    if (!isValid(str)) throw new Error('Invalid ULID string');
+    return str.toUpperCase() as ULID;
 }
 
 /**
- * Validates a ULID string using the library's native validation
- * @param str - The string to validate
- * @returns true if the string is a valid ULID, false otherwise
+ * Converts a ULID type to a string (for key formatting, etc.)
+ * @param ulid - The ULID to convert
+ * @returns {string} The string representation
  */
-export function validateUlid(str: string): str is ULID {
+export function ulidToString(ulid: ULID): string {
+    return ulid as string;
+}
+
+/**
+ * Validates a ULID string or branded ULID
+ * @param str - The string or ULID to validate
+ * @returns true if valid, false otherwise
+ */
+export function validateUlid(str: string | ULID): str is ULID {
     return isValid(str);
-} 
+}
+

@@ -38,7 +38,7 @@ pub fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String
     
     // Step 2: Validate tag name format using username validation patterns
     // This treats the tag's short name like a username with same constraints
-    validate_handle(&tag_data.name)
+    validate_handle(&tag_data.tag_handle)
         .map_err(|e| {
             let err_msg = format!("[assert_set_doc] Tag name validation failed: {}", e);
             logger!("error", "{}", err_msg);
@@ -46,7 +46,7 @@ pub fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String
         })?;
 
     // Check for tag name uniqueness using normalized handle (normalized so that names like john123 and JOHN123)
-    let normalized_name = normalize_handle(&tag_data.name);
+    let normalized_name = normalize_handle(&tag_data.tag_handle);
     
     // Query for existing tags with this handle
     let existing_tags = query_doc_by_key("tags", &format!("hdl_{}_", normalized_name))?;
@@ -64,7 +64,7 @@ pub fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String
         }
         
             // If we get here, we found a duplicate tag
-            let err_msg = format!("Tag with name '{}' already exists", tag_data.name);
+            let err_msg = format!("Tag with name '{}' already exists", tag_data.tag_handle);
             logger!("error", "[validate_tag_document] {}", err_msg);
                         return Err(err_msg);
         }

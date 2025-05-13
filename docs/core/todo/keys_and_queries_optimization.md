@@ -1,3 +1,20 @@
+# Frontend Refactor: set_doc Functions and User Key Format
+
+## Current Tasklist
+
+- [x] Create per-type frontend validation toggles in src/lib/settings.ts
+- [x] Create src/lib/set_doc/ folder for set_doc functions
+- [x] Implement setDocUser for user document creation (new key format: _prn_{principal}_usr_{userULID}_hdl_{username}_)
+- [x] Implement setDocTag for tag document creation
+- [x] Implement setDocVote for vote document creation
+- [ ] Update admin page to use setDocUser for user creation
+- [ ] Update onboarding page to use setDocUser for user creation
+- [ ] Add frontend validation logic (toggleable per type)
+- [ ] Update documentation in database.md and this file to reflect new user key format and set_doc usage
+- [ ] Remove any legacy user creation logic from frontend
+
+---
+
 # Document Key Optimization Plan
 
 ## ToDo List

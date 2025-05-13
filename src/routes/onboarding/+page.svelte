@@ -7,7 +7,7 @@
   import { toaster } from '$lib/toaster-skeleton';
   import NotLoggedInAlert from '$lib/components/NotLoggedInAlert.svelte';
 
-  let username = '';
+  let user_handle = '';
   let displayName = '';
   let avatarUrl = '';
   let loading = false;
@@ -20,7 +20,7 @@
         const userDoc = await getDoc({ collection: 'users', key: $authUser.key });
         const data = userDoc?.data as UserData | undefined;
         if (userDoc) {
-          username = data?.username || '';
+          user_handle = data?.user_handle || '';
           displayName = data?.display_name || '';
         }
         userDocFetched = true;
@@ -42,8 +42,8 @@
   async function saveProfile() {
     loading = true;
     try {
-      if (!username.trim() || !displayName.trim()) {
-        toaster.error({ title: 'Validation Error', description: 'Username and display name are required.' });
+      if (!user_handle.trim()) {
+        toaster.error({ title: 'Validation Error', description: 'Username/handle is required.' });
         loading = false;
         return;
       }
@@ -57,7 +57,7 @@
         doc: {
           key: $authUser.key,
           data: {
-            username,
+            user_handle,
             display_name: displayName,
             user_key: $authUser.key,
             avatar_url: avatarUrl
@@ -97,7 +97,7 @@
     <fieldset class="space-y-2">
       <label class="label">
         <span class="label-text">Username</span>
-        <input type="text" bind:value={username} class="input" required autocomplete="off" disabled={!$authUser} />
+        <input type="text" bind:value={user_handle} class="input" required autocomplete="off" disabled={!$authUser} />
       </label>
       <label class="label">
         <span class="label-text">Display Name</span>

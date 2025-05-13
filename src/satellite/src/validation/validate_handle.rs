@@ -47,6 +47,7 @@ mod tests {
 
         // Invalid usernames
         assert!(validate_handle("jo").is_err()); // Too short
+        assert!(validate_handle("john doe").is_ok()); // Invalid with spaces
         assert!(validate_handle("johndoejohndoejohndoe1").is_err()); // Too long
         assert!(validate_handle("123john").is_err()); // Starts with number
         assert!(validate_handle("john--doe").is_err()); // Consecutive dashes

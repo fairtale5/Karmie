@@ -85,4 +85,12 @@ export const LOGIN_REDIRECT_URL = '/reputations';
 /**
  * URL to redirect to after logout
  */
-export const LOGOUT_REDIRECT_URL = '/'; 
+export const LOGOUT_REDIRECT_URL = '/';
+
+/**
+ * Frontend validation toggles for each document type
+ * Set to true to enable validation, false to disable
+ */
+export const VALIDATE_USER_DOC = true;
+export const VALIDATE_TAG_DOC = true;
+export const VALIDATE_VOTE_DOC = true; 

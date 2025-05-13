@@ -49,7 +49,7 @@ pub fn assert_doc_user(context: &AssertSetDocContext) -> Result<(), String> {
         }
         
         // Then check if the formatted key matches what was provided
-        match crate::processors::document_keys::format_user_key(user_key, &user_data.username) {
+        match crate::processors::document_keys::format_user_key(user_key, &user_data.user_handle) {
             Ok(expected_key) => {
                 if expected_key != context.data.key {
                     let err_msg = format!(
@@ -74,7 +74,7 @@ pub fn assert_doc_user(context: &AssertSetDocContext) -> Result<(), String> {
     }
     
     // Step 3: Validate username format and restrictions
-    if let Err(err) = validate_handle(&user_data.username) {
+    if let Err(err) = validate_handle(&user_data.user_handle) {
         logger!("error", "[assert_doc_user] {}", err);
         return Err(err);
     }
@@ -89,7 +89,7 @@ pub fn assert_doc_user(context: &AssertSetDocContext) -> Result<(), String> {
 
     // Step 5: Ensure username uniqueness using direct key-based lookup
     // This is more efficient than loading the entire table into memory first
-    let normalized_username = crate::processors::document_keys::sanitize_for_key(&user_data.username);
+    let normalized_username = crate::processors::document_keys::sanitize_for_key(&user_data.user_handle);
     logger!("debug", "[assert_doc_user] Checking username uniqueness for handle: {}", normalized_username);
 
     // Check if we're updating an existing document
@@ -110,14 +110,14 @@ pub fn assert_doc_user(context: &AssertSetDocContext) -> Result<(), String> {
             if !is_update || existing_key != context.data.key {
                 let err_msg = format!(
                     "[assert_doc_user] Username '{}' is already taken. Please choose a different username.",
-                    user_data.username
+                    user_data.user_handle
                 );
                 logger!("error", "{}", err_msg);
                 return Err(err_msg);
             }
         }
     } else {
-        logger!("debug", "[assert_doc_user] Username '{}' is available", user_data.username);
+        logger!("debug", "[assert_doc_user] Username '{}' is available", user_data.user_handle);
     }
 
     // Step 6: In production mode, enforce one-document-per-identity rule
