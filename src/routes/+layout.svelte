@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import { onMount } from 'svelte';
-	import Header from '$lib/Header.svelte';
+	import Header from '$lib/components/Header.svelte';
 	import { initJuno } from '$lib/juno';
 	import { authSubscribe, getDoc, type User } from '@junobuild/core';
 	import { goto } from '$app/navigation';

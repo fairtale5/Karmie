@@ -1,4 +1,4 @@
-import { initJuno as initJunoCore } from '@junobuild/core';
+import { initSatellite } from '@junobuild/core';
 
 // Satellite IDs for different environments
 const SATELLITE_ID = {
@@ -8,7 +8,7 @@ const SATELLITE_ID = {
 
 export const initJuno = async () => {
     try {
-        await initJunoCore({
+        await initSatellite({
             satelliteId: import.meta.env.DEV ? SATELLITE_ID.local : SATELLITE_ID.production,
             container: import.meta.env.DEV // Enable local container in dev mode
         });

@@ -62,7 +62,7 @@
 
 			try {
 				const userDoc = await getDoc<UserData>({ collection: 'users', key: user.key });
-				if (!userDoc || !userDoc.data?.username) {
+				if (!userDoc || !userDoc.data?.user_handle) {
 					// No user document or incomplete - redirect to onboarding
 					goto('/onboarding');
 				} else {

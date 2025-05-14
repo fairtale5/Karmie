@@ -5,10 +5,10 @@
 @import '@skeletonlabs/skeleton';
 
 /* Import your custom theme */
-@import '../src/lib/themes/repu-crimson.css';
+@import '../src/lib/skeletonui/themes/repu-crimson.css';
 
 /* Import theme extensions */
-@import '../src/lib/themes/repu-crimson-extensions.css';
+@import '../src/lib/skeletonui/themes/repu-crimson-extensions.css';
 
 /* Import Skeleton presets after your theme to allow overrides */
 @import '@skeletonlabs/skeleton/optional/presets';
