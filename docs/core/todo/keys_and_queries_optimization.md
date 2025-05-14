@@ -228,7 +228,7 @@ The key field is the only field that can be queried without loading the table in
 ### 3. Standard Format for All Documents
 
 All document keys will follow these standards:
-- User keys: `usr_{ulid}_hdl_{usernameHandle}_`
+- User keys: `_prn_{principal}_usr_{ulid}_hdl_{username}_`
 - Tag keys: `usr_{ulid}_tag_{ulid}_hdl_{tagHandle}_`
 - Reputation keys: `usr_{ulid}_tag_{ulid}`
 - Vote keys: `usr_{ulid}_tag_{ulid}_tar_{ulid}_key_{ulid}`
@@ -243,7 +243,7 @@ Important:
 
 #### 4.1 User Documents
 
-  - Example: `usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_hdl_johndoe_`
+  - Example: `_prn_2vxsx-fae_usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_hdl_johndoe_`
   - ULID: Unique identifier for the user (must be uppercase)
   - Username: Sanitized username for readability and querying
   - Validation:

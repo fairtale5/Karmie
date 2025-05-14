@@ -5,7 +5,7 @@
 //! in the database schema documentation, utilizing ULIDs for unique identifiers.
 //!
 //! Each document type has specific key format requirements:
-//! - Users: `usr_{ulid}_hdl_{username}_`
+//! - Users: `_prn_{principal}_usr_{ulid}_hdl_{username}_`
 //! - Tags: `usr_{ulid}_tag_{ulid}_hdl_{tagName}_`
 //! - Reputations: `usr_{ulid}_tag_{ulid}`
 //! - Votes: `usr_{ulid}_tag_{ulid}_tar_{ulid}_key_{ulid}_`
@@ -126,6 +126,7 @@ pub fn parse_key(key: &str) -> Result<HashMap<String, String>, String> {
 /// Create a new user document key with generated ULID
 /// 
 /// # Arguments
+/// * `principal` - User's principal (Internet Identity string)
 /// * `handle` - User's handle (username)
 /// 
 /// # Returns
@@ -133,23 +134,24 @@ pub fn parse_key(key: &str) -> Result<HashMap<String, String>, String> {
 /// 
 /// # Example
 /// ```rust
-/// // Creates: "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_hdl_johndoe_"
-/// let key = create_user_key("johndoe").await?;
+/// // Creates: "_prn_2vxsx-fae_usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_hdl_johndoe_"
+/// let key = create_user_key("2vxsx-fae", "johndoe").await?;
 /// ```
-pub async fn create_user_key(handle: &str) -> Result<String, String> {
+pub async fn create_user_key(principal: &str, handle: &str) -> Result<String, String> {
     let user_ulid = generate_ulid().await;
-    format_user_key(&user_ulid, handle)
+    format_user_key(principal, &user_ulid, handle)
 }
 
 /// Format a user key with existing ULID
 /// 
 /// # Arguments
+/// * `principal` - User's principal (Internet Identity string)
 /// * `ulid` - ULID for the user, must be uppercase
 /// * `handle` - Username, will be sanitized
 ///
 /// # Returns
 /// * `Result<String, String>` - Formatted key or error
-pub fn format_user_key(ulid: &str, handle: &str) -> Result<String, String> {
+pub fn format_user_key(principal: &str, ulid: &str, handle: &str) -> Result<String, String> {
     validate_ulid(ulid)?;
     let sanitized_handle = sanitize_for_key(handle);
     
@@ -157,8 +159,8 @@ pub fn format_user_key(ulid: &str, handle: &str) -> Result<String, String> {
         return Err("Handle must be between 3 and 30 characters".to_string());
     }
     
-    // Format: usr_ULID_hdl_handle_
-    Ok(format!("usr_{}_hdl_{}_", ulid, sanitized_handle))
+    // Format: _prn_{principal}_usr_{ulid}_hdl_{username}_
+    Ok(format!("_prn_{}_usr_{}_hdl_{}_", principal, ulid, sanitized_handle))
 }
 
 /// Create a tag document key
@@ -437,13 +439,13 @@ mod tests {
     #[tokio::test]
     async fn test_create_user_key() {
         // Test with handle
-        let key = create_user_key("John Doe").await.unwrap();
-        assert!(key.starts_with("usr_"));
+        let key = create_user_key("2vxsx-fae", "johndoe").await.unwrap();
+        assert!(key.starts_with("_prn_2vxsx-fae_usr_"));
         assert!(key.ends_with("_hdl_johndoe_"));
         assert!(validate_user_key(&key).is_ok());
         
         // Test with invalid handle (too short)
-        let result = create_user_key("ab").await;
+        let result = create_user_key("2vxsx-fae", "ab").await;
         assert!(result.is_err());
     }
     

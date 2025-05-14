@@ -10,7 +10,7 @@ use candid::{Principal, CandidType};
 pub struct User {
 
     /// Unique identifier for the user document created using src/satellite/src/processors/document_keys.rs
-    /// Users: `usr_{ulid}_usrName_{username}_`
+    /// Users: `_prn_{principal}_usr_{ulid}_hdl_{username}_`
     /// This is NOT the Principal ID - it's just a unique document identifier
     pub key: String,
 

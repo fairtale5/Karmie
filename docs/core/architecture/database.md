@@ -36,7 +36,7 @@ Collection name: `users`
 ```typescript
 interface UserDocument {
     // Standard Juno fields (automatically managed)
-    key: string;                // Format: usr_{ulid}_hdl_{handle}_ generated with src/satellite/src/processors/document_keys.rs
+    key: string;                // Format: _prn_{principal}_usr_{ulid}_hdl_{handle}_ generated with src/satellite/src/processors/document_keys.rs
     description: string;        // currently not used
     owner: Principal;           // Automatically set to user's Internet Identity Principal
     created_at: bigint;         // Creation timestamp in nanoseconds

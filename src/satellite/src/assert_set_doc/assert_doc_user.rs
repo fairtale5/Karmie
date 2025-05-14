@@ -4,7 +4,7 @@ use junobuild_shared::types::list::{ListMatcher, ListParams};
 use crate::{
     validation::{validate_handle, validate_display_name},
     utils::structs::UserData,
-    processors::document_keys::create_user_key,
+    processors::document_keys::{create_user_key, format_user_key},
     processors::document_queries::query_doc_by_key,
 };
 use crate::list_docs;
@@ -19,6 +19,8 @@ use crate::IS_PLAYGROUND;
 /// 3. Validates display name format and restrictions
 /// 4. Ensures username uniqueness across the system
 /// 5. Enforces one-document-per-identity rule in production mode
+///
+/// User key format: _prn_{principal}_usr_{ulid}_hdl_{username}_
 /// 
 /// # Arguments
 /// * `context` - The validation context containing:
@@ -49,7 +51,7 @@ pub fn assert_doc_user(context: &AssertSetDocContext) -> Result<(), String> {
         }
         
         // Then check if the formatted key matches what was provided
-        match crate::processors::document_keys::format_user_key(user_key, &user_data.user_handle) {
+        match format_user_key(&context.caller.to_string(), user_key, &user_data.user_handle) {
             Ok(expected_key) => {
                 if expected_key != context.data.key {
                     let err_msg = format!(
