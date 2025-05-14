@@ -20,11 +20,8 @@
 		formatUserKey,
 		formatTagKey,
 		formatVoteKey,
-		formatReputationKey,
-		createUlid,
-		validateUlid,
-		type ULID
-	} from '$lib/keys/keys_index';
+		createUlid
+	} from '$lib/keys/mod.js';
 	import type { Principal } from '@dfinity/principal';
 	import type { UserData, TagData, VoteData, ReputationData } from '$lib/types';
 	import { initJuno } from '$lib/juno';

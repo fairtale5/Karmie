@@ -37,8 +37,6 @@
  * - What's the tag's ID? ("456")
  * This prevents us from accidentally splitting keys in the wrong place
  */
-export type { ULID, DocumentPrefix, ParsedDocumentKey } from './ulid_types';
-export { validateUlid } from './ulid_types';
 
 // ULID creation
 export { createUlid } from './create_ulid';
@@ -46,5 +44,4 @@ export { createUlid } from './create_ulid';
 // Document key formatting functions
 export { formatUserKey } from './format_key_user';
 export { formatTagKey } from './format_key_tag';
-export { formatReputationKey } from './format_key_reputation';
 export { formatVoteKey } from './format_key_vote'; 

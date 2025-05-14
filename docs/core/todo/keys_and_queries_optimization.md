@@ -15,6 +15,20 @@
 
 ---
 
+# [TASK] Refactor frontend key-based queries to use queryDocsByKey utility
+
+- [ ] Implement a generic queryDocsByKey function in src/lib/documents/query_by_key.ts
+- [ ] Refactor all key-based queries in the frontend to use this utility:
+    - [ ] src/routes/admin/+page.svelte
+    - [ ] src/routes/onboarding/+page.svelte
+    - [ ] src/lib/documents/ (if any direct queries)
+    - [ ] (add more as discovered)
+- [ ] Ensure all queries are backend-filtered (not frontend-filtered)
+- [ ] Test for correctness and performance
+- [ ] Remove any duplicate or inline key-based query logic
+
+---
+
 # Document Key Optimization Plan
 
 ## ToDo List

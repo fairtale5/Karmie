@@ -6,7 +6,7 @@
   import { authUser, authUserDoneInitializing } from '$lib/stores/authUser';
   import { toaster } from '$lib/skeletonui/toaster-skeleton';
   import NotLoggedInAlert from '$lib/components/NotLoggedInAlert.svelte';
-  import { createUserDoc } from '$lib/documents/user_create';
+  import { createUserDoc } from '$lib/docs-crud/user_create';
 
   let user_handle = '';
   let displayName = '';
