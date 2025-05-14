@@ -7,12 +7,60 @@
   import { toaster } from '$lib/skeletonui/toaster-skeleton';
   import NotLoggedInAlert from '$lib/components/NotLoggedInAlert.svelte';
   import { createUserDoc } from '$lib/docs-crud/user_create';
+  import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
+  import { LoaderCircle, CheckCircle, XCircle } from 'lucide-svelte';
 
   let user_handle = '';
   let displayName = '';
   let avatarUrl = '';
   let loading = false;
   let userDocFetched = false;
+  let usernameStatus: 'idle' | 'loading' | 'available' | 'taken' | 'error' = 'idle';
+  let lastCheckedHandle = '';
+
+  /**
+   * Utility: debounce
+   *
+   * Returns a debounced version of the provided function, ensuring it is only invoked
+   * after the specified delay has elapsed since the last call. Used to limit the rate
+   * of backend queries for username availability as the user types in the onboarding form.
+   *
+   * @template T - The function type to debounce
+   * @param fn - The function to debounce
+   * @param delay - The debounce delay in milliseconds
+   * @returns A debounced function with the same parameters as the original
+   *
+   * Usage: Used for debouncing username availability checks to avoid excessive backend requests.
+   */
+  function debounce<T extends (...args: any[]) => void>(fn: T, delay: number): (...args: Parameters<T>) => void {
+    let timeout: ReturnType<typeof setTimeout>;
+    return (...args: Parameters<T>) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => fn(...args), delay);
+    };
+  }
+
+  const checkUsername = debounce(async (handle: string) => {
+    if (!handle) {
+      usernameStatus = 'idle';
+      return;
+    }
+    usernameStatus = 'loading';
+    lastCheckedHandle = handle;
+    try {
+      const normalized = handle.trim().toLowerCase();
+      const keyPattern = `hdl_${normalized}_`;
+      const results = await queryDocsByKey('users', keyPattern);
+      // Only update if the input hasn't changed since the request was sent
+      if (lastCheckedHandle === handle) {
+        usernameStatus = results.items.length > 0 ? 'taken' : 'available';
+      }
+    } catch (e) {
+      if (lastCheckedHandle === handle) {
+        usernameStatus = 'error';
+      }
+    }
+  }, 350);
 
   // Only fetch user doc if authenticated and initialized
   $: if ($authUserDoneInitializing && $authUser && !userDocFetched) {
@@ -66,6 +114,8 @@
       loading = false;
     }
   }
+
+  $: if (user_handle) checkUsername(user_handle);
 </script>
 
 {#if !$authUserDoneInitializing}
@@ -91,7 +141,33 @@
     <fieldset class="space-y-2">
       <label class="label">
         <span class="label-text">Username</span>
-        <input type="text" bind:value={user_handle} class="input" required autocomplete="off" disabled={!$authUser} />
+        <div class="relative w-full">
+          <input
+            type="text"
+            bind:value={user_handle}
+            class="input pr-10"
+            required
+            autocomplete="off"
+            aria-describedby="username-status"
+            disabled={!$authUser}
+          />
+          <span class="absolute right-2 top-1/2 -translate-y-1/2" aria-live="polite" id="username-status">
+            {#if usernameStatus === 'loading'}
+              <LoaderCircle class="animate-spin text-gray-400" />
+            {:else if usernameStatus === 'available'}
+              <CheckCircle class="text-success-500" />
+            {:else if usernameStatus === 'taken'}
+              <XCircle class="text-error-500" />
+            {:else if usernameStatus === 'error'}
+              <XCircle class="text-error-500" />
+            {/if}
+          </span>
+        </div>
+        {#if usernameStatus === 'taken'}
+          <span class="text-error-500 text-xs mt-1">Username is already taken.</span>
+        {:else if usernameStatus === 'available'}
+          <span class="text-success-500 text-xs mt-1">Username is available!</span>
+        {/if}
       </label>
       <label class="label">
         <span class="label-text">Display Name</span>
