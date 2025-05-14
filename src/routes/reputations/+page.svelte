@@ -2,7 +2,7 @@
 // --- Skeleton v3 Toasts: Ensure <Toaster /> is present in your root layout (e.g., +layout.svelte) ---
 import { onMount } from 'svelte';
 import { listDocs, type Doc, authSubscribe, type User } from '@junobuild/core';
-import { toaster } from '$lib/toaster-svelte-skeleton';
+import { toaster } from '$lib/skeletonui/toaster-svelte-skeleton';
 // import sigma.js for future graph integration (placeholder for now)
 // import Sigma from 'sigma';
 import SkeletonLoader from '$lib/components/SkeletonLoader.svelte';

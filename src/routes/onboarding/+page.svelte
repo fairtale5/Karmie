@@ -41,7 +41,7 @@
   }
 
   const checkUsername = debounce(async (handle: string) => {
-    if (!handle) {
+    if (!handle || handle.length < 3) {
       usernameStatus = 'idle';
       return;
     }
@@ -115,7 +115,8 @@
     }
   }
 
-  $: if (user_handle) checkUsername(user_handle);
+  $: if (user_handle && user_handle.length >= 3) checkUsername(user_handle);
+  $: if (!user_handle || user_handle.length < 3) usernameStatus = 'idle';
 </script>
 
 {#if !$authUserDoneInitializing}
@@ -167,6 +168,8 @@
           <span class="text-error-500 text-xs mt-1">Username is already taken.</span>
         {:else if usernameStatus === 'available'}
           <span class="text-success-500 text-xs mt-1">Username is available!</span>
+        {:else if user_handle && user_handle.length > 0 && user_handle.length < 3}
+          <span class="text-error-500 text-xs mt-1">Username must be at least 3 characters.</span>
         {/if}
       </label>
       <label class="label">
