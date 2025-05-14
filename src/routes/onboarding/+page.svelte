@@ -6,6 +6,7 @@
   import { authUser, authUserDoneInitializing } from '$lib/stores/authUser';
   import { toaster } from '$lib/skeletonui/toaster-skeleton';
   import NotLoggedInAlert from '$lib/components/NotLoggedInAlert.svelte';
+  import { createUserDoc } from '$lib/documents/user_create';
 
   let user_handle = '';
   let displayName = '';
@@ -43,7 +44,7 @@
     loading = true;
     try {
       if (!user_handle.trim()) {
-        toaster.error({ title: 'Validation Error', description: 'Username/handle is required.' });
+        toaster.error({ title: 'Validation Error', description: 'You must enter a username.' });
         loading = false;
         return;
       }
@@ -52,17 +53,10 @@
         loading = false;
         return;
       }
-      await setDoc({
-        collection: 'users',
-        doc: {
-          key: $authUser.key,
-          data: {
-            user_handle,
-            display_name: displayName,
-            user_key: $authUser.key,
-            avatar_url: avatarUrl
-          }
-        }
+      await createUserDoc({
+        user_handle: user_handle.trim(),
+        display_name: displayName.trim(),
+        avatar_url: avatarUrl
       });
       toaster.success({ title: 'Profile saved!', description: 'Your profile has been updated.' });
       goto('/reputations');
@@ -126,4 +120,4 @@
       </button>
     </fieldset>
   </form>
-{/if} 
+{/if}

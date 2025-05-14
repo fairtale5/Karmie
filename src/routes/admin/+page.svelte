@@ -32,13 +32,6 @@
 	import { authUser, authUserDoneInitializing } from '$lib/stores/authUser';
 
 	// Configuration Constants
-	const COLLECTIONS = {
-		USERS: 'users',
-		VOTES: 'votes',
-		TAGS: 'tags',
-		REPUTATIONS: 'reputations'
-	} as const;
-
 	const DEFAULT_VOTE_WEIGHT = 1;
 	const DEFAULT_TAG_MULTIPLIERS = [
 		{ months: 1, multiplier: 1.5 }, // Period 1: First month
@@ -150,7 +143,7 @@
 			
 			// Get all users first
 			const usersList = await listDocs<UserData>({
-				collection: COLLECTIONS.USERS
+				collection: 'users'
 			});
 			
 			// Get the selected tag document to access its data
@@ -163,7 +156,7 @@
 			// Use key-based filtering with proper pattern using the tag's ULID directly
 			// Reputation keys format: usr_{userUlid}_tag_{tagUlid}
 			const reputationsList = await listDocs<ReputationData>({
-				collection: COLLECTIONS.REPUTATIONS,
+				collection: 'reputations',
 				filter: {
 					matcher: {
 						key: `tag_${selectedTagDoc.data.tag_key}`
@@ -237,7 +230,7 @@
 				display_name: string;
 				user_key: string;
 			}>({
-				collection: COLLECTIONS.USERS
+				collection: 'users'
 			});
 			users = usersList.items;
 			console.log('Loaded users:', users);
@@ -273,7 +266,7 @@
 				value: number;
 				weight: number;
 			}>({
-				collection: COLLECTIONS.VOTES,
+				collection: 'votes',
 				...(Object.keys(filter).length > 0 && { filter })
 			});
 			
@@ -314,7 +307,7 @@
 				vote_reward: number;
 				min_users_for_threshold: number;
 			}>({
-				collection: COLLECTIONS.TAGS,
+				collection: 'tags',
 				...(Object.keys(filter).length > 0 && { filter })
 			});
 			
@@ -357,7 +350,7 @@
 			}
 			
 			const reputationsList = await listDocs<ReputationData>({
-				collection: COLLECTIONS.REPUTATIONS,
+				collection: 'reputations',
 				...(Object.keys(filter).length > 0 && { filter })
 			});
 			
@@ -404,7 +397,7 @@
 
 			// Create the document data with required fields
 			const docData = {
-				collection: COLLECTIONS.USERS,
+				collection: 'users',
 				doc: {
 					key: userDocumentKey,
 					data: {
@@ -549,7 +542,7 @@
 
 			// Create the document data with required fields
 			const docData = {
-				collection: COLLECTIONS.TAGS,
+				collection: 'tags',
 				doc: {
 					key: tagDocKey!,
 					data: {
@@ -631,7 +624,7 @@
 
 			// Get the current version of the tag
 			const existingDoc = await getDoc({
-				collection: COLLECTIONS.TAGS,
+				collection: 'tags',
 				key
 			});
 
@@ -641,7 +634,7 @@
 			}
 
 			await deleteDoc({
-				collection: COLLECTIONS.TAGS,
+				collection: 'tags',
 				doc: {
 					key,
 					data: {},
@@ -669,7 +662,7 @@
 
 			// Get the current version of the user
 			const existingDoc = await getDoc({
-				collection: COLLECTIONS.USERS,
+				collection: 'users',
 				key
 			});
 
@@ -679,7 +672,7 @@
 			}
 
 			await deleteDoc({
-				collection: COLLECTIONS.USERS,
+				collection: 'users',
 				doc: {
 					key,
 					data: {},
@@ -732,7 +725,7 @@
 
 			// Create vote document with proper structure
 			const docData = {
-				collection: COLLECTIONS.VOTES,
+				collection: 'votes',
 				doc: {
 					key: voteKey,
 					data: {
@@ -781,7 +774,7 @@
 
 			// Get the current version of the vote
 			const existingDoc = await getDoc({
-				collection: COLLECTIONS.VOTES,
+				collection: 'votes',
 				key: voteKey
 			});
 
@@ -791,7 +784,7 @@
 			}
 
 			await deleteDoc({
-				collection: COLLECTIONS.VOTES,
+				collection: 'votes',
 				doc: {
 					key: voteKey,
 					data: existingDoc.data,
@@ -894,7 +887,7 @@
 
 			// Get the current version of the document
 			const existingDoc = await getDoc({
-				collection: COLLECTIONS.REPUTATIONS,
+				collection: 'reputations',
 				key
 			});
 
@@ -904,7 +897,7 @@
 			}
 
 			await deleteDoc({
-				collection: COLLECTIONS.REPUTATIONS,
+				collection: 'reputations',
 				doc: {
 					key,
 					data: {},
