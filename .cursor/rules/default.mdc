@@ -10,6 +10,7 @@ Always explain every command you suggest, and all arguments you are adding to th
 ## Primary Information Source
 - Use docs/README.md as the main source of truth for all project information
 - Reference specific sections using docs/README.md#section-name
+- Use README.md#project-structure for details on codebase organization and directory structure
 - Keep documentation in sync with docs/README.md
 
 Additional guidelines:
@@ -247,6 +248,20 @@ Essential integration points:
   - Choice patterns (`choice.mdx`)
   - CLI usage (`cli.mdx`)
   - Deployment patterns (`deploy.mdx`)
+
+## Code Structure Reference
+- Consult README.md#project-structure for a comprehensive directory structure breakdown
+- For backend code structure details and refactoring status, refer to docs/core/todo/code_dir_structure.md
+- The satellite backend code is organized into these key directories:
+  - `src/satellite/src/core/` - Core business logic and reputation calculations
+  - `src/satellite/src/assert_set_doc/` - Document creation validation
+  - `src/satellite/src/validation/` - Field-level data validation
+  - `src/satellite/src/processors/` - Document and data processing utilities
+  - `src/satellite/src/utils/` - General utility functions
+- The frontend code is organized as follows:
+  - `src/routes/` - SvelteKit routes and page components
+  - `src/lib/components/` - Reusable UI components
+  - `src/lib/` - Utility functions, types, and configuration
 
 ## Documentation Updates
 

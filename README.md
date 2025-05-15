@@ -116,40 +116,101 @@ Our Satellite includes custom functions for:
 
 ### Source Code (`/src`)
 
-#### Frontend (`/src/routes`)
-- Main application pages and API endpoints
-- Organized by route (e.g., `/admin`, `/users`)
-- Each route has its own folder with:
-  - `+page.svelte` - The page component
-  - `+page.server.ts` - Server-side logic
-  - `+server.ts` - API endpoints
+#### Frontend
 
-#### Components (`/src/lib/components`)
-- Reusable UI components
-- Shared layouts and styles
-- Common utilities and helpers
+##### Routes (`/src/routes`)
+- Main application pages and user interface
+- Organized by feature area:
+  - `/` - Home page
+  - `/profile` - User profile page and settings
+  - `/admin` - Administrative functions 
+  - `/onboarding` - User registration and setup
+  - `/reputations` - Reputation management
+- Each route typically contains:
+  - `+page.svelte` - The page component with UI and interactions
+  - `+layout.svelte` - Shared layout for route group (when applicable)
+  - `+page.ts` or `+page.server.ts` - Data loading logic
 
-#### Types (`/src/lib/types.ts`)
-- TypeScript interfaces and types
-- Shared type definitions
+##### Library (`/src/lib`)
+- **Components** (`/src/lib/components/`)
+  - `Header.svelte` - Main navigation component
+  - `Footer.svelte` - Site footer component
+  - `AvatarCropper.svelte` - Profile image handling
+  - `SkeletonLoader.svelte` - Loading states
+  - Various UI elements and shared components
+- **Types** (`/src/lib/types.ts`)
+  - TypeScript interfaces for data models
+  - Type definitions for state and props
+- **Settings** (`/src/lib/settings.ts`)
+  - Application configuration
+  - Environment variables
+  - Feature flags and constants
+- **SkeletonUI** (`/src/lib/skeletonui/`)
+  - Skeleton UI framework components
+  - Theming and styling utilities
+- **Juno Integration** (`/src/lib/juno.ts`)
+  - Juno client SDK setup
+  - Authentication helpers
+- **Stores** (`/src/lib/stores/`)
+  - Svelte stores for state management
+  - Shared application state
+- **Keys** (`/src/lib/keys/`)
+  - Document key management
+  - Key generation utilities
 
-#### Settings (`/src/lib/settings.ts`)
-- Application configuration
-- Environment variables
-- Constants
+##### App Configuration
+- `app.html` - HTML template
+- `app.css` - Global styles
+- `app.d.ts` - TypeScript declarations
 
-### Satellite Code (`/src/satellite`)
-- Backend code running on the Internet Computer
-- Rust-based implementation
+#### Backend (`/src/satellite`)
 
-#### Source Files (`/src/satellite/src`)
-- `lib.rs` - Main satellite code
-- `utils/` - Helper functions and utilities
-
-#### Configuration (`/src/satellite`)
+##### Configuration Files
 - `Cargo.toml` - Rust dependencies and project settings
-- `satellite.did` - Candid interface definitions
+- `satellite.did` - Candid interface definitions for Internet Computer
 - `satellite_extension.did` - Extended interface definitions
+
+##### Source Files (`/src/satellite/src`)
+- `lib.rs` - Main entry point and core functionality
+  - Satellite initialization
+  - API endpoints
+  - Event handlers
+  - Core business logic
+
+###### Core Logic (`/src/satellite/src/core/`)
+- Core business logic and domain-specific calculations
+- `reputation_calculations.rs` - Reputation scoring algorithms
+- `tag_calculations.rs` - Tag-based calculations and filtering
+
+###### Processors (`/src/satellite/src/processors/`)
+- Data processing and document operations
+- `document_keys.rs` - Key generation and management for documents
+- `document_queries.rs` - Database query helpers
+- `ulid_generator.rs` - ULID generation for unique identifiers
+- `ulid_timestamp_extract.rs` - Timestamp extraction from ULIDs
+- `ulid_type.rs` - ULID type definitions and utilities
+
+###### Assertion Logic (`/src/satellite/src/assert_set_doc/`)
+- Business rules and validations for document creation
+- `assert_doc_user.rs` - User document validation
+- `assert_doc_tag.rs` - Tag document validation
+- `assert_doc_vote.rs` - Vote document validation
+- `assert_doc_reputation.rs` - Reputation document validation
+
+###### Validation (`/src/satellite/src/validation/`)
+- Data validation for individual fields
+- `validate_handle.rs` - Username validation
+- `display_name.rs` - User display name validation
+- `description.rs` - Text description validation
+- `validate_tag_date.rs` - Date validation for tags
+- `ulid_timestamp_validate.rs` - ULID timestamp validation
+
+###### Utilities (`/src/satellite/src/utils/`)
+- Shared helper functions
+- `structs.rs` - Data structures shared across the satellite
+- `logger.rs` - Logging utilities
+- `time.rs` - Time-related helper functions
+- `normalize.rs` - String normalization utilities
 
 ### Documentation (`/docs`)
 

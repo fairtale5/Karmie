@@ -181,6 +181,70 @@ Based on Skeleton UI's best practices and the current state of the application, 
      - Responsive tables
      - Collapsible sections for small screens
 
+### Navigation Structure & User/Tag Profile Patterns (2024-06)
+
+#### Overview
+This section documents the current navigation and page structure for the Reputator app, reflecting the move to singular route naming and the addition of user-in-tag profile navigation. The design aims for clarity, discoverability, and consistency, following the UI/UX guidelines in `docs/core/development/ui.md`.
+
+#### Route Structure (Singular)
+```
+/
+├── Home (/)
+│   └── Hero section, login, app overview (for unauthenticated users)
+│
+├── Dashboard (/dashboard)
+│   ├── Welcome message / user avatar
+│   ├── My reputation highlights (top tags, recent changes)
+│   ├── Recent activity (votes cast/received, tag activity)
+│   ├── Trending tag / new tag
+│   ├── Quick actions (create tag, cast vote, explore)
+│   └── Notifications / alerts
+│   └── [Button: View my public profile]
+│
+├── Tag (/tag)
+│   ├── Tag list (/tag)
+│   │   └── All tags, search, create new tag
+│   └── Tag detail (/tag/:tagId)
+│       ├── Overview (description, stats, graph)
+│       ├── User (list, sorted by reputation in this tag)
+│       ├── Vote (recent votes in this tag)
+│       └── Actions (cast vote, create tag, etc.)
+│
+├── User (/user)
+│   ├── User list (/user) [optional, or just search]
+│   └── User profile (/user/:userId)
+│       ├── Overview (public info, avatar, etc.)
+│       ├── Reputation by tag (list, graph)
+│       ├── Activity
+│       │   ├── Votes cast (by tag)
+│       │   └── Votes received (by tag, from whom)
+│       └── Quick vote (if viewing another user)
+│   └── User profile in tag context (/user/:userId/:tagId)
+│       ├── Overview (user's info within this tag)
+│       ├── Reputation in this tag
+│       ├── Activity in this tag
+│       └── Quick vote (specific to this tag)
+│
+└── Create tag (/tag/new)
+```
+
+#### Navigation Patterns
+- **Tag selection:** The tag list page provides a search/dropdown to select a tag to view in detail. This pattern should be visually and functionally mirrored in the user profile page, where users can select a tag context to view a user's profile within that tag.
+- **Consistency:** Keeping the tag and user navigation patterns similar improves user understanding and discoverability.
+- **User-in-tag context:** The `/user/:userId/:tagId` route displays a user's profile scoped to a specific tag, showing their reputation, activity, and votes within that tag. This is accessible from both the tag's user list and the user profile page.
+- **Discoverability:** Both tag and user pages should make it easy to "dive into" a specific context (tag or user-in-tag) via dropdowns, search, or clear navigation elements.
+
+#### Rationale
+- **Singular naming**: All routes use singular nouns (`user`, `tag`) for clarity and RESTful consistency.
+- **Contextual navigation**: The user-in-tag view supports the "web of trust" model and allows for context-specific reputation and activity.
+- **UI/UX alignment**: These patterns follow the clarity, feedback, and consistency principles outlined in `docs/core/development/ui.md`.
+
+#### Implementation Notes
+- When navigating from a tag's user list, clicking a user should go to `/user/:userId/:tagId`.
+- When navigating from a user profile, provide a dropdown or search to select a tag context, mirroring the tag selection UI.
+- Ensure both tag and user pages use similar UI components for selection/search to reinforce the pattern.
+- Reference: See [UI/UX Guidelines](../development/ui.md) for accessibility, feedback, and performance requirements.
+
 ### Phase 4: Advanced Features
 
 1. **Loading States**
