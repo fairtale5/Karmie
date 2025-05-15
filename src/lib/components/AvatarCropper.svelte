@@ -15,9 +15,9 @@
  * - svelte-easy-crop: https://github.com/ValentinH/svelte-easy-crop
  */
 import Cropper from 'svelte-easy-crop';
-import { Slider, FileUpload } from '@skeletonlabs/skeleton-svelte';
+import { Slider, FileUpload, type FileUploadApi } from '@skeletonlabs/skeleton-svelte';
 import { toaster } from '../skeletonui/toaster-skeleton';
-import { XCircle } from 'lucide-svelte';
+import { X } from 'lucide-svelte';
 
 /**
  * Props
@@ -49,6 +49,7 @@ let showCropper = false;
 let previewUrl: string | null = null;
 let previewBlob: Blob | null = null;
 let zoomArr = [1]; // For Slider value binding
+let fileUploadApi: FileUploadApi;
 
 function onFileUploadChange(details: { acceptedFiles: File[] }) {
   const files = details.acceptedFiles ?? [];
@@ -56,10 +57,12 @@ function onFileUploadChange(details: { acceptedFiles: File[] }) {
   const file = files[0];
   if (!ACCEPTED_TYPES.includes(file.type)) {
     toaster.error({ title: 'Unsupported file type', description: 'Please select a PNG, JPEG, WEBP, SVG, or GIF image.' });
+    fileUploadApi?.clearFiles();
     return;
   }
   if (file.size > MAX_SIZE_MB * 1024 * 1024) {
     toaster.error({ title: 'File too large', description: `Max size is ${MAX_SIZE_MB}MB.` });
+    fileUploadApi?.clearFiles();
     return;
   }
   selectedFile = file;
@@ -81,7 +84,8 @@ function onRemove() {
   previewUrl = null;
   previewBlob = null;
   cropped(null);
-  change('');  // Use empty string instead of null
+  change('');
+  fileUploadApi?.clearFiles(); // Clear the FileUpload component's files
 }
 
 function onCropComplete(areaPixels: { x: number; y: number; width: number; height: number }) {
@@ -168,8 +172,15 @@ async function getCroppedImg(imageSrc: string, crop: { x: number; y: number; wid
     }}
     maxFiles={1}
     classes="w-full"
-    onFileChange={onFileUploadChange}
     onFileReject={(err) => toaster.error({ title: 'File rejected', description: err })}
+    onApiReady={(api) => fileUploadApi = api}
+    onFileChange={(details) => {
+      if (!details.acceptedFiles.length) {
+        onRemove();
+      } else {
+        onFileUploadChange(details);
+      }
+    }}
   />
 </div>
 
@@ -187,7 +198,7 @@ async function getCroppedImg(imageSrc: string, crop: { x: number; y: number; wid
         oncropcomplete={({ pixels }) => onCropComplete(pixels)}
       />
       <button type="button" class="absolute top-2 right-2 z-10" on:click={onRemove} aria-label="Remove image">
-        <XCircle class="text-error-500 w-6 h-6" />
+        <X class="text-error-500" size={24} />
       </button>
     </div>
     <div class="flex items-center gap-4 mt-2">
@@ -205,7 +216,7 @@ async function getCroppedImg(imageSrc: string, crop: { x: number; y: number; wid
   <div class="relative w-24 h-24 mx-auto mt-2">
     <img src={previewUrl} alt="Avatar preview" class="rounded-full w-full h-full object-cover" />
     <button type="button" class="absolute top-1 right-1 z-10" on:click={onRemove} aria-label="Remove image">
-      <XCircle class="text-error-500 w-5 h-5" />
+      <X class="text-error-500" size={20} />
     </button>
   </div>
 {/if} 
