@@ -91,7 +91,6 @@
 				error: { title: 'Logout failed', description: 'Please try again.' }
 			}
 		);
-		goto(LOGOUT_REDIRECT_URL);
 	}
 </script>
 
