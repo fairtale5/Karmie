@@ -83,7 +83,7 @@
     })();
   }
 
-  // Ensure principal is always a string for AvatarCropper
+  // Ensure principal is always a string for avatar filename
   $: principalString = typeof $authUser?.key === 'string' ? $authUser.key : '';
 
   async function handleSubmit(event: Event) {
@@ -205,7 +205,6 @@
         <span class="label-text">Avatar (optional)</span>
         {#if $authUser && $authUser.key}
           <AvatarCropper
-            principal={principalString}
             initialUrl={avatarUrl}
             cropped={(blob) => {
               croppedAvatarBlob = blob;
