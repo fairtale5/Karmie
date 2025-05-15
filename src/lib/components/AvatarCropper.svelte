@@ -21,13 +21,12 @@ import { X } from 'lucide-svelte';
 
 /**
  * Props
- * @prop {string} principal - The user's principal (unique user ID), used for deterministic avatar filename.
  * @prop {string} initialUrl - Initial avatar URL for preview (empty string if no avatar).
  * @prop {(blob: Blob | null) => void} cropped - Callback to parent with cropped image Blob (or null if removed).
  * @prop {(url: string) => void} change - Callback to parent with preview URL (empty string if removed).
  * @prop {(inProgress: boolean) => void} croppingChange - Callback to parent to notify cropping state (default: no-op)
  */
-export let principal: string;
+
 export let initialUrl = '';
 export let cropped: (blob: Blob | null) => void = () => {};
 export let change: (value: string) => void = () => {};
