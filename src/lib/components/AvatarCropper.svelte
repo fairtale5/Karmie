@@ -25,11 +25,13 @@ import { X } from 'lucide-svelte';
  * @prop {string} initialUrl - Initial avatar URL for preview (empty string if no avatar).
  * @prop {(blob: Blob | null) => void} cropped - Callback to parent with cropped image Blob (or null if removed).
  * @prop {(url: string) => void} change - Callback to parent with preview URL (empty string if removed).
+ * @prop {(inProgress: boolean) => void} croppingChange - Callback to parent to notify cropping state (default: no-op)
  */
 export let principal: string;
 export let initialUrl = '';
 export let cropped: (blob: Blob | null) => void = () => {};
 export let change: (value: string) => void = () => {};
+export let croppingChange: (inProgress: boolean) => void = () => {};
 
 const MAX_SIZE_MB = 20;
 const ACCEPTED_TYPES = [
@@ -73,6 +75,7 @@ function onFileUploadChange(details: { acceptedFiles: File[] }) {
     previewUrl = null;
     previewBlob = null;
     cropped(null); // Reset parent blob
+    croppingChange(true); // Cropping started
   };
   reader.readAsDataURL(file);
 }
@@ -86,6 +89,7 @@ function onRemove() {
   cropped(null);
   change('');
   fileUploadApi?.clearFiles(); // Clear the FileUpload component's files
+  croppingChange(false); // Cropping cancelled/removed
 }
 
 function onCropComplete(areaPixels: { x: number; y: number; width: number; height: number }) {
@@ -113,6 +117,7 @@ async function confirmCrop() {
     cropped(croppedBlob); // Pass blob to parent
     change(previewUrlLocal); // Pass preview URL to parent
     toaster.success({ title: 'Crop confirmed', description: 'Your avatar crop is ready to save.' });
+    croppingChange(false); // Cropping finished
   } catch (e) {
     toaster.error({ title: 'Crop failed', description: e instanceof Error ? e.message : 'Unknown error.' });
   }

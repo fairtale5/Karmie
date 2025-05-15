@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { setDoc, getDoc } from '@junobuild/core';
+  import { setDoc, getDoc, uploadFile } from '@junobuild/core';
   import { goto } from '$app/navigation';
   import type { UserData } from '$lib/types';
   import { authUser, authUserDoneInitializing } from '$lib/stores/authUser';
@@ -18,6 +18,8 @@
   let usernameStatus: 'idle' | 'loading' | 'available' | 'taken' | 'error' = 'idle';
   let lastCheckedHandle = '';
   let principalString = '';
+  let croppedAvatarBlob: Blob | null = null;
+  let croppingInProgress = false;
 
   /**
    * Utility: debounce
@@ -90,7 +92,7 @@
       toaster.error({ title: 'You must be logged in to set up your profile.' });
       return;
     }
-    // ... existing logic ...
+    await saveProfile();
   }
 
   async function saveProfile() {
@@ -106,10 +108,28 @@
         loading = false;
         return;
       }
+      // Upload avatar if a new one was cropped
+      let avatarUrlToSave = avatarUrl;
+      if (croppedAvatarBlob && principalString) {
+        const filename = `avatar_${principalString}.webp`;
+        try {
+          const file = new File([croppedAvatarBlob], filename, { type: 'image/webp' });
+          const result = await uploadFile({
+            data: file,
+            collection: 'user_avatars',
+            filename
+          });
+          avatarUrlToSave = result.downloadUrl;
+        } catch (e) {
+          toaster.error({ title: 'Avatar upload failed', description: e instanceof Error ? e.message : 'Unknown error.' });
+          loading = false;
+          return;
+        }
+      }
       await createUserDoc({
         user_handle: user_handle.trim(),
-        display_name: displayName.trim(),
-        avatar_url: avatarUrl || ''
+        display_name: displayName.trim() || ' ',
+        avatar_url: avatarUrlToSave || ''
       });
       toaster.success({ title: 'Profile saved!', description: 'Your profile has been updated.' });
       goto('/reputations');
@@ -179,7 +199,7 @@
       </label>
       <label class="label">
         <span class="label-text">Display Name</span>
-        <input type="text" bind:value={displayName} class="input" required autocomplete="off" disabled={!$authUser} />
+        <input type="text" bind:value={displayName} class="input" autocomplete="off" disabled={!$authUser} />
       </label>
       <div class="label">
         <span class="label-text">Avatar (optional)</span>
@@ -187,13 +207,23 @@
           <AvatarCropper
             principal={principalString}
             initialUrl={avatarUrl}
+            cropped={(blob) => {
+              croppedAvatarBlob = blob;
+              if (blob === null) croppingInProgress = false;
+            }}
             change={(url) => avatarUrl = url}
+            croppingChange={v => croppingInProgress = v}
           />
         {/if}
       </div>
     </fieldset>
     <fieldset>
-      <button type="submit" class="btn preset-filled-primary-500 w-full" disabled={loading || !$authUser}>
+      <div style="min-height:1.2em;display:flex;align-items:center;justify-content:center;">
+        {#if croppingInProgress}
+          <span class="text-error-500 text-sm font-medium">Crop your image or remove it to save profile</span>
+        {/if}
+      </div>
+      <button type="submit" class="btn preset-filled-primary-500 w-full" disabled={loading || !$authUser || croppingInProgress}>
         {loading ? 'Saving...' : 'Save Profile'}
       </button>
     </fieldset>
