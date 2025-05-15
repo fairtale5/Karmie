@@ -75,13 +75,6 @@
 				goto('/onboarding');
 			}
 		} catch (e) {
-			if (e instanceof Error && e.message.includes('Login succeeded')) {
-				// This is our custom error about auth state, show appropriate message
-				toaster.error({ 
-					title: 'Authentication Error', 
-					description: 'Please try logging in again.' 
-				});
-			}
 			// Other errors are already handled by the toaster.promise above
 		}
 	}
