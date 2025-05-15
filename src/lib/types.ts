@@ -23,13 +23,13 @@ export interface JunoDocument<T> {
  * - user_handle: Unique username/handle (required)
  * - display_name: Display name (optional)
  * - user_key: ULID for this user (required, string)
- * - avatar_url: Optional avatar URL
+ * - avatar_url: Avatar URL (required, can be empty string)
  */
 export interface UserData {
     user_handle: string;    // Unique username/handle (required)
     display_name?: string;  // Display name (optional)
     user_key: string;       // ULID for this user (required, string)
-    avatar_url?: string;    // Optional avatar URL
+    avatar_url: string;     // Avatar URL (required, can be empty string)
 }
 
 /**

@@ -2,13 +2,13 @@
   import { setDoc, getDoc } from '@junobuild/core';
   import { goto } from '$app/navigation';
   import type { UserData } from '$lib/types';
-  import { FileUpload } from '@skeletonlabs/skeleton-svelte';
   import { authUser, authUserDoneInitializing } from '$lib/stores/authUser';
   import { toaster } from '$lib/skeletonui/toaster-skeleton';
   import NotLoggedInAlert from '$lib/components/NotLoggedInAlert.svelte';
   import { createUserDoc } from '$lib/docs-crud/user_create';
   import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
   import { LoaderCircle, CheckCircle, XCircle } from 'lucide-svelte';
+  import AvatarCropper from '$lib/components/AvatarCropper.svelte';
 
   let user_handle = '';
   let displayName = '';
@@ -17,6 +17,7 @@
   let userDocFetched = false;
   let usernameStatus: 'idle' | 'loading' | 'available' | 'taken' | 'error' = 'idle';
   let lastCheckedHandle = '';
+  let principalString = '';
 
   /**
    * Utility: debounce
@@ -71,6 +72,7 @@
         if (userDoc) {
           user_handle = data?.user_handle || '';
           displayName = data?.display_name || '';
+          avatarUrl = data?.avatar_url || '';
         }
         userDocFetched = true;
       } catch (e) {
@@ -78,6 +80,9 @@
       }
     })();
   }
+
+  // Ensure principal is always a string for AvatarCropper
+  $: principalString = typeof $authUser?.key === 'string' ? $authUser.key : '';
 
   async function handleSubmit(event: Event) {
     event.preventDefault();
@@ -104,7 +109,7 @@
       await createUserDoc({
         user_handle: user_handle.trim(),
         display_name: displayName.trim(),
-        avatar_url: avatarUrl
+        avatar_url: avatarUrl || ''
       });
       toaster.success({ title: 'Profile saved!', description: 'Your profile has been updated.' });
       goto('/reputations');
@@ -176,22 +181,16 @@
         <span class="label-text">Display Name</span>
         <input type="text" bind:value={displayName} class="input" required autocomplete="off" disabled={!$authUser} />
       </label>
-      <label class="label">
+      <div class="label">
         <span class="label-text">Avatar (optional)</span>
-        <FileUpload
-          name="avatar"
-          accept={{
-            "image/png": [".png"],
-            "image/jpeg": [".jpg", ".jpeg"],
-            "image/webp": [".webp"],
-            "image/svg+xml": [".svg"],
-            "image/gif": [".gif"]
-          }}
-          maxFiles={1}
-          classes="w-full"
-          disabled={!$authUser}
-        />
-      </label>
+        {#if $authUser && $authUser.key}
+          <AvatarCropper
+            principal={principalString}
+            initialUrl={avatarUrl}
+            change={(url) => avatarUrl = url}
+          />
+        {/if}
+      </div>
     </fieldset>
     <fieldset>
       <button type="submit" class="btn preset-filled-primary-500 w-full" disabled={loading || !$authUser}>
