@@ -52,7 +52,8 @@
 		data: {
 			user_handle: '',
 			display_name: '',
-			user_key: '' 
+			user_key: '',
+			avatar_url: ''  // Add required avatar_url field with empty string default
 		}
 	};
 
@@ -400,7 +401,8 @@
 					data: {
 						user_handle: userBeingEdited.data.user_handle!.toString().trim(),
 						display_name: userBeingEdited.data.display_name!.toString().trim(),
-						user_key: userDocKeyResult || userBeingEdited.data.user_key
+						user_key: userDocKeyResult || userBeingEdited.data.user_key,
+						avatar_url: userBeingEdited.data.avatar_url || ''
 					},
 					...(userDocVersion && { version: userDocVersion })
 				}
@@ -423,7 +425,8 @@
 				data: {
 					user_handle: '',
 					display_name: '',
-					user_key: '' // Keep as string for now
+					user_key: '',
+					avatar_url: ''
 				}
 			};
 			successGlobal = 'User saved successfully';
@@ -1093,7 +1096,8 @@
 									data: {
 										user_handle: '',
 										display_name: '',
-										user_key: '' // Keep as string for now
+										user_key: '',
+										avatar_url: ''
 									}
 								};
 							}}

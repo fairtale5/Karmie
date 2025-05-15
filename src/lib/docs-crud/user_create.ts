@@ -28,7 +28,7 @@ export async function createUserDoc({
   user_handle: string;
   display_name?: string;
   description?: string;
-  avatar_url?: string;
+  avatar_url: string;
 }): Promise<void> {
   // Get the current authenticated user (principal) from the Svelte store
   const user = get(authUser);
