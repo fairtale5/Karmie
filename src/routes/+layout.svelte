@@ -1,7 +1,6 @@
 <script lang="ts">
 	import '../app.css';
 	import { onMount } from 'svelte';
-	import Header from '$lib/components/layout/Header.svelte';
 	import { initJuno } from '$lib/juno';
 	import { authSubscribe, getDoc, type User } from '@junobuild/core';
 	import { goto } from '$app/navigation';
@@ -15,7 +14,6 @@
 	let user: User | null = null;
 	let checkedOnboarding = false;
 	$: currentPath = $page.url.pathname;
-	let useNewLayout = true;
 
 	// List of paths that don't require user document check
 	const EXEMPT_PATHS = ['/onboarding', '/', '/login'];
@@ -52,27 +50,11 @@
 			}
 		});
 	});
-
-	function toggleLayout() {
-		useNewLayout = !useNewLayout;
-	}
 </script>
 
 <!-- Global Skeleton Toaster for toast notifications -->
 <Toaster {toaster} />
 
-<!-- Dev toggle button -->
-<button class="fixed top-2 right-2 z-50 btn btn-sm btn-primary" on:click={toggleLayout}>
-	{useNewLayout ? 'Show Old Layout' : 'Show New Layout'}
-</button>
-
-{#if useNewLayout}
-	<AppShell title="Reputator">
-		<slot />
-	</AppShell>
-{:else}
-	<Header />
-	<main class="container mx-auto p-4 bg-surface-900 text-surface-50">
-		<slot />
-	</main>
-{/if}
+<AppShell title="Reputator">
+	<slot />
+</AppShell>

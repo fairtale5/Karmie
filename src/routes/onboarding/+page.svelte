@@ -132,7 +132,7 @@
         avatar_url: avatarUrlToSave || ''
       });
       toaster.success({ title: 'Profile saved!', description: 'Your profile has been updated.' });
-      goto('/reputations');
+      goto('/tags-hub');
     } catch (e) {
       toaster.error({ title: 'Failed to save profile.', description: e instanceof Error ? e.message : 'Unknown error.' });
     } finally {
