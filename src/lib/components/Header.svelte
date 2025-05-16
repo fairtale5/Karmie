@@ -1,4 +1,5 @@
 <script lang="ts">
+	export let title = 'Page Title';
 	import { Switch } from '@skeletonlabs/skeleton-svelte';
 	import { Sun, Moon } from 'lucide-svelte';
 	import { onMount } from 'svelte';
@@ -110,13 +111,7 @@
 	<div class="container mx-auto p-3 flex justify-between items-center">
 		<div class="flex items-center gap-4">
 			<a href="/" class="text-2xl font-bold text-[var(--color-primary-500)]">Reputator</a>
-			<nav class="flex items-center gap-2">
-				<a href="/" class="btn hover:preset-tonal" class:text-primary-700-300={currentPath === '/'}>Home</a>
-				<a href="/reputations" class="btn hover:preset-tonal" class:text-primary-700-300={currentPath === '/reputations'}>Reputations</a>
-				<a href="/admin" class="btn hover:preset-tonal" class:text-primary-700-300={currentPath === '/admin'}>Admin</a>
-				<a href="/onboarding" class="btn hover:preset-tonal" class:text-primary-700-300={currentPath === '/onboarding'}>Onboarding</a>
-				<a href="/profile" class="btn hover:preset-tonal" class:text-primary-700-300={currentPath === '/profile'}>Profile</a>
-			</nav>
+			<span class="ml-2 text-xl font-semibold text-primary-700-300">{title}</span>
 		</div>
 		<div class="flex items-center gap-4">
 			<Switch 
