@@ -10,10 +10,12 @@
 	import { authUser, authUserDoneInitializing } from '$lib/stores/authUser';
 	import { page } from '$app/stores';
 	import type { UserData } from '$lib/types';
+	import AppShell from '$lib/components/layout/AppShell.svelte';
 
 	let user: User | null = null;
 	let checkedOnboarding = false;
 	$: currentPath = $page.url.pathname;
+	let useNewLayout = true;
 
 	// List of paths that don't require user document check
 	const EXEMPT_PATHS = ['/onboarding', '/', '/login'];
@@ -41,10 +43,19 @@
 			}
 		});
 	});
+
+	function toggleLayout() {
+		useNewLayout = !useNewLayout;
+	}
 </script>
 
 <!-- Global Skeleton Toaster for toast notifications -->
 <Toaster {toaster} />
+
+<!-- Dev toggle button -->
+<button class="fixed top-2 right-2 z-50 btn btn-sm btn-primary" on:click={toggleLayout}>
+	{useNewLayout ? 'Show Old Layout' : 'Show New Layout'}
+</button>
 
 {#if import.meta.env.DEV}
 	<div class="container mx-auto p-4">
@@ -54,7 +65,13 @@
 	</div>
 {/if}
 
-<Header />
-<main class="container mx-auto px-4 py-8">
-    <slot />
-</main>
+{#if useNewLayout}
+	<AppShell title="Reputator">
+		<slot />
+	</AppShell>
+{:else}
+	<Header />
+	<main class="container mx-auto p-4 bg-surface-900 text-surface-50">
+		<slot />
+	</main>
+{/if}
