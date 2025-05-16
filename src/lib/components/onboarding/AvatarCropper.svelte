@@ -16,7 +16,7 @@
  */
 import Cropper from 'svelte-easy-crop';
 import { Slider, FileUpload, type FileUploadApi } from '@skeletonlabs/skeleton-svelte';
-import { toaster } from '../skeletonui/toaster-skeleton';
+import { toaster } from '../../skeletonui/toaster-skeleton';
 import { X } from 'lucide-svelte';
 
 /**

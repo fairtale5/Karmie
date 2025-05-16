@@ -25,7 +25,7 @@
 	import type { Principal } from '@dfinity/principal';
 	import type { UserData, TagData, VoteData, ReputationData } from '$lib/types';
 	import { initJuno } from '$lib/juno';
-	import NotLoggedInAlert from '$lib/components/NotLoggedInAlert.svelte';
+	import NotLoggedInAlert from '$lib/components/common/NotLoggedInAlert.svelte';
 	import { authUser, authUserDoneInitializing } from '$lib/stores/authUser';
 
 	// Configuration Constants

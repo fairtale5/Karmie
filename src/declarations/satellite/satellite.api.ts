@@ -29,12 +29,12 @@ export const createDocumentKeyForTag = async (value0: string, value1: string): P
 	return await create_document_key_for_tag(value0, value1);
 }
 
-export const createDocumentKeyForUser = async (value0: string): Promise<Result> => {
+export const createDocumentKeyForUser = async (value0: string, value1: string): Promise<Result> => {
 	const {create_document_key_for_user} = await getSatelliteExtendedActor<SatelliteActor>({
 		idlFactory
 	});
 
-	return await create_document_key_for_user(value0);
+	return await create_document_key_for_user(value0, value1);
 }
 
 export const createDocumentKeyForVote = async (value0: string, value1: string, value2: string): Promise<Result> => {

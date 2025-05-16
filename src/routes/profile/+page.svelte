@@ -3,7 +3,7 @@
     import { authSubscribe, type User } from '@junobuild/core';
     import { goto } from '$app/navigation';
     import { initJuno } from '$lib/juno';
-    import NotLoggedInAlert from '$lib/components/NotLoggedInAlert.svelte';
+    import NotLoggedInAlert from '$lib/components/common/NotLoggedInAlert.svelte';
 
     let user: User | null = null;
 

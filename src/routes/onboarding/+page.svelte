@@ -4,11 +4,11 @@
   import type { UserData } from '$lib/types';
   import { authUser, authUserDoneInitializing } from '$lib/stores/authUser';
   import { toaster } from '$lib/skeletonui/toaster-skeleton';
-  import NotLoggedInAlert from '$lib/components/NotLoggedInAlert.svelte';
+  import NotLoggedInAlert from '$lib/components/common/NotLoggedInAlert.svelte';
   import { createUserDoc } from '$lib/docs-crud/user_create';
   import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
   import { LoaderCircle, CheckCircle, XCircle } from 'lucide-svelte';
-  import AvatarCropper from '$lib/components/AvatarCropper.svelte';
+  import AvatarCropper from '$lib/components/onboarding/AvatarCropper.svelte';
 
   let user_handle = '';
   let displayName = '';
