@@ -2,12 +2,11 @@ import {defineConfig} from '@junobuild/config';
 
 export default defineConfig({
   satellite: {
-    // For local development (using emulator)
-    // id: 'jx5yt-yyaaa-aaaal-abzbq-cai',
-    
-    // For production (uncomment when deploying)
-    id: 'rigfr-siaaa-aaaal-ab4fa-cai',
-    
+    ids: {
+      // development: 'jx5yt-yyaaa-aaaal-abzbq-cai', // For local development (using emulator)
+      development: 'vjyvo-kyaaa-aaaal-asc5a-cai', // "Reputator2" Development Satellite
+      production: 'rigfr-siaaa-aaaal-ab4fa-cai' // "Reputator" Production Satellite
+    },
     source: 'build',
     predeploy: ['npm run build']
   }

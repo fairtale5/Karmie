@@ -16,6 +16,7 @@
 	import { Navigation } from '@skeletonlabs/skeleton-svelte';
 	import { Avatar } from '@skeletonlabs/skeleton-svelte';
 	import { page } from '$app/stores';
+	import Footer from '$lib/components/layout/Footer.svelte';
 	// Placeholder for theme toggle (replace with your actual logic)
 	let checked = false;
 	// Placeholder for authUser (replace with your actual store/logic)
@@ -40,7 +41,7 @@
 			<slot />
 		</main>
 		<footer class="flex-shrink-0 bg-surface-800 p-4">
-			<slot name="footer">(footer)</slot>
+			<Footer />
 		</footer>
 	</div>
 	<!-- Mobile Bottom Bar Sidebar -->
