@@ -30,7 +30,7 @@ export async function updateUserDoc({
   user_handle: string;
   display_name?: string;
   description?: string;
-  avatar_url?: string;
+  avatar_url: string;
   user_key: string;
 }): Promise<void> {
   // Prepare and assemblethe updated user data object with all new field values.

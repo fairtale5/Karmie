@@ -141,3 +141,45 @@ export const csr = true;        // Enable client-side rendering
 - Improve keyboard navigation
 - Enhance screen reader support
 - Add focus management
+
+## Layout Foundation: Responsive Sidebar and Footer
+
+### Canonical Page Layout Structure
+
+This layout is the **foundation for all page structures** in the Reputator project. All new pages and major refactors must use this pattern as their starting point.
+
+**Rationale:**
+- On mobile, a fixed bottom sidebar can overlap the footer. To prevent this, add bottom padding to the footer equal to the sidebar's height (e.g., `pb-[76px]`).
+- On desktop, remove the extra padding (`md:pb-[16px]` or `md:pb-0`).
+- This ensures the footer is always visible and accessible, regardless of content height or device.
+
+**Foundation Layout:**
+```html
+<div class="h-screen grid md:grid-cols-[auto_1fr] grid-cols-1">
+  <!-- Desktop Sidebar (left, full height) -->
+  <aside class="hidden md:block bg-yellow-500 p-4 md:row-span-3">
+    (sidebar)
+  </aside>
+  <!-- Content Area: header, main, footer -->
+  <div class="flex flex-col h-full w-full">
+    <header class="bg-red-500 p-4 flex-shrink-0">
+      (header)
+    </header>
+    <main class="space-y-4 bg-green-500 p-4 flex-1 min-h-0 overflow-auto">
+      <p class="h-[512px] bg-purple-500 p-4">Paragraph 1</p>
+      <p class="h-[512px] bg-purple-500 p-4">Paragraph 2</p>
+      <p class="h-[512px] bg-purple-500 p-4">Paragraph 3</p>
+    </main>
+    <footer class="bg-blue-500 p-4 flex-shrink-0 pb-[76px] md:pb-[16px]">
+      (footer)
+    </footer>
+  </div>
+  <!-- Mobile Bottom Bar Sidebar -->
+  <aside class="block md:hidden fixed bottom-0 left-0 right-0 z-50 w-full bg-yellow-500 p-4" style="height:56px;">
+    (sidebar)
+  </aside>
+</div>
+```
+
+- Adjust the `pb-[76px]` value to match the actual height of your fixed sidebar if it changes.
+- See also: [Skeleton UI Implementation Plan](todo/skeleton-ui-implementation.md#layout-foundation-responsive-sidebar-and-footer)

@@ -1,7 +1,6 @@
 <script lang="ts">
 	import '../app.css';
 	import { onMount } from 'svelte';
-	import Header from '$lib/components/Header.svelte';
 	import { initJuno } from '$lib/juno';
 	import { authSubscribe, getDoc, type User } from '@junobuild/core';
 	import { goto } from '$app/navigation';
@@ -10,6 +9,7 @@
 	import { authUser, authUserDoneInitializing } from '$lib/stores/authUser';
 	import { page } from '$app/stores';
 	import type { UserData } from '$lib/types';
+	import AppShell from '$lib/components/layout/AppShell.svelte';
 
 	let user: User | null = null;
 	let checkedOnboarding = false;
@@ -19,6 +19,15 @@
 	const EXEMPT_PATHS = ['/onboarding', '/', '/login'];
 
 	onMount(async () => {
+		if (import.meta.env.DEV) {
+			toaster.info({
+				title: 'Development Mode',
+				description: 'You are running the app in local development mode. Some features may be unstable.',
+				closable: true,
+				duration: 0
+			});
+		}
+
 		await initJuno();
 		authSubscribe(async (state) => {
 			user = state;
@@ -46,15 +55,6 @@
 <!-- Global Skeleton Toaster for toast notifications -->
 <Toaster {toaster} />
 
-{#if import.meta.env.DEV}
-	<div class="container mx-auto p-4">
-		<div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative mb-4" role="alert">
-			<strong class="font-bold">Local Development Mode</strong>
-		</div>
-	</div>
-{/if}
-
-<Header />
-<main class="container mx-auto px-4 py-8">
-    <slot />
-</main>
+<AppShell title="Reputator">
+	<slot />
+</AppShell>

@@ -80,7 +80,7 @@ export const REPUTATION_SETTINGS = {
 /**
  * URL to redirect to after successful login
  */
-export const LOGIN_REDIRECT_URL = '/reputations';
+export const LOGIN_REDIRECT_URL = '/tags-hub';
 
 /**
  * URL to redirect to after logout

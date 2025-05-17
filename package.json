@@ -51,6 +51,7 @@
 	"dependencies": {
 		"@junobuild/core": "^0.1.9",
 		"lucide-svelte": "^0.508.0",
+		"svelte-easy-crop": "^4.0.1",
 		"ulid": "^3.0.0"
 	}
 }

@@ -29,7 +29,11 @@ export const idlFactory = ({ IDL }) => {
         [Result],
         ['query'],
       ),
-    'create_document_key_for_user' : IDL.Func([IDL.Text], [Result], ['query']),
+    'create_document_key_for_user' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [Result],
+        ['query'],
+      ),
     'create_document_key_for_vote' : IDL.Func(
         [IDL.Text, IDL.Text, IDL.Text],
         [Result],

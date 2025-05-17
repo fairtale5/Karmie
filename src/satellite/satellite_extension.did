@@ -19,7 +19,7 @@ service : {
   build_version : () -> (text) query;
   create_document_key_for_reputation : (text, text) -> (Result) query;
   create_document_key_for_tag : (text, text) -> (Result) query;
-  create_document_key_for_user : (text) -> (Result) query;
+  create_document_key_for_user : (text, text) -> (Result) query;
   create_document_key_for_vote : (text, text, text) -> (Result) query;
   get_user_reputation : (text, text) -> (Result_1) query;
   get_user_reputation_full : (text, text) -> (Result_2) query;

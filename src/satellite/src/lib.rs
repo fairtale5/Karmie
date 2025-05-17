@@ -663,9 +663,9 @@ pub async fn recalculate_reputation(user_key: String, tag_key: String) -> Result
 /// # Returns
 /// * `Result<String, String>` - The formatted key or an error
 #[query]
-pub async fn create_document_key_for_user(username: String) -> Result<String, String> {
+pub async fn create_document_key_for_user(principal: String, username: String) -> Result<String, String> {
     // Use our document_keys module to create a properly formatted key
-    crate::processors::document_keys::create_user_key(&username).await
+    crate::processors::document_keys::create_user_key(&principal, &username).await
 }
 
 /// Creates a document key for a tag using the new ULID-based format

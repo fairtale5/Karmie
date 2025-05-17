@@ -95,6 +95,46 @@ After examining the project's codebase, we've identified the current state of th
 - Not utilizing Skeleton's layout patterns or grid system effectively
 - Header partially styled with Skeleton components but main content areas use standard HTML/Tailwind
 
+### Layout Foundation: Responsive Sidebar and Footer
+
+This layout is the **foundation for all page structures** in the Reputator project. All new pages and major refactors must use this pattern as their starting point.
+
+**Rationale:**
+- On mobile, a fixed bottom sidebar can overlap the footer. Add bottom padding to the footer equal to the sidebar's height (e.g., `pb-[76px]`).
+- On desktop, remove the extra padding (`md:pb-[16px]` or `md:pb-0`).
+- This ensures the footer is always visible and accessible, regardless of content height or device.
+
+**Foundation Layout:**
+```html
+<div class="h-screen grid md:grid-cols-[auto_1fr] grid-cols-1">
+  <!-- Desktop Sidebar (left, full height) -->
+  <aside class="hidden md:block bg-yellow-500 p-4 md:row-span-3">
+    (sidebar)
+  </aside>
+  <!-- Content Area: header, main, footer -->
+  <div class="flex flex-col h-full w-full">
+    <header class="bg-red-500 p-4 flex-shrink-0 sticky top-0">
+      (header)
+    </header>
+    <main class="space-y-4 bg-green-500 p-4 flex-1 min-h-0 overflow-auto">
+      <p class="h-[512px] bg-purple-500 p-4">Paragraph 1</p>
+      <p class="h-[512px] bg-purple-500 p-4">Paragraph 2</p>
+      <p class="h-[512px] bg-purple-500 p-4">Paragraph 3</p>
+    </main>
+    <footer class="bg-blue-500 p-4 flex-shrink-0 pb-[76px] md:pb-[16px]">
+      (footer)
+    </footer>
+  </div>
+  <!-- Mobile Bottom Bar Sidebar -->
+  <aside class="block md:hidden fixed bottom-0 left-0 right-0 z-50 w-full bg-yellow-500 p-4" style="height:56px;">
+    (sidebar)
+  </aside>
+</div>
+```
+
+- Adjust the `pb-[76px]` value to match the actual height of your fixed sidebar if it changes.
+- See also: [UI/UX Guidelines](../development/ui.md#layout-foundation-responsive-sidebar-and-footer)
+
 ### Known Issues
 
 1. Inconsistent styling between components that use Skeleton UI and those that don't
@@ -180,6 +220,70 @@ Based on Skeleton UI's best practices and the current state of the application, 
      - Adaptive layouts
      - Responsive tables
      - Collapsible sections for small screens
+
+### Navigation Structure & User/Tag Profile Patterns (2024-06)
+
+#### Overview
+This section documents the current navigation and page structure for the Reputator app, reflecting the move to singular route naming and the addition of user-in-tag profile navigation. The design aims for clarity, discoverability, and consistency, following the UI/UX guidelines in `docs/core/development/ui.md`.
+
+#### Route Structure (Singular)
+```
+/
+├── Home (/)
+│   └── Hero section, login, app overview (for unauthenticated users)
+│
+├── Dashboard (/dashboard)
+│   ├── Welcome message / user avatar
+│   ├── My reputation highlights (top tags, recent changes)
+│   ├── Recent activity (votes cast/received, tag activity)
+│   ├── Trending tag / new tag
+│   ├── Quick actions (create tag, cast vote, explore)
+│   └── Notifications / alerts
+│   └── [Button: View my public profile]
+│
+├── Tag (/tag)
+│   ├── Tag list (/tag)
+│   │   └── All tags, search, create new tag
+│   └── Tag detail (/tag/:tagId)
+│       ├── Overview (description, stats, graph)
+│       ├── User (list, sorted by reputation in this tag)
+│       ├── Vote (recent votes in this tag)
+│       └── Actions (cast vote, create tag, etc.)
+│
+├── User (/user)
+│   ├── User list (/user) [optional, or just search]
+│   └── User profile (/user/:userId)
+│       ├── Overview (public info, avatar, etc.)
+│       ├── Reputation by tag (list, graph)
+│       ├── Activity
+│       │   ├── Votes cast (by tag)
+│       │   └── Votes received (by tag, from whom)
+│       └── Quick vote (if viewing another user)
+│   └── User profile in tag context (/user/:userId/:tagId)
+│       ├── Overview (user's info within this tag)
+│       ├── Reputation in this tag
+│       ├── Activity in this tag
+│       └── Quick vote (specific to this tag)
+│
+└── Create tag (/tag/new)
+```
+
+#### Navigation Patterns
+- **Tag selection:** The tag list page provides a search/dropdown to select a tag to view in detail. This pattern should be visually and functionally mirrored in the user profile page, where users can select a tag context to view a user's profile within that tag.
+- **Consistency:** Keeping the tag and user navigation patterns similar improves user understanding and discoverability.
+- **User-in-tag context:** The `/user/:userId/:tagId` route displays a user's profile scoped to a specific tag, showing their reputation, activity, and votes within that tag. This is accessible from both the tag's user list and the user profile page.
+- **Discoverability:** Both tag and user pages should make it easy to "dive into" a specific context (tag or user-in-tag) via dropdowns, search, or clear navigation elements.
+
+#### Rationale
+- **Singular naming**: All routes use singular nouns (`user`, `tag`) for clarity and RESTful consistency.
+- **Contextual navigation**: The user-in-tag view supports the "web of trust" model and allows for context-specific reputation and activity.
+- **UI/UX alignment**: These patterns follow the clarity, feedback, and consistency principles outlined in `docs/core/development/ui.md`.
+
+#### Implementation Notes
+- When navigating from a tag's user list, clicking a user should go to `/user/:userId/:tagId`.
+- When navigating from a user profile, provide a dropdown or search to select a tag context, mirroring the tag selection UI.
+- Ensure both tag and user pages use similar UI components for selection/search to reinforce the pattern.
+- Reference: See [UI/UX Guidelines](../development/ui.md) for accessibility, feedback, and performance requirements.
 
 ### Phase 4: Advanced Features
 
@@ -590,4 +694,25 @@ Implementation example:
 
 ---
 
-(Please review and add any further questions or considerations as we proceed.) 
+(Please review and add any further questions or considerations as we proceed.)
+
+## Sidebar Navigation Plan (2024-06)
+
+This section documents the planned left sidebar navigation items and their associated Lucide icons, as per the new navigation hierarchy. Use these as the source of truth for sidebar implementation.
+
+| Label        | Route             | Icon (Lucide)         | Svelte Import Example                       |
+|--------------|-------------------|-----------------------|---------------------------------------------|
+| Home         | `/`               | `Home`                | `import { Home } from 'lucide-svelte'`      |
+| Dashboard    | `/dashboard`      | `LayoutDashboard`     | `import { LayoutDashboard } from 'lucide-svelte'` |
+| Tags         | `/tag`            | `Orbit`               | `import { Orbit } from 'lucide-svelte'`     |
+| Create Tag   | `/tag/new`        | `SquarePen`           | `import { SquarePen } from 'lucide-svelte'` |
+| Users        | `/user`           | `UserRoundSearch`     | `import { UserRoundSearch } from 'lucide-svelte'` |
+| Profile      | `/user/:userId`   | `User`                | `import { User } from 'lucide-svelte'`      |
+| Admin        | `/admin`          | `ShieldMinus`         | `import { ShieldMinus } from 'lucide-svelte'` |
+| **GitHub**   | (footer/bottom)   | `Github`              | `import { Github } from 'lucide-svelte'`    |
+
+- The GitHub link should be placed at the bottom of the sidebar (or in the sidebar footer).
+- Adjust the profile route as needed for your current user (e.g., `/user/me`).
+- See [Lucide Icons](https://lucide.dev/icons/) for more options.
+
+_Reference: See 'Navigation Structure & User/Tag Profile Patterns' above for route details._ 

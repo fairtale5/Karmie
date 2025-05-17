@@ -12,12 +12,11 @@
  */
 
 import { ulid } from 'ulid';
-import type { ULID } from './ulid_types';
 
 /**
  * Generates a ULID in uppercase format
  * @returns A 26-character ULID string in uppercase
  */
-export function createUlid(): ULID {
-    return ulid() as ULID;
+export function createUlid(): string {
+    return ulid();
 } 

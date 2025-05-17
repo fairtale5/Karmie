@@ -19,7 +19,7 @@
 				user = state;
 				// Only redirect if on the homepage
 				if (user !== null && currentPath === '/') {
-					goto('/reputations');
+					goto('/tags-hub');
 				}
 			});
 			initialized = true;

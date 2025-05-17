@@ -27,7 +27,7 @@ export interface _SERVICE {
   'build_version' : ActorMethod<[], string>,
   'create_document_key_for_reputation' : ActorMethod<[string, string], Result>,
   'create_document_key_for_tag' : ActorMethod<[string, string], Result>,
-  'create_document_key_for_user' : ActorMethod<[string], Result>,
+  'create_document_key_for_user' : ActorMethod<[string, string], Result>,
   'create_document_key_for_vote' : ActorMethod<
     [string, string, string],
     Result
