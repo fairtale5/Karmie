@@ -25,7 +25,17 @@
 </script>
 
 <aside class="hidden md:block h-screen bg-transparent">
-	<Navigation.Rail expanded={isExpanded} value={currentPath} width="w-14" headerBase={isExpanded ? 'pt-1' : 'pt-1'} padding="p-1" tilesGap="gap-[8px]">
+	<Navigation.Rail 
+		expanded={isExpanded} 
+		value={currentPath} 
+		width="w-18"
+		widthExpanded="w-64"
+		headerBase={isExpanded ? 'pt-1' : 'pt-1'} 
+		padding={isExpanded ? 'p-1 pl-2 pr-2 ' : 'p-1 pl-3 pr-3 '} 
+		tilesGap="gap-2"
+		tilesItems="items-center"
+		tilesClasses="h-[120px]"
+	>
 		{#snippet header()}
 			<Navigation.Tile id="menu" labelExpanded="Menu" onclick={toggleExpanded} title="Toggle Menu Width"><Menu /></Navigation.Tile>
 		{/snippet}
@@ -51,8 +61,8 @@
 			<!-- Separator -->
 			<div
 				class="my-2 h-px mx-auto bg-surface-300 opacity-50"
-				class:w-[90%]={isExpanded}
-				class:w-[70%]={!isExpanded}
+				class:w-[92%]={isExpanded}
+				class:w-[79%]={!isExpanded}
 			></div>
 			<Navigation.Tile id="/onboarding" href="/onboarding" labelExpanded="Onboarding" label="" selected={currentPath === '/onboarding'} labelClasses={currentPath === '/onboarding' ? 'text-primary-600-300' : ''}>
 				<MessageCircleQuestion class={currentPath === '/onboarding' ? 'text-primary-600-300' : ''} />

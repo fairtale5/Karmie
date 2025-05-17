@@ -31,7 +31,7 @@
 
 <div class="grid grid-cols-1 md:grid-cols-[auto_1fr]">
 	<!-- Desktop Sidebar (left, full height) -->
-	<aside class="hidden md:block bg-transparent sticky top-0 h-screen overflow-y-auto" style="width: {isExpanded ? '256px' : '56px'};">
+	<aside class="hidden md:block bg-transparent sticky top-0 h-screen overflow-y-auto" style="width: {isExpanded ? '256px' : '72px'};">
 		<Sidebar {isExpanded} {toggleExpanded} {currentPath} />
 	</aside>
 	<!-- Content Area: header, main, footer -->
@@ -47,7 +47,7 @@
 		</footer>
 	</div>
 	<!-- Mobile Bottom Bar Sidebar -->
-	<aside class="fixed right-0 bottom-0 left-0 z-50 block w-full bg-transparent p-4 md:hidden" style="height:56px;">
+	<aside class="fixed right-0 bottom-0 left-0 z-50 block w-full bg-transparent p-4 md:hidden" style="height:60px;">
 		<Navigation.Bar>
 			<Navigation.Tile label="Home" href="/"><Home class="h-6 w-6" /></Navigation.Tile>
 			<Navigation.Tile label="Dashboard" href="/dashboard"><LayoutDashboard class="h-6 w-6" /></Navigation.Tile>
