@@ -23,9 +23,21 @@
 	// Placeholder for authUser (replace with your actual store/logic)
 	let authUser: any = null;
 	export let title = 'Page Title';
-	let isExpanded = false;
+	let isExpanded = true;
+
+	// On mount, check localStorage for sidebar state
+	if (typeof window !== 'undefined') {
+		const stored = localStorage.getItem('sidebarExpanded');
+		if (stored !== null) {
+			isExpanded = stored === 'true';
+		}
+	}
+
 	function toggleExpanded() {
 		isExpanded = !isExpanded;
+		if (typeof window !== 'undefined') {
+			localStorage.setItem('sidebarExpanded', isExpanded ? 'true' : 'false');
+		}
 	}
 	$: currentPath = $page.url.pathname;
 </script>

@@ -37,7 +37,7 @@
 					</a>
 					<!-- Avatar, slightly zoomed/cropped -->
 					<div class="h-10 w-10 aspect-square rounded-full overflow-hidden border border-surface-200-800 shadow flex-shrink-0">
-						<img src="/team/fairtale.jpg" alt="Fairtale" class="w-full h-full object-cover object-center" style="transform: scale(1.05);" />
+						<img src="/img/team/fairtale.jpg" alt="Fairtale" class="w-full h-full object-cover object-center" style="transform: scale(1.05);" />
 					</div>
 					<!-- Built by text -->
 					<span class="preset-typo-body-2">built by <a href={GITHUB_URL} target="_blank" rel="noopener" class="text-primary-500 hover:underline">@Fairtale</a></span>
@@ -53,10 +53,10 @@
 			<div class="preset-typo-title text-base md:text-lg font-semibold mb-2 py-4">Built using</div>
 			<div class="flex flex-col gap-2 items-center md:items-end h-full w-full">
 				<a href="https://juno.build" target="_blank" rel="noopener" title="Juno">
-					<img src="/partners/juno_badge_built_on_01.svg" alt="Built with Juno" class="w-56 max-w-lg h-auto block md:ml-auto" />
+					<img src="/img/partners/juno_badge_built_on_01.svg" alt="Built with Juno" class="w-56 max-w-lg h-auto block md:ml-auto" />
 				</a>
 				<a href="https://internetcomputer.org" target="_blank" rel="noopener" title="Internet Computer">
-					<img src="/partners/icp_on_chain.png" alt="Internet Computer" class="w-56 max-w-lg h-auto block md:ml-auto" />
+					<img src="/img/partners/icp_on_chain.png" alt="Internet Computer" class="w-56 max-w-lg h-auto block md:ml-auto" />
 				</a>
 			</div>
 		</div>
