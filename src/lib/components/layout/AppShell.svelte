@@ -42,7 +42,7 @@
 		<main class="flex-1 overflow-y-auto p-4 pb-[64px] md:pb-0">
 			<slot />
 		</main>
-		<footer class="flex-shrink-0 bg-surface-800 p-4">
+		<footer class="flex-shrink-0 p-4">
 			<Footer />
 		</footer>
 	</div>
