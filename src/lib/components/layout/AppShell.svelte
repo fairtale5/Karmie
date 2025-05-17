@@ -17,6 +17,7 @@
 	import { Avatar } from '@skeletonlabs/skeleton-svelte';
 	import { page } from '$app/stores';
 	import Footer from '$lib/components/layout/Footer.svelte';
+	import FooterDeadzone from '$lib/components/layout/FooterDeadzone.svelte';
 	// Placeholder for theme toggle (replace with your actual logic)
 	let checked = false;
 	// Placeholder for authUser (replace with your actual store/logic)
@@ -45,9 +46,10 @@
 		<footer class="flex-shrink-0 p-4">
 			<Footer />
 		</footer>
+		<FooterDeadzone />
 	</div>
 	<!-- Mobile Bottom Bar Sidebar -->
-	<aside class="fixed right-0 bottom-0 left-0 z-50 block w-full bg-transparent p-4 md:hidden" style="height:60px;">
+	<aside class="fixed right-0 bottom-0 left-0 z-50 block w-full bg-transparent md:hidden" style="height:80px;">
 		<Navigation.Bar>
 			<Navigation.Tile label="Home" href="/"><Home class="h-6 w-6" /></Navigation.Tile>
 			<Navigation.Tile label="Dashboard" href="/dashboard"><LayoutDashboard class="h-6 w-6" /></Navigation.Tile>

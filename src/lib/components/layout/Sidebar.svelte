@@ -12,6 +12,7 @@
 		Menu,
 		MessageCircleQuestion
 	} from 'lucide-svelte';
+	import { GITHUB_URL } from '$lib/config';
 
 	/**
 	 * Sidebar component for desktop navigation.
@@ -72,7 +73,7 @@
 			</Navigation.Tile>
 		{/snippet}
 		{#snippet footer()}
-			<Navigation.Tile id="github" labelExpanded="GitHub" label="" href="https://github.com/your-repo" target="_blank"><Github /></Navigation.Tile>
+			<Navigation.Tile id="github" labelExpanded="GitHub" label="" href={GITHUB_URL} target="_blank"><Github /></Navigation.Tile>
 		{/snippet}
 	</Navigation.Rail>
 </aside> 
