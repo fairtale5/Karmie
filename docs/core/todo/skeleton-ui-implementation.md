@@ -113,7 +113,7 @@ This layout is the **foundation for all page structures** in the Reputator proje
   </aside>
   <!-- Content Area: header, main, footer -->
   <div class="flex flex-col h-full w-full">
-    <header class="bg-red-500 p-4 flex-shrink-0">
+    <header class="bg-red-500 p-4 flex-shrink-0 sticky top-0">
       (header)
     </header>
     <main class="space-y-4 bg-green-500 p-4 flex-1 min-h-0 overflow-auto">

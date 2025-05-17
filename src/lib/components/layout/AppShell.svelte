@@ -29,15 +29,17 @@
 	$: currentPath = $page.url.pathname;
 </script>
 
-<div class="grid h-screen grid-cols-1 md:grid-cols-[auto_1fr]">
+<div class="grid grid-cols-1 md:grid-cols-[auto_1fr]">
 	<!-- Desktop Sidebar (left, full height) -->
-	<Sidebar {isExpanded} {toggleExpanded} {currentPath} />
+	<aside class="hidden md:block bg-transparent sticky top-0 h-screen overflow-y-auto" style="width: {isExpanded ? '256px' : '56px'};">
+		<Sidebar {isExpanded} {toggleExpanded} {currentPath} />
+	</aside>
 	<!-- Content Area: header, main, footer -->
-	<div class="flex flex-col h-screen w-full">
+	<div class="flex flex-col min-h-screen w-full">
 		<div class="sticky top-0 z-10">
 			<Header />
 		</div>
-		<main class="flex-1 overflow-y-auto h-screen p-4 pb-[64px] md:pb-0">
+		<main class="flex-1 overflow-y-auto p-4 pb-[64px] md:pb-0">
 			<slot />
 		</main>
 		<footer class="flex-shrink-0 bg-surface-800 p-4">
