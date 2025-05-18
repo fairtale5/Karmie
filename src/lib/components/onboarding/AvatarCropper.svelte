@@ -87,7 +87,6 @@ function onRemove() {
   previewBlob = null;
   cropped(null);
   change('');
-  fileUploadApi?.clearFiles(); // Clear the FileUpload component's files
   croppingChange(false); // Cropping cancelled/removed
 }
 
@@ -202,12 +201,12 @@ async function getCroppedImg(imageSrc: string, crop: { x: number; y: number; wid
         oncropcomplete={({ pixels }) => onCropComplete(pixels)}
       />
       <button type="button" class="absolute top-2 right-2 z-10" on:click={onRemove} aria-label="Remove image">
-        <X class="text-error-500" size={24} />
+        <X class="text-white-600" size={24} />
       </button>
     </div>
     <div class="flex items-center gap-4 mt-2">
       <span class="text-xs">Zoom</span>
-      <Slider min={1} max={3} step={0.01} value={zoomArr} onValueChange={onSliderChange} />
+      <Slider min={1} max={3} step={0.01} value={zoomArr} onValueChange={onSliderChange} thumbSize="size-5" />
       <button type="button" class="btn btn-sm preset-filled-primary-500" on:click={confirmCrop}>
         Crop
       </button>
@@ -220,7 +219,7 @@ async function getCroppedImg(imageSrc: string, crop: { x: number; y: number; wid
   <div class="relative w-24 h-24 mx-auto mt-2">
     <img src={previewUrl} alt="Avatar preview" class="rounded-full w-full h-full object-cover" />
     <button type="button" class="absolute top-1 right-1 z-10" on:click={onRemove} aria-label="Remove image">
-      <X class="text-error-500" size={20} />
+      <X class="text-white-600" size={20} />
     </button>
   </div>
 {/if} 
