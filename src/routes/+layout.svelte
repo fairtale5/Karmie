@@ -2,7 +2,7 @@
 	import '../app.css';
 	import { onMount } from 'svelte';
 	import { initJuno } from '$lib/juno';
-	import { authSubscribe, getDoc, type User } from '@junobuild/core';
+	import { authSubscribe, type User } from '@junobuild/core';
 	import { goto } from '$app/navigation';
 	import { Toaster } from '@skeletonlabs/skeleton-svelte';
 	import { toaster } from '$lib/skeletonui/toaster-skeleton';
@@ -11,6 +11,7 @@
 	import type { UserData } from '$lib/types';
 	import AppShell from '$lib/components/layout/AppShell.svelte';
 	import { setPageMeta, page as pageStore } from '$lib/stores/page';
+	import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
 
 	let user: User | null = null;
 	let checkedOnboarding = false;
@@ -38,8 +39,14 @@
 			// 3. Current path requires a check
 			if (user && !checkedOnboarding && !EXEMPT_PATHS.includes(currentPath)) {
 				try {
-					const userDoc = await getDoc<UserData>({ collection: 'users', key: user.key });
-					if (!userDoc || !userDoc.data?.user_handle) {
+					// Use principal-based key pattern to find user doc
+					const principal = user.key;
+					const keyPattern = `_prn_${principal}_`;
+					const results = await queryDocsByKey<UserData>('users', keyPattern);
+					const userDoc = results.items[0]?.data;
+					// TODO: Centralize required fields in a shared constant or type for maintainability
+					const hasRequiredFields = userDoc && userDoc.user_handle && userDoc.display_name;
+					if (!userDoc || !hasRequiredFields) {
 						checkedOnboarding = true;
 						goto('/onboarding');
 					}

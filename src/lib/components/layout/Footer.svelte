@@ -8,18 +8,9 @@
 </script>
 
 <!-- Top separator only, no box -->
-<hr class="hr border-surface-200-800 mb-6 w-[80%] mx-auto mt-8" />
+<hr class="hr border-surface-200-800 mb-6 w-[80%] mx-auto mt-16" />
 
 <footer class="w-full p-4 bg-transparent">
-	<!-- Project name + slogan, centered -->
-	<div class="flex flex-col items-center text-center mb-6">
-		<span class="flex items-center justify-center gap-2 preset-typo-title text-lg md:text-2xl font-semibold">
-			<Megaphone size={22} class="text-primary-500 shrink-0" />
-			Reputator dApp
-		</span>
-		<span class="preset-typo-caption text-surface-500-400">Decentralized on-chain Reputations</span>
-	</div>
-
 	<!-- Two columns: About (left), Built using (right) -->
 	<div class="flex flex-col md:flex-row md:justify-between md:items-stretch gap-8 md:gap-16 max-w-4xl mx-auto mb-6">
 		<!-- About section: parallel structure -->
