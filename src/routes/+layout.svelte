@@ -52,10 +52,28 @@
 		});
 	});
 
-	setPageMeta({
-		title: 'Home',
-		description: 'Welcome to Reputator.'
-	});
+	// Set page metadata based on current route
+	$: {
+		if ($page.url.pathname === '/') {
+			setPageMeta({ title: 'Home' });
+		} else if ($page.url.pathname === '/dashboard') {
+			setPageMeta({ title: 'Dashboard' });
+		} else if ($page.url.pathname === '/tags-hub') {
+			setPageMeta({ title: 'Tags Hub' });
+		} else if ($page.url.pathname === '/tag/new') {
+			setPageMeta({ title: 'Create Tag' });
+		} else if ($page.url.pathname === '/user/me') {
+			setPageMeta({ title: 'Profile' });
+		} else if ($page.url.pathname === '/user') {
+			setPageMeta({ title: 'Users' });
+		} else if ($page.url.pathname === '/onboarding') {
+			setPageMeta({ title: 'Onboarding' });
+		} else if ($page.url.pathname === '/admin') {
+			setPageMeta({ title: 'Admin' });
+		} else {
+			setPageMeta({ title: 'Reputator' }); // fallback
+		}
+	}
 	$: meta = $pageStore;
 </script>
 
