@@ -168,6 +168,12 @@
         loading = false;
         return;
       }
+      // Validate display name
+      if (!displayName.trim()) {
+        toaster.error({ title: 'Validation Error', description: 'You must enter a display name.' });
+        loading = false;
+        return;
+      }
       // Validate authentication
       if (!$authUser) {
         toaster.error({ title: 'User not authenticated.', description: 'Please log in to set up your profile.' });
@@ -257,7 +263,7 @@
       </label>
       <label class="label">
         <span class="label-text">Display Name</span>
-        <input type="text" bind:value={displayName} class="input" autocomplete="off" disabled={!$authUser} />
+        <input type="text" bind:value={displayName} class="input" autocomplete="off" disabled={!$authUser} required />
       </label>
       <div class="label">
         <span class="label-text">Avatar (optional)</span>

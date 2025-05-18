@@ -216,7 +216,7 @@ async function getCroppedImg(imageSrc: string, crop: { x: number; y: number; wid
 
 <!-- Preview (only visible after cropping) -->
 {#if previewUrl}
-  <div class="relative w-24 h-24 mx-auto mt-2">
+  <div class="relative w-80 h-80 p-8 mx-auto mt-2">
     <img src={previewUrl} alt="Avatar preview" class="rounded-full w-full h-full object-cover" />
     <button type="button" class="absolute top-1 right-1 z-10" on:click={onRemove} aria-label="Remove image">
       <X class="text-white-600" size={20} />
