@@ -197,7 +197,7 @@ async function getCroppedImg(imageSrc: string, crop: { x: number; y: number; wid
         crop={crop}
         zoom={zoom}
         aspect={1}
-        cropShape="rect"
+        cropShape="round"
         showGrid={false}
         oncropcomplete={({ pixels }) => onCropComplete(pixels)}
       />
