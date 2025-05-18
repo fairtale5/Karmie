@@ -23,7 +23,7 @@
 	<!-- Two columns: About (left), Built using (right) -->
 	<div class="flex flex-col md:flex-row md:justify-between md:items-stretch gap-8 md:gap-16 max-w-4xl mx-auto mb-6">
 		<!-- About section: parallel structure -->
-		<div class="flex-1 flex flex-col h-[152px] items-center md:items-start text-center md:text-left">
+		<div class="flex-1 flex flex-col h-[184px] items-center md:items-start text-center md:text-left">
 			<div class="preset-typo-title text-base md:text-lg font-semibold mb-2 py-4">About</div>
 			<div class="flex flex-col justify-between h-full w-full">
 				<div class="flex items-center gap-4 mb-2 justify-center md:justify-start">
@@ -49,7 +49,7 @@
 		</div>
 
 		<!-- Built using section: parallel structure -->
-		<div class="flex-1 flex flex-col h-[152px] items-center md:items-end text-center md:text-right">
+		<div class="flex-1 flex flex-col h-[184px] items-center md:items-end text-center md:text-right">
 			<div class="preset-typo-title text-base md:text-lg font-semibold mb-2 py-4">Built using</div>
 			<div class="flex flex-col gap-2 items-center md:items-end h-full w-full">
 				<a href="https://juno.build" target="_blank" rel="noopener" title="Juno">

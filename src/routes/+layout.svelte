@@ -10,6 +10,7 @@
 	import { page } from '$app/stores';
 	import type { UserData } from '$lib/types';
 	import AppShell from '$lib/components/layout/AppShell.svelte';
+	import { setPageMeta, page as pageStore } from '$lib/stores/page';
 
 	let user: User | null = null;
 	let checkedOnboarding = false;
@@ -50,7 +51,20 @@
 			}
 		});
 	});
+
+	setPageMeta({
+		title: 'Home',
+		description: 'Welcome to Reputator.'
+	});
+	$: meta = $pageStore;
 </script>
+
+<svelte:head>
+	<title>{meta.title ? `${meta.title} | Reputator` : 'Reputator'}</title>
+	{#if meta.description}
+		<meta name="description" content={meta.description} />
+	{/if}
+</svelte:head>
 
 <!-- Global Skeleton Toaster for toast notifications -->
 <Toaster {toaster} />

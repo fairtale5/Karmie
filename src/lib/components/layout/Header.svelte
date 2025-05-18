@@ -1,5 +1,4 @@
 <script lang="ts">
-	export let title = 'Page Title';
 	import { Switch } from '@skeletonlabs/skeleton-svelte';
 	import { Sun, Moon } from 'lucide-svelte';
 	import { onMount } from 'svelte';
@@ -10,10 +9,13 @@
 	import { LOGIN_REDIRECT_URL, LOGOUT_REDIRECT_URL } from '$lib/settings';
 	import { toaster } from '$lib/skeletonui/toaster-skeleton';
 	import type { UserData } from '$lib/types';
+	import { page as pageStore, type PageMeta } from '$lib/stores/page';
 
 	let checked = false;
 	$: currentPath = $page.url.pathname;
 	let error: string | null = null;
+	let meta: PageMeta = {};
+	$: meta = $pageStore;
 	
 	onMount(() => {
 		// Handle theme dark vs light mode:
@@ -110,8 +112,7 @@
 <header class="bg-[var(--color-surface-50-950)] border-b border-[color-mix(in oklab,var(--color-surface-500)20%,transparent)]">
 	<div class="container mx-auto p-3 flex justify-between items-center">
 		<div class="flex items-center gap-4">
-			<a href="/" class="text-2xl font-bold text-[var(--color-primary-500)]">Reputator</a>
-			<span class="ml-2 text-xl font-semibold text-primary-700-300">{title}</span>
+			<span class="ml-2 text-xl font-semibold text-primary-700-300">{meta.title ?? ''}</span>
 		</div>
 		<div class="flex items-center gap-4">
 			<Switch 

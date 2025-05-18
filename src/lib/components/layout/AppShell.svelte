@@ -22,7 +22,6 @@
 	let checked = false;
 	// Placeholder for authUser (replace with your actual store/logic)
 	let authUser: any = null;
-	export let title = 'Page Title';
 	let isExpanded = true;
 
 	// On mount, check localStorage for sidebar state
