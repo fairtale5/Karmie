@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Header from '$lib/components/layout/Header.svelte';
-	import Sidebar from '$lib/components/layout/Sidebar.svelte';
+	import SidebarNavLeftRail from '$lib/components/layout/SidebarNavLeftRail.svelte';
+	import SidebarNavBottomBar from '$lib/components/layout/SidebarNavBottomBar.svelte';
 	import {
 		Home,
 		LayoutDashboard,
@@ -44,7 +45,7 @@
 <div class="grid grid-cols-1 md:grid-cols-[auto_1fr]">
 	<!-- Desktop Sidebar (left, full height) -->
 	<aside class="hidden md:block bg-transparent sticky top-0 h-screen overflow-y-auto" style="width: {isExpanded ? '256px' : '72px'};">
-		<Sidebar {isExpanded} {toggleExpanded} {currentPath} />
+		<SidebarNavLeftRail {isExpanded} {toggleExpanded} {currentPath} />
 	</aside>
 	<!-- Content Area: header, main, footer -->
 	<div class="flex flex-col min-h-screen w-full">
@@ -60,18 +61,9 @@
 		<FooterDeadzone />
 	</div>
 	<!-- Mobile Bottom Bar Sidebar -->
-	<aside class="fixed right-0 bottom-0 left-0 z-50 block w-full bg-transparent md:hidden" style="height:80px;">
-		<Navigation.Bar>
-			<Navigation.Tile label="Home" href="/"><Home class="h-6 w-6" /></Navigation.Tile>
-			<Navigation.Tile label="Dashboard" href="/dashboard"><LayoutDashboard class="h-6 w-6" /></Navigation.Tile>
-			<Navigation.Tile label="Tags" href="/tag"><Orbit class="h-6 w-6" /></Navigation.Tile>
-			<Navigation.Tile label="Create Tag" href="/tag/new"><SquarePen class="h-6 w-6" /></Navigation.Tile>
-			<Navigation.Tile label="Users" href="/user"><UserRoundSearch class="h-6 w-6" /></Navigation.Tile>
-			<Navigation.Tile label="Profile" href="/user/me"><User class="h-6 w-6" /></Navigation.Tile>
-			<Navigation.Tile label="Admin" href="/admin"><ShieldMinus class="h-6 w-6" /></Navigation.Tile>
-			<Navigation.Tile label="GitHub" href="https://github.com/your-repo" target="_blank"><Github class="h-6 w-6" /></Navigation.Tile>
-		</Navigation.Bar>
-	</aside>
+	<div class="block md:hidden">
+		<SidebarNavBottomBar />
+	</div>
 </div>
 
 <!--

@@ -76,4 +76,4 @@
 			<Navigation.Tile id="github" labelExpanded="GitHub" label="" href={GITHUB_URL} target="_blank"><Github /></Navigation.Tile>
 		{/snippet}
 	</Navigation.Rail>
-</aside> 
+</aside>
