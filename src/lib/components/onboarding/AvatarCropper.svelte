@@ -31,6 +31,7 @@ export let initialUrl = '';
 export let cropped: (blob: Blob | null) => void = () => {};
 export let change: (value: string) => void = () => {};
 export let croppingChange: (inProgress: boolean) => void = () => {};
+export let avatarFile: File | null = null;
 
 const MAX_SIZE_MB = 20;
 const ACCEPTED_TYPES = [
@@ -41,7 +42,6 @@ const ACCEPTED_TYPES = [
   'image/gif'
 ];
 
-let selectedFile: File | null = null;
 let imageUrl: string | null = initialUrl;
 let crop = { x: 0, y: 0 };
 let zoom = 1;
@@ -66,7 +66,7 @@ function onFileUploadChange(details: { acceptedFiles: File[] }) {
     fileUploadApi?.clearFiles();
     return;
   }
-  selectedFile = file;
+  avatarFile = file;
   const reader = new FileReader();
   reader.onload = (ev) => {
     imageUrl = ev.target?.result as string;
@@ -80,7 +80,7 @@ function onFileUploadChange(details: { acceptedFiles: File[] }) {
 }
 
 function onRemove() {
-  selectedFile = null;
+  avatarFile = null;
   imageUrl = null;
   showCropper = false;
   previewUrl = null;
@@ -200,7 +200,7 @@ async function getCroppedImg(imageSrc: string, crop: { x: number; y: number; wid
         showGrid={false}
         oncropcomplete={({ pixels }) => onCropComplete(pixels)}
       />
-      <button type="button" class="absolute top-2 right-2 z-10" on:click={onRemove} aria-label="Remove image">
+      <button type="button" class="absolute top-2 right-2 z-10" on:click={() => { onRemove(); fileUploadApi?.clearFiles(); }} aria-label="Remove image">
         <X class="text-white-600" size={24} />
       </button>
     </div>

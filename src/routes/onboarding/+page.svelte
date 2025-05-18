@@ -264,7 +264,7 @@
         {#if $authUser && $authUser.key}
           <AvatarCropper
             initialUrl={avatarUrl}
-            bind:file={avatarFile}
+            bind:avatarFile={avatarFile}
             cropped={handleCrop}
             change={(url) => avatarUrl = url}
             croppingChange={v => croppingInProgress = v}
