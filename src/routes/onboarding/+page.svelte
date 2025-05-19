@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { setDoc, getDoc, uploadFile } from '@junobuild/core';
+  import { setDoc, uploadFile } from '@junobuild/core';
   import { goto } from '$app/navigation';
   import type { UserData } from '$lib/types';
   import { authUser, authUserDoneInitializing } from '$lib/stores/authUser';
+  import { authUserDoc } from '$lib/stores/authUserDoc';
   import { toaster } from '$lib/skeletonui/toaster-skeleton';
   import NotLoggedInAlert from '$lib/components/common/NotLoggedInAlert.svelte';
   import { createUserDoc } from '$lib/docs-crud/user_create';
@@ -77,20 +78,12 @@
 
   // Only fetch user doc if authenticated and initialized
   $: if ($authUserDoneInitializing && $authUser && !userDocFetched) {
-    (async () => {
-      try {
-        const userDoc = await getDoc({ collection: 'users', key: $authUser.key });
-        const data = userDoc?.data as UserData | undefined;
-        if (userDoc) {
-          user_handle = data?.user_handle || '';
-          displayName = data?.display_name || '';
-          avatarUrl = data?.avatar_url || '';
-        }
-        userDocFetched = true;
-      } catch (e) {
-        // Ignore errors here
-      }
-    })();
+    if ($authUserDoc) {
+      user_handle = $authUserDoc.data.user_handle || '';
+      displayName = $authUserDoc.data.display_name || '';
+      avatarUrl = $authUserDoc.data.avatar_url || '';
+    }
+    userDocFetched = true;
   }
 
   // Ensure principal is always a string for avatar filename
@@ -193,8 +186,18 @@
         display_name: displayName.trim() || ' ',
         avatar_url: finalAvatarUrl
       });
-      toaster.success({ title: 'Profile saved!', description: 'Your profile has been updated.' });
-      goto('/tags-hub');
+
+      // Fetch the newly created document to ensure it's in the store
+      const keyPattern = `_prn_${$authUser.key}_`;
+      const results = await queryDocsByKey<UserData>('users', keyPattern);
+      const userDoc = results.items[0];
+      if (userDoc) {
+        authUserDoc.set(userDoc);
+        toaster.success({ title: 'Profile saved!', description: 'Your profile has been updated.' });
+        goto('/tags-hub');
+      } else {
+        throw new Error('Failed to fetch created user document');
+      }
     } catch (e) {
       // Show an error toast if saving fails
       toaster.error({ title: 'Failed to save profile.', description: e instanceof Error ? e.message : 'Unknown error.' });

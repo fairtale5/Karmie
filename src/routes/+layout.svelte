@@ -7,6 +7,7 @@
 	import { Toaster } from '@skeletonlabs/skeleton-svelte';
 	import { toaster } from '$lib/skeletonui/toaster-skeleton';
 	import { authUser, authUserDoneInitializing } from '$lib/stores/authUser';
+	import { authUserDoc } from '$lib/stores/authUserDoc';
 	import { page } from '$app/stores';
 	import type { UserData } from '$lib/types';
 	import AppShell from '$lib/components/layout/AppShell.svelte';
@@ -20,6 +21,21 @@
 	// List of paths that don't require user document check
 	const EXEMPT_PATHS = ['/onboarding', '/', '/login'];
 
+	// Function to fetch user document
+	async function fetchUserDoc(principal: string) {
+		try {
+			const keyPattern = `_prn_${principal}_`;
+			const results = await queryDocsByKey<UserData>('users', keyPattern);
+			const userDoc = results.items[0] || null; // Store the full document
+			authUserDoc.set(userDoc);
+			return userDoc;
+		} catch (e) {
+			console.error('Error fetching user document:', e);
+			authUserDoc.set(null);
+			return null;
+		}
+	}
+
 	onMount(async () => {
 		if (import.meta.env.DEV) {
 			toaster.info({
@@ -30,31 +46,72 @@
 			});
 		}
 
-		await initJuno();
+		// Initialize Juno with auth worker enabled
+		await initJuno({
+			workers: {
+				auth: true
+			}
+		});
+
+		// Handle session expiration
+		document.addEventListener("junoSignOutAuthTimer", () => {
+			toaster.warning({
+				title: 'Session Expired',
+				description: 'Your session has expired. Please sign in again.'
+			});
+			authUserDoc.set(null);
+			goto('/login');
+		});
+
+		// Handle remaining session time
+		document.addEventListener("junoDelegationRemainingTime", ((event: Event) => {
+			const customEvent = event as CustomEvent<number>;
+			// Optional: Show warning when session is about to expire
+			if (customEvent.detail < 5 * 60 * 1000) { // 5 minutes
+				toaster.warning({
+					title: 'Session Expiring Soon',
+					description: 'Your session will expire in 5 minutes. Please save your work.'
+				});
+			}
+		}) as EventListener);
+
+		// Subscribe to auth state changes
 		authSubscribe(async (state) => {
 			user = state;
-			// Only check user document if:
-			// 1. User is logged in
-			// 2. We haven't checked onboarding yet
-			// 3. Current path requires a check
-			if (user && !checkedOnboarding && !EXEMPT_PATHS.includes(currentPath)) {
-				try {
-					// Use principal-based key pattern to find user doc
-					const principal = user.key;
-					const keyPattern = `_prn_${principal}_`;
-					const results = await queryDocsByKey<UserData>('users', keyPattern);
-					const userDoc = results.items[0]?.data;
-					// TODO: Centralize required fields in a shared constant or type for maintainability
-					const hasRequiredFields = userDoc && userDoc.user_handle && userDoc.display_name;
-					if (!userDoc || !hasRequiredFields) {
-						checkedOnboarding = true;
-						goto('/onboarding');
-					}
-				} catch (e) {
-					// If backend fails, still try to show onboarding
+			authUser.set(state);
+
+			// Clear user document when logged out
+			if (!state) {
+				authUserDoc.set(null);
+				authUserDoneInitializing.set(true);
+				return;
+			}
+
+			// Always check user document on login
+			try {
+				const userDoc = await fetchUserDoc(state.key);
+				const hasRequiredFields = userDoc && userDoc.data.user_handle && userDoc.data.display_name;
+				
+				// If no document or missing fields, redirect to onboarding
+				if (!userDoc || !hasRequiredFields) {
 					checkedOnboarding = true;
 					goto('/onboarding');
+					authUserDoneInitializing.set(true);
+					return;
 				}
+
+				// If we're on an exempt path, don't redirect
+				if (EXEMPT_PATHS.includes(currentPath)) {
+					authUserDoneInitializing.set(true);
+					return;
+				}
+
+				// Document is complete, allow access to the current page
+				authUserDoneInitializing.set(true);
+			} catch (e) {
+				console.error('Error checking user document:', e);
+				checkedOnboarding = true;
+				goto('/onboarding');
 			}
 		});
 	});

@@ -4,7 +4,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { authUser } from '$lib/stores/authUser';
-	import { signIn, signOut, getDoc } from '@junobuild/core';
+	import { signIn, signOut } from '@junobuild/core';
 	import { goto } from '$app/navigation';
 	import { LOGIN_REDIRECT_URL, LOGOUT_REDIRECT_URL } from '$lib/settings';
 	import { toaster } from '$lib/skeletonui/toaster-skeleton';
@@ -41,13 +41,10 @@
 	}
 
 	/**
-	 * Handles login and redirects based on user document existence.
-	 * If user has no document, redirects to onboarding.
-	 * If user has document, redirects to reputations.
+	 * Handles login. All onboarding and redirect logic is now centralized in +layout.svelte.
 	 */
 	async function handleLogin() {
 		try {
-			// First attempt login
 			await toaster.promise(
 				signIn(),
 				{
@@ -56,27 +53,7 @@
 					error: { title: 'Login failed', description: 'Please try again.' }
 				}
 			);
-
-			// After successful login, check for user document
-			const user = $authUser;
-			if (!user) {
-				throw new Error('Login succeeded but user state is not available');
-			}
-
-			try {
-				const userDoc = await getDoc<UserData>({ collection: 'users', key: user.key });
-				if (!userDoc || !userDoc.data?.user_handle) {
-					// No user document or incomplete - redirect to onboarding
-					goto('/onboarding');
-				} else {
-					// User document exists - redirect to reputations
-					goto(LOGIN_REDIRECT_URL);
-				}
-			} catch (e) {
-				// If we can't check user document, default to onboarding
-				console.error('Failed to check user document:', e);
-				goto('/onboarding');
-			}
+			// All post-login checks and redirects are handled in +layout.svelte
 		} catch (e) {
 			// Other errors are already handled by the toaster.promise above
 		}

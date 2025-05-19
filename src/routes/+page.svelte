@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { initJuno } from '$lib/juno';
 	import { page } from '$app/stores';
+	import { authUserDoc } from '$lib/stores/authUserDoc';
 	
 	let initialized = false;
 	let user: User | null = null;
@@ -61,6 +62,24 @@
 		try {
 			error = '';
 			await signIn();
+			// Wait for auth state to be set
+			await new Promise<void>((resolve) => {
+				const unsubscribe = authSubscribe(async (state) => {
+					if (state) {
+						// Use the document from the store instead of fetching again
+						const userDoc = $authUserDoc;
+						const hasRequiredFields = userDoc && userDoc.data.user_handle && userDoc.data.display_name;
+						
+						if (!userDoc || !hasRequiredFields) {
+							goto('/onboarding');
+						} else {
+							goto('/tags-hub');
+						}
+						unsubscribe();
+						resolve();
+					}
+				});
+			});
 		} catch (e) {
 			console.error('Login failed:', e);
 			error = e instanceof Error ? e.message : 'Login failed';
