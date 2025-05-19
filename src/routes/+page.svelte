@@ -86,7 +86,32 @@
 			Reputator is a tool to track reputations across any app, store, community, or game. Any dev can integrate it easily into their app with just a few API calls. Everything is handled on-chain, so not even the owners of those apps can adulterate or censor any votes. It gives true transparency and power to users.
 		</p>
 		{#if !user}
-			<button on:click={login} class="btn preset-filled-primary-500 w-full sm:w-auto text-lg mb-4">Login with Internet Identity</button>
+			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-xl mx-auto mt-4">
+				<!-- Top row -->
+				<button on:click={login} class="btn preset-filled-primary-500 w-full text-lg">
+					Login with Internet Identity
+				</button>
+				<a
+					href="https://internetcomputer.org/internet-identity"
+					target="_blank"
+					rel="noopener"
+					class="btn preset-filled-secondary-500 w-full text-lg"
+				>
+					What is an Internet Identity?
+				</a>
+
+				<!-- Bottom row -->
+				<!--
+				<button class="btn bg-surface-200 text-surface-500 w-full text-lg flex flex-col items-center leading-tight" disabled>
+					Create & Track a Reputation
+					<span class="text-xs">(coming soon)</span>
+				</button>
+				<button class="btn bg-surface-200 text-surface-500 w-full text-lg flex flex-col items-center leading-tight" disabled>
+					Integrate in Your App
+					<span class="text-xs">(coming soon)</span>
+				</button>
+				-->
+			</div>
 			{#if error}
 				<div class="alert alert-error mt-2">{error}</div>
 			{/if}
@@ -96,10 +121,6 @@
 				<button on:click={logout} class="btn preset-outlined-primary-500 w-full sm:w-auto">Logout</button>
 			</div>
 		{/if}
-		<div class="flex flex-col sm:flex-row gap-4 justify-center mt-4">
-			<button class="btn preset-filled-secondary-500 w-full sm:w-auto text-lg" disabled>Register Your Community (coming soon)</button>
-			<button class="btn preset-filled-tertiary-500 w-full sm:w-auto text-lg" disabled>Integrate in Your App (coming soon)</button>
-		</div>
 	</div>
 </section>
 
