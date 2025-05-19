@@ -49,7 +49,9 @@ pub struct UserData {
 
     /// Display name (not required to be unique)
     pub display_name: String,
-    
+
+    /// Avatar URL (can be empty string)
+    pub avatar_url: String,
 }
 
 /// Represents a tag that can be used for categorizing votes and reputation
