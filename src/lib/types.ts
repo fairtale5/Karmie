@@ -2,34 +2,22 @@
 // Temporarily comment out ULID import until we implement serialization
 // import type { ULID } from './keys/ulid_types';
 
-export interface JunoDocument<T> {
-    // Key formating and components depend on the collection:
-    // - user: _prn_{principal}_usr_{userUlid}_hdl_{userHandle}_
-    // - tag: usr_{userUlid}_tag_{tagUlid}_hdl_{tagHandle}_
-    // - vote: usr_{userUlid}_tag_{tagUlid}_tar_{targetUlid}_key_{voteUlid}_
-    // - reputation: usr_{userUlid}_tag_{tagUlid}_
-    key: string;           // Concatenated string of the key components
-    description: string;   // Description for searching/filtering
-    owner: string;         // Principal ID of document owner
-    created_at: bigint;    // Creation timestamp in nanoseconds
-    updated_at: bigint;    // Last update timestamp in nanoseconds
-    version: bigint;       // Document version for concurrency control
-    data: T;               // The actual document data - varies by collection
-}
+// Import the Doc type from the Juno SDK
+import type { Doc } from '@junobuild/core';
 
 /**
  * User data interface
  *
  * - user_handle: Unique username/handle (required)
- * - display_name: Display name (optional)
+ * - display_name: Display name (required)
  * - user_key: ULID for this user (required, string)
  * - avatar_url: Avatar URL (required, can be empty string)
  */
 export interface UserData {
     user_handle: string;    // Unique username/handle (required)
-    display_name?: string;  // Display name (optional)
-    user_key: string;       // ULID for this user (required, string)
-    avatar_url: string;     // Avatar URL (required, can be empty string)
+    display_name: string;  // Display name (required)
+    user_key: string;      // ULID for this user (required, string)
+    avatar_url: string;    // Avatar URL (required, can be empty string)
 }
 
 /**
@@ -101,8 +89,16 @@ export interface ReputationData {
     has_voting_power: boolean;              // Whether user has sufficient reputation
 }
 
-// Helper type definitions for each collection
-export type UserDocument = JunoDocument<UserData>;
-export type TagDocument = JunoDocument<TagData>;
-export type VoteDocument = JunoDocument<VoteData>;
-export type ReputationDocument = JunoDocument<ReputationData>; 
+// --- Canonical document types using the SDK's Doc<T> ---
+
+/** A user document as returned by Juno SDK */
+export type UserDocument = Doc<UserData>;
+/** A tag document as returned by Juno SDK */
+export type TagDocument = Doc<TagData>;
+/** A vote document as returned by Juno SDK */
+export type VoteDocument = Doc<VoteData>;
+/** A reputation document as returned by Juno SDK */
+export type ReputationDocument = Doc<ReputationData>;
+
+// Optionally, you can define a generic alias for all your documents:
+export type AppDocument<T> = Doc<T>; 

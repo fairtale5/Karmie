@@ -1,0 +1,1 @@
+<div class="block md:hidden w-full h-[80px]"></div> 

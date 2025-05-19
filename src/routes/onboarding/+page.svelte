@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { setDoc, getDoc, uploadFile } from '@junobuild/core';
+  import { setDoc, uploadFile } from '@junobuild/core';
   import { goto } from '$app/navigation';
   import type { UserData } from '$lib/types';
   import { authUser, authUserDoneInitializing } from '$lib/stores/authUser';
+  import { authUserDoc } from '$lib/stores/authUserDoc';
   import { toaster } from '$lib/skeletonui/toaster-skeleton';
   import NotLoggedInAlert from '$lib/components/common/NotLoggedInAlert.svelte';
   import { createUserDoc } from '$lib/docs-crud/user_create';
@@ -18,8 +19,18 @@
   let usernameStatus: 'idle' | 'loading' | 'available' | 'taken' | 'error' = 'idle';
   let lastCheckedHandle = '';
   let principalString = '';
-  let croppedAvatarBlob: Blob | null = null;
   let croppingInProgress = false;
+  let avatarUploadPromise: Promise<any> | null = null;
+  let avatarUrlToSave: string = '';
+  let avatarUploadComplete = false;
+  let saveProfileRequested = false;
+
+  /**
+   * Single source of truth for the avatar file.
+   * This variable is shared between the upload area and the cropper.
+   * When set/cleared in one place, the other updates automatically.
+   */
+  let avatarFile: File | null = null;
 
   /**
    * Utility: debounce
@@ -67,20 +78,12 @@
 
   // Only fetch user doc if authenticated and initialized
   $: if ($authUserDoneInitializing && $authUser && !userDocFetched) {
-    (async () => {
-      try {
-        const userDoc = await getDoc({ collection: 'users', key: $authUser.key });
-        const data = userDoc?.data as UserData | undefined;
-        if (userDoc) {
-          user_handle = data?.user_handle || '';
-          displayName = data?.display_name || '';
-          avatarUrl = data?.avatar_url || '';
-        }
-        userDocFetched = true;
-      } catch (e) {
-        // Ignore errors here
-      }
-    })();
+    if ($authUserDoc) {
+      user_handle = $authUserDoc.data.user_handle || '';
+      displayName = $authUserDoc.data.display_name || '';
+      avatarUrl = $authUserDoc.data.avatar_url || '';
+    }
+    userDocFetched = true;
   }
 
   // Ensure principal is always a string for avatar filename
@@ -95,48 +98,112 @@
     await saveProfile();
   }
 
+  /**
+   * Handles the avatar cropping and upload process.
+   *
+   * This function is called when the user clicks 'Crop' in the avatar cropper.
+   * It immediately starts uploading the cropped avatar image to the backend (Juno Storage).
+   * The upload result is logged to the console so we can inspect the returned object and determine the correct URL property.
+   *
+   * If the user clicks 'Save Profile' before the upload is complete, the save handler will wait for this promise to resolve.
+   *
+   * @param blob - The cropped avatar image as a Blob (or null if removed)
+   */
+  async function handleCrop(blob: Blob | null) {
+    if (!blob) {
+      // If the user removes the avatar, reset all upload state
+      avatarUploadPromise = null;
+      avatarUrlToSave = '';
+      avatarUploadComplete = false;
+      avatarFile = null;
+      return;
+    }
+    avatarUploadComplete = false;
+    // Use the user's principal (key) for the filename, so it is unique and stable
+    const file = new File([blob], `avatar_${principalString}.webp`, { type: 'image/webp' });
+    avatarUploadPromise = uploadFile({
+      data: file, // Pass the File object so the backend gets a name
+      collection: 'user_avatars',
+      filename: file.name // Explicitly set the filename for clarity
+    })
+      .then(result => {
+        // Log the upload result so we can inspect the returned object
+        console.log('Avatar upload result:', result);
+        // Use downloadUrl or fullPath for the avatar URL
+        avatarUrlToSave = result.downloadUrl || result.fullPath || '';
+        avatarUploadComplete = true;
+        avatarFile = file;
+      })
+      .catch(err => {
+        // Show an error toast if the upload fails
+        toaster.error({ title: 'Avatar upload failed', description: err.message });
+        avatarUrlToSave = '';
+        avatarUploadComplete = false;
+        avatarFile = null;
+      });
+  }
+
+  /**
+   * Handles the profile save process.
+   *
+   * This function is called when the user clicks 'Save Profile'.
+   * If an avatar upload is in progress, it waits for the upload to finish before saving the user document.
+   * The avatar URL (if available) is included in the user document.
+   *
+   * Error handling ensures the user is notified if validation fails or if the upload/save fails.
+   */
   async function saveProfile() {
     loading = true;
     try {
+      // Validate username
       if (!user_handle.trim()) {
         toaster.error({ title: 'Validation Error', description: 'You must enter a username.' });
         loading = false;
         return;
       }
+      // Validate display name
+      if (!displayName.trim()) {
+        toaster.error({ title: 'Validation Error', description: 'You must enter a display name.' });
+        loading = false;
+        return;
+      }
+      // Validate authentication
       if (!$authUser) {
         toaster.error({ title: 'User not authenticated.', description: 'Please log in to set up your profile.' });
         loading = false;
         return;
       }
-      // Upload avatar if a new one was cropped
-      let avatarUrlToSave = avatarUrl;
-      if (croppedAvatarBlob && principalString) {
-        const filename = `avatar_${principalString}.webp`;
-        try {
-          const file = new File([croppedAvatarBlob], filename, { type: 'image/webp' });
-          const result = await uploadFile({
-            data: file,
-            collection: 'user_avatars',
-            filename
-          });
-          avatarUrlToSave = result.downloadUrl;
-        } catch (e) {
-          toaster.error({ title: 'Avatar upload failed', description: e instanceof Error ? e.message : 'Unknown error.' });
-          loading = false;
-          return;
-        }
+      saveProfileRequested = true;
+      // If avatar upload is in progress, wait for it to finish
+      if (avatarUploadPromise) {
+        await avatarUploadPromise;
       }
+      // Use the uploaded avatar URL if available, otherwise fallback to previous avatarUrl
+      const finalAvatarUrl = avatarUrlToSave || avatarUrl || '';
+      // Save the user document with the avatar URL
       await createUserDoc({
         user_handle: user_handle.trim(),
         display_name: displayName.trim() || ' ',
-        avatar_url: avatarUrlToSave || ''
+        avatar_url: finalAvatarUrl
       });
-      toaster.success({ title: 'Profile saved!', description: 'Your profile has been updated.' });
-      goto('/tags-hub');
+
+      // Fetch the newly created document to ensure it's in the store
+      const keyPattern = `_prn_${$authUser.key}_`;
+      const results = await queryDocsByKey<UserData>('users', keyPattern);
+      const userDoc = results.items[0];
+      if (userDoc) {
+        authUserDoc.set(userDoc);
+        toaster.success({ title: 'Profile saved!', description: 'Your profile has been updated.' });
+        goto('/tags-hub');
+      } else {
+        throw new Error('Failed to fetch created user document');
+      }
     } catch (e) {
+      // Show an error toast if saving fails
       toaster.error({ title: 'Failed to save profile.', description: e instanceof Error ? e.message : 'Unknown error.' });
     } finally {
       loading = false;
+      saveProfileRequested = false;
     }
   }
 
@@ -199,17 +266,15 @@
       </label>
       <label class="label">
         <span class="label-text">Display Name</span>
-        <input type="text" bind:value={displayName} class="input" autocomplete="off" disabled={!$authUser} />
+        <input type="text" bind:value={displayName} class="input" autocomplete="off" disabled={!$authUser} required />
       </label>
       <div class="label">
         <span class="label-text">Avatar (optional)</span>
         {#if $authUser && $authUser.key}
           <AvatarCropper
             initialUrl={avatarUrl}
-            cropped={(blob) => {
-              croppedAvatarBlob = blob;
-              if (blob === null) croppingInProgress = false;
-            }}
+            bind:avatarFile={avatarFile}
+            cropped={handleCrop}
             change={(url) => avatarUrl = url}
             croppingChange={v => croppingInProgress = v}
           />

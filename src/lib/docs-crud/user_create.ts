@@ -9,25 +9,22 @@ import { formatUserKey } from '../keys/format_key_user';
  *
  * @param user_handle - Unique username/handle (required)
  * @param display_name - Display name (optional)
- * @param description - User profile description (optional)
  * @param avatar_url - Profile picture URL (optional)
  *
  * @returns {Promise<void>} Resolves when the user is created, throws on error
  *
  * @example
- * await createUserDoc({ user_handle: 'alice', display_name: 'Alice', description: 'Web3 dev', avatar_url: 'https://...' });
+ * await createUserDoc({ user_handle: 'alice', display_name: 'Alice', avatar_url: 'https://...' });
  *
  * Note: This function uses the global authUser Svelte store for principal lookup.
  */
 export async function createUserDoc({
   user_handle,
   display_name = '',
-  description = '',
   avatar_url = ''
 }: {
   user_handle: string;
   display_name?: string;
-  description?: string;
   avatar_url: string;
 }): Promise<void> {
   // Get the current authenticated user (principal) from the Svelte store
@@ -50,7 +47,6 @@ export async function createUserDoc({
   const userDocData = {
     user_handle,
     display_name,
-    description,
     avatar_url,
     user_key: userUlid
   };
