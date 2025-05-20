@@ -194,7 +194,7 @@
       if (userDoc) {
         authUserDoc.set(userDoc);
         toaster.success({ title: 'Profile saved!', description: 'Your profile has been updated.' });
-        goto('/tags-hub');
+        goto('/dashboard');
       } else {
         throw new Error('Failed to fetch created user document');
       }

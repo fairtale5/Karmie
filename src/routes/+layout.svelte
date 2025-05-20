@@ -47,11 +47,7 @@
 		}
 
 		// Initialize Juno with auth worker enabled
-		await initJuno({
-			workers: {
-				auth: true
-			}
-		});
+		await initJuno();
 
 		// Handle session expiration
 		document.addEventListener("junoSignOutAuthTimer", () => {
@@ -122,8 +118,8 @@
 			setPageMeta({ title: 'Home' });
 		} else if ($page.url.pathname === '/dashboard') {
 			setPageMeta({ title: 'Dashboard' });
-		} else if ($page.url.pathname === '/tags-hub') {
-			setPageMeta({ title: 'Tags Hub' });
+		} else if ($page.url.pathname === '/tags') {
+			setPageMeta({ title: 'Tags' });
 		} else if ($page.url.pathname === '/tag/new') {
 			setPageMeta({ title: 'Create Tag' });
 		} else if ($page.url.pathname === '/user/me') {
