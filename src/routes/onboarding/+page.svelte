@@ -11,19 +11,21 @@
   import { LoaderCircle, CheckCircle, XCircle } from 'lucide-svelte';
   import AvatarCropper from '$lib/components/onboarding/AvatarCropper.svelte';
 
-  let user_handle = '';
-  let displayName = '';
-  let avatarUrl = '';
-  let loading = false;
-  let userDocFetched = false;
-  let usernameStatus: 'idle' | 'loading' | 'available' | 'taken' | 'error' = 'idle';
-  let lastCheckedHandle = '';
-  let principalString = '';
-  let croppingInProgress = false;
+  // Form state using runes
+  let user_handle = $state('');
+  let displayName = $state('');
+  let avatarUrl = $state('');
+  let loading = $state(false);
+  let userDocFetched = $state(false);
+  let usernameStatus = $state<'idle' | 'loading' | 'available' | 'taken' | 'error' | 'invalid'>('idle');
+  let usernameError = $state('');
+  let lastCheckedHandle = $state('');
+  let principalString = $state('');
+  let croppingInProgress = $state(false);
   let avatarUploadPromise: Promise<any> | null = null;
-  let avatarUrlToSave: string = '';
-  let avatarUploadComplete = false;
-  let saveProfileRequested = false;
+  let avatarUrlToSave = $state('');
+  let avatarUploadComplete = $state(false);
+  let saveProfileRequested = $state(false);
 
   /**
    * Single source of truth for the avatar file.
@@ -32,20 +34,36 @@
    */
   let avatarFile: File | null = null;
 
-  /**
-   * Utility: debounce
-   *
-   * Returns a debounced version of the provided function, ensuring it is only invoked
-   * after the specified delay has elapsed since the last call. Used to limit the rate
-   * of backend queries for username availability as the user types in the onboarding form.
-   *
-   * @template T - The function type to debounce
-   * @param fn - The function to debounce
-   * @param delay - The debounce delay in milliseconds
-   * @returns A debounced function with the same parameters as the original
-   *
-   * Usage: Used for debouncing username availability checks to avoid excessive backend requests.
-   */
+  function validateUsername(name: string): { isValid: boolean; error?: string } {
+    if (!name) return { isValid: false, error: 'Username is required' };
+    
+    // Check for spaces
+    if (name.includes(' ')) {
+      return { isValid: false, error: 'No spaces allowed' };
+    }
+
+    // Check for special characters and validate format
+    const validFormat = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+    if (!validFormat.test(name)) {
+      return { 
+        isValid: false, 
+        error: 'Only lowercase letters, numbers, and single dashes between words allowed' 
+      };
+    }
+
+    // Check for consecutive dashes
+    if (name.includes('--')) {
+      return { isValid: false, error: 'No consecutive dashes allowed' };
+    }
+
+    // Check for dashes at start or end
+    if (name.startsWith('-') || name.endsWith('-')) {
+      return { isValid: false, error: 'Dashes not allowed at start or end' };
+    }
+
+    return { isValid: true };
+  }
+
   function debounce<T extends (...args: any[]) => void>(fn: T, delay: number): (...args: Parameters<T>) => void {
     let timeout: ReturnType<typeof setTimeout>;
     return (...args: Parameters<T>) => {
@@ -55,10 +73,25 @@
   }
 
   const checkUsername = debounce(async (handle: string) => {
+    // Reset status
+    usernameStatus = 'idle';
+    usernameError = '';
+
+    // Basic length check
     if (!handle || handle.length < 3) {
       usernameStatus = 'idle';
       return;
     }
+
+    // Validate format
+    const validation = validateUsername(handle);
+    if (!validation.isValid) {
+      usernameStatus = 'invalid';
+      usernameError = validation.error || 'Invalid username format';
+      return;
+    }
+
+    // If valid, check availability
     usernameStatus = 'loading';
     lastCheckedHandle = handle;
     try {
@@ -76,18 +109,24 @@
     }
   }, 350);
 
-  // Only fetch user doc if authenticated and initialized
-  $: if ($authUserDoneInitializing && $authUser && !userDocFetched) {
-    if ($authUserDoc) {
-      user_handle = $authUserDoc.data.user_handle || '';
-      displayName = $authUserDoc.data.display_name || '';
-      avatarUrl = $authUserDoc.data.avatar_url || '';
+  $effect(() => {
+    if ($authUserDoneInitializing && $authUser && !userDocFetched) {
+      if ($authUserDoc) {
+        user_handle = $authUserDoc.data.user_handle || '';
+        displayName = $authUserDoc.data.display_name || '';
+        avatarUrl = $authUserDoc.data.avatar_url || '';
+      }
+      userDocFetched = true;
     }
-    userDocFetched = true;
-  }
+  });
 
-  // Ensure principal is always a string for avatar filename
-  $: principalString = typeof $authUser?.key === 'string' ? $authUser.key : '';
+  $effect(() => {
+    principalString = typeof $authUser?.key === 'string' ? $authUser.key : '';
+  });
+
+  $effect(() => {
+    checkUsername(user_handle);
+  });
 
   async function handleSubmit(event: Event) {
     event.preventDefault();
@@ -206,9 +245,6 @@
       saveProfileRequested = false;
     }
   }
-
-  $: if (user_handle && user_handle.length >= 3) checkUsername(user_handle);
-  $: if (!user_handle || user_handle.length < 3) usernameStatus = 'idle';
 </script>
 
 {#if !$authUserDoneInitializing}
