@@ -43,11 +43,11 @@
     }
 
     // Check for special characters and validate format
-    const validFormat = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+    const validFormat = /^[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*$/;
     if (!validFormat.test(name)) {
       return { 
         isValid: false, 
-        error: 'Only lowercase letters, numbers, and single dashes between words allowed' 
+        error: 'Only letters, numbers, and single dashes between words allowed' 
       };
     }
 
@@ -269,16 +269,17 @@
     </fieldset>
     <fieldset class="space-y-2">
       <label class="label">
-        <span class="label-text">Username</span>
+        <span class="label-text text-base font-medium opacity-70">Username</span>
         <div class="relative w-full">
           <input
             type="text"
             bind:value={user_handle}
-            class="input pr-10"
+            class="input pr-10 border-primary-300-700 focus:border-primary-500 focus:ring-primary-500 bg-surface-50-950"
             required
             autocomplete="off"
             aria-describedby="username-status"
             disabled={!$authUser}
+            placeholder="Choose a unique username"
           />
           <span class="absolute right-2 top-1/2 -translate-y-1/2" aria-live="polite" id="username-status">
             {#if usernameStatus === 'loading'}
@@ -301,11 +302,19 @@
         {/if}
       </label>
       <label class="label">
-        <span class="label-text">Display Name</span>
-        <input type="text" bind:value={displayName} class="input" autocomplete="off" disabled={!$authUser} required />
+        <span class="label-text text-base font-medium opacity-70">Display Name</span>
+        <input 
+          type="text" 
+          bind:value={displayName} 
+          class="input border-primary-300-700 focus:border-primary-500 focus:ring-primary-500 bg-surface-50-950" 
+          autocomplete="off" 
+          disabled={!$authUser} 
+          required 
+          placeholder="Enter your display name"
+        />
       </label>
       <div class="label">
-        <span class="label-text">Avatar (optional)</span>
+        <span class="label-text text-base font-medium opacity-70">Avatar (optional)</span>
         {#if $authUser && $authUser.key}
           <AvatarCropper
             initialUrl={avatarUrl}

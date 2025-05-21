@@ -13,79 +13,23 @@ git commits should always:
 
 Example of what a good commit looks like:
 
-# Example: Good Commit Message Structure
+type(scope): concise summary of changes
 
-## 1. Title (Short, Clear, and Descriptive)
-Refactor: Remove KeySegment, Standardize on query_doc_by_key
+Overview:
+A clear, high-level description of what this commit accomplishes and why it's important.
 
-## 2. Summary/Context (Why)
-To simplify and standardize backend queries, we removed the now-unused KeySegment enum and the legacy query_doc function. This change reduces confusion, eliminates dead code, and ensures all key-based queries use a single, flexible function. This aligns with our migration plan in docs/core/todo/code_dir_structure.md and improves maintainability and clarity for all contributors.
+Changes:
+- Bullet point list of specific changes, grouped by feature/component
+- Each bullet point starts with a verb in present tense
+- Include specific values, thresholds, or important details
+- Group related changes together
 
-## 3. Detailed List of Changes (Per File)
+Files changed:
+- path/to/file1
+  - Specific changes made to this file
+  - Implementation details or important notes
+- path/to/file2
+  - Changes and their impact
+  - Any relevant implementation details
 
-- src/satellite/src/processors/document_queries.rs
-  - Why: KeySegment and query_doc were legacy patterns that complicated query logic and were no longer needed after recent refactors.
-  - What: Removed KeySegment enum, its impl, and all related tests and doc comments. Deleted the query_doc function. Updated all documentation and examples to use query_doc_by_key.
-  - Result: The file is now much simpler, with only one query function and no dead code.
-
-- src/satellite/src/core/tag_calculations.rs
-  - Why: This file previously used query_doc and referenced KeySegment in comments and imports.
-  - What: Replaced all query_doc calls with query_doc_by_key and updated comments. Removed KeySegment from imports.
-  - Result: Query logic is now consistent and easier to follow.
-
-- src/satellite/src/core/reputation_calculations.rs
-  - Why: To remove all references to KeySegment and standardize on query_doc_by_key.
-  - What: Removed KeySegment import. Confirmed all queries use query_doc_by_key.
-  - Result: No more dead code or legacy imports.
-
-- src/satellite/src/assert_set_doc/assert_doc_user.rs
-  - Why: To eliminate legacy query patterns and imports.
-  - What: Replaced query_doc with query_doc_by_key. Removed KeySegment from imports.
-  - Result: Cleaner, more maintainable code.
-
-- src/satellite/src/assert_set_doc/assert_doc_tag.rs
-  - Why: To update query logic and remove unused imports.
-  - What: Replaced query_doc with query_doc_by_key. Removed KeySegment from imports. Updated comments.
-  - Result: Consistent query usage and no dead code.
-
-- src/satellite/src/assert_set_doc/assert_doc_vote.rs
-  - Why: To remove unused KeySegment import and ensure all queries use the new pattern.
-  - What: Removed KeySegment from imports. Confirmed all queries use query_doc_by_key.
-  - Result: No more legacy imports or patterns.
-
-- src/satellite/src/lib.rs
-  - Why: To clean up re-exports and ensure only the new query function is exposed.
-  - What: Removed KeySegment from pub use. Now only re-exports query_doc_by_key.
-  - Result: Cleaner public API for query helpers.
-
-- docs/core/todo/code_dir_structure.md
-  - Why: To document the migration and ensure future contributors understand the rationale and process.
-  - What: Updated to reflect the new query pattern and removal of KeySegment.
-  - Result: Documentation is now accurate and up to date.
-
-## 4. Conclusion
-- All code now uses a single, flexible query function for key-based queries.
-- No dead code, legacy enums, or unused imports remain.
-- The codebase is easier to maintain, understand, and extend.
-- All changes were tested and verified to work as expected. No regressions observed.
-
----
-
-# Commit Message Template
-
-1. Title (Short, Clear, and Descriptive)
-
-2. Summary/Context (Why)
-- Explain why this change was made, what problem it solves, and what benefits it brings. Reference documentation or migration plan if possible.
-
-3. Detailed List of Changes (Per File)
-- For each file changed:
-  - Add the path and filename.
-  - Add bullet points explaining:
-    - Why the file was changed.
-    - What was changed, added, removed, or fixed.
-    - What is the result? Did it work, is it better?
-
-4. Conclusion
-- Summarize the overall impact, what was tested, and any next steps or caveats.
-
+[Optional] Additional context or notes about the changes, especially if they affect other parts of the system or have important implications.

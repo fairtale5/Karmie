@@ -40,6 +40,9 @@ let errorGlobal = '';
 let reputationPopoverOpen = $state(false);
 let voteRewardPopoverOpen = $state(false);
 let minUsersPopoverOpen = $state(false);
+let tagNamePopoverOpen = $state(false);
+let descriptionPopoverOpen = $state(false);
+let timePeriodsPopoverOpen = $state(false);
 
 // Tag name checking state
 let tagNameStatus = $state<'idle' | 'loading' | 'available' | 'taken' | 'error' | 'invalid'>('idle');
@@ -55,11 +58,11 @@ function validateTagName(name: string): { isValid: boolean; error?: string } {
   }
 
   // Check for special characters and validate format
-  const validFormat = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+  const validFormat = /^[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*$/;
   if (!validFormat.test(name)) {
     return { 
       isValid: false, 
-      error: 'Only lowercase letters, numbers, and single dashes between words allowed' 
+      error: 'Only letters, numbers, and single dashes between words allowed' 
     };
   }
 
@@ -130,6 +133,18 @@ function closeMinUsersPopover() {
   minUsersPopoverOpen = false;
 }
 
+function closeTagNamePopover() {
+  tagNamePopoverOpen = false;
+}
+
+function closeDescriptionPopover() {
+  descriptionPopoverOpen = false;
+}
+
+function closeTimePeriodsPopover() {
+  timePeriodsPopoverOpen = false;
+}
+
 async function saveTag() {
   errorGlobal = '';
   loading = true;
@@ -194,16 +209,43 @@ function removeTimePeriod(i: number) {
     <form on:submit|preventDefault={saveTag} class="space-y-5">
       <div>
         <label class="label">
-          <span class="label-text">Tag Name</span>
+          <div class="flex items-center gap-1">
+            <span class="label-text text-base font-medium opacity-70">Tag Name</span>
+            <Popover
+              open={tagNamePopoverOpen}
+              onOpenChange={(e) => (tagNamePopoverOpen = e.open)}
+              positioning={{ placement: 'top', flip: true }}
+              triggerBase="btn-icon variant-ghost"
+              contentBase="card bg-surface-200-800 p-4 space-y-4 max-w-[320px]"
+              arrow
+              arrowBackground="!bg-surface-200 dark:!bg-surface-800"
+            >
+              {#snippet trigger()}
+                <CircleHelp class="w-4 h-4 opacity-70" />
+              {/snippet}
+              {#snippet content()}
+                <header class="flex justify-between">
+                  <p class="font-bold">Creating a Reputation Tag</p>
+                  <button class="btn-icon hover:preset-tonal" on:click={closeTagNamePopover}><X class="w-4 h-4" /></button>
+                </header>
+                <article>
+                  <p class="opacity-60">
+                    Tags represent unique reputations that users can track. Each tag must have a unique name without the leading # symbol. The tag name will be used to identify and reference this reputation throughout the platform. Choose a clear, descriptive name that represents the reputation you want to track.
+                  </p>
+                </article>
+              {/snippet}
+            </Popover>
+          </div>
           <div class="relative w-full">
             <input
               type="text"
               bind:value={tagBeingEdited.data.tag_handle}
-              class="input pr-10"
+              class="input pr-10 border-primary-300-700 focus:border-primary-500 focus:ring-primary-500 bg-surface-50-950"
               required
               autocomplete="off"
               aria-describedby="tagname-status"
               disabled={loading}
+              placeholder="Enter a unique tag name"
             />
             <span class="absolute right-2 top-1/2 -translate-y-1/2" aria-live="polite" id="tagname-status">
               {#if tagNameStatus === 'loading'}
@@ -227,18 +269,76 @@ function removeTimePeriod(i: number) {
         </label>
       </div>
       <div>
-        <label for="tagDescription" class="block text-sm font-medium opacity-70  mb-1">Description</label>
-        <textarea
-          id="tagDescription"
-          bind:value={tagBeingEdited.data.description}
-          class="input input-lg w-full border-primary-300-700 focus:border-primary-500 focus:ring-primary-500 bg-surface-50-950"
-          placeholder="Describe what this tag represents"
-          rows="3"
-          required
-        ></textarea>
+        <label class="label">
+          <div class="flex items-center gap-1">
+            <span class="label-text text-base font-medium opacity-70">Description</span>
+            <Popover
+              open={descriptionPopoverOpen}
+              onOpenChange={(e) => (descriptionPopoverOpen = e.open)}
+              positioning={{ placement: 'top', flip: true }}
+              triggerBase="btn-icon variant-ghost"
+              contentBase="card bg-surface-200-800 p-4 space-y-4 max-w-[320px]"
+              arrow
+              arrowBackground="!bg-surface-200 dark:!bg-surface-800"
+            >
+              {#snippet trigger()}
+                <CircleHelp class="w-4 h-4 opacity-70" />
+              {/snippet}
+              {#snippet content()}
+                <header class="flex justify-between">
+                  <p class="font-bold">Tag Description</p>
+                  <button class="btn-icon hover:preset-tonal" on:click={closeDescriptionPopover}><X class="w-4 h-4" /></button>
+                </header>
+                <article>
+                  <p class="opacity-60">
+                    Provide a clear and detailed description of what this reputation tag represents and how users should be rated. Define what constitutes valuable contributions in this community and what doesn't. For example, in a technical community, emphasize the importance of helpful technical answers over humorous content. This helps maintain the quality and focus of the reputation system.
+                  </p>
+                </article>
+              {/snippet}
+            </Popover>
+          </div>
+          <textarea
+            id="tagDescription"
+            bind:value={tagBeingEdited.data.description}
+            class="input input-lg w-full border-primary-300-700 focus:border-primary-500 focus:ring-primary-500 bg-surface-50-950"
+            placeholder="Describe what this tag represents"
+            rows="3"
+            required
+            maxlength="1024"
+          ></textarea>
+          {#if tagBeingEdited.data.description && tagBeingEdited.data.description.length > 1024}
+            <span class="text-error-500 text-xs mt-1">Description cannot exceed 1024 characters</span>
+          {/if}
+        </label>
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1">Time Period Multipliers</label>
+        <div class="flex items-center gap-1 mb-1">
+          <label class="block text-base font-medium opacity-70">Set vote decay rules</label>
+          <Popover
+            open={timePeriodsPopoverOpen}
+            onOpenChange={(e) => (timePeriodsPopoverOpen = e.open)}
+            positioning={{ placement: 'top', flip: true }}
+            triggerBase="btn-icon variant-ghost"
+            contentBase="card bg-surface-200-800 p-4 space-y-4 max-w-[320px]"
+            arrow
+            arrowBackground="!bg-surface-200 dark:!bg-surface-800"
+          >
+            {#snippet trigger()}
+              <CircleHelp class="w-4 h-4 opacity-70" />
+            {/snippet}
+            {#snippet content()}
+              <header class="flex justify-between">
+                <p class="font-bold">Vote Decay Rules</p>
+                <button class="btn-icon hover:preset-tonal" on:click={closeTimePeriodsPopover}><X class="w-4 h-4" /></button>
+              </header>
+              <article>
+                <p class="opacity-60">
+                  Define how votes lose their impact over time. Each period represents a time window where votes are weighted by their multiplier. For example, votes from the last 3 months might count fully (1.0x), while older votes gradually lose their impact. This helps ensure that reputation reflects recent contributions while still considering historical activity.
+                </p>
+              </article>
+            {/snippet}
+          </Popover>
+        </div>
         <div class="space-y-2">
           <table class="w-full border-collapse">
             <thead class="opacity-70 text-center">
@@ -269,7 +369,7 @@ function removeTimePeriod(i: number) {
                       bind:value={period.multiplier}
                       class="input input-sm w-full border-tertiary-300-700 focus:border-tertiary-500 bg-surface-100-900 text-center"
                       min="0"
-                      max="2"
+                      max="10"
                       step="0.05"
                       required
                     />
@@ -289,8 +389,8 @@ function removeTimePeriod(i: number) {
       </div>
       <div class="space-y-4">
         <div class="flex items-center justify-between gap-4">
-          <div class="flex items-center gap-2">
-            <label for="reputation_threshold" class="text-sm font-medium opacity-70 whitespace-nowrap">Reputation Threshold</label>
+          <div class="flex items-center gap-1">
+            <label for="reputation_threshold" class="text-base font-medium opacity-70 whitespace-nowrap">Reputation Threshold</label>
             <Popover
               open={reputationPopoverOpen}
               onOpenChange={(e) => (reputationPopoverOpen = e.open)}
@@ -327,8 +427,8 @@ function removeTimePeriod(i: number) {
           />
         </div>
         <div class="flex items-center justify-between gap-4">
-          <div class="flex items-center gap-2">
-            <label for="vote_reward" class="text-sm font-medium opacity-70 whitespace-nowrap">Vote Reward</label>
+          <div class="flex items-center gap-1">
+            <label for="vote_reward" class="text-base font-medium opacity-70 whitespace-nowrap">Vote Reward</label>
             <Popover
               open={voteRewardPopoverOpen}
               onOpenChange={(e) => (voteRewardPopoverOpen = e.open)}
@@ -365,8 +465,8 @@ function removeTimePeriod(i: number) {
           />
         </div>
         <div class="flex items-center justify-between gap-4">
-          <div class="flex items-center gap-2">
-            <label for="min_users_for_threshold" class="text-sm font-medium opacity-70 whitespace-nowrap">Min Users for Threshold</label>
+          <div class="flex items-center gap-1">
+            <label for="min_users_for_threshold" class="text-base font-medium opacity-70 whitespace-nowrap">Min Users for Threshold</label>
             <Popover
               open={minUsersPopoverOpen}
               onOpenChange={(e) => (minUsersPopoverOpen = e.open)}

@@ -53,14 +53,14 @@ export const REPUTATION_SETTINGS = {
 
     // Time period multipliers for vote decay
     DEFAULT_TIME_PERIODS: [
-        { months: 1, multiplier: 1.5 },    // Period 1: First month
-        { months: 2, multiplier: 1.2 },    // Period 2: Months 2-3
-        { months: 3, multiplier: 1.1 },    // Period 3: Months 4-6
-        { months: 6, multiplier: 1.0 },    // Period 4: Months 7-12
-        { months: 12, multiplier: 0.95 },  // Period 5: Months 13-24
-        { months: 12, multiplier: 0.75 },  // Period 6: Months 25-36
-        { months: 12, multiplier: 0.50 },  // Period 7: Months 37-48
-        { months: 999, multiplier: 0.25 }  // Period 8: Months 49+ (treated as infinity)
+        { months: 1, multiplier: 5.0 },     // Period 1: First month
+        { months: 2, multiplier: 2.5 },     // Period 2: Months 2-3
+        { months: 3, multiplier: 1.5 },     // Period 3: Months 4-6
+        { months: 6, multiplier: 1.15 },    // Period 4: Months 7-12
+        { months: 12, multiplier: 1.0 },    // Period 5: Months 13-24
+        { months: 12, multiplier: 0.95 },   // Period 6: Months 25-36
+        { months: 12, multiplier: 0.5 },    // Period 7: Months 37-48
+        { months: 999, multiplier: 0.05 }   // Period 8: Months 49+ (treated as infinity)
     ] as TimePeriod[],
 
     // Vote settings
