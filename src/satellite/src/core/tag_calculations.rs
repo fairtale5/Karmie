@@ -38,11 +38,7 @@
 
 use crate::logger;
 use crate::processors::document_queries::query_doc_by_key;
-use crate::utils::structs::{ReputationData, Tag, TagData};
-use candid::Principal;
-use ic_cdk;
-use junobuild_satellite::{get_doc, get_doc_store, list_docs};
-use junobuild_shared::types::list::{ListMatcher, ListParams, ListResults};
+use crate::utils::structs::{ReputationData, TagData};
 use junobuild_utils::decode_doc_data;
 
 /// Calculates the number of active users for a given tag

@@ -1,10 +1,8 @@
 use junobuild_satellite::AssertSetDocContext;
 use junobuild_utils::decode_doc_data;
-use junobuild_shared::types::list::{ListMatcher, ListParams};
 use crate::{
-    validation::{validate_handle, validate_tag_date_struct},
+    validation::{validate_handle, validate_tag_date_struct, validate_description},
     utils::structs::TagData,
-    list_docs,
     logger,
     utils::normalize::normalize_handle,
     processors::document_queries::query_doc_by_key,
@@ -15,7 +13,7 @@ use crate::{
 /// This function performs comprehensive validation of tag documents:
 /// 1. Decodes and validates the basic tag data structure
 /// 2. Validates tag name format and restrictions (using username validation)
-/// 3. Validates description length constraints
+/// 3. Validates description format and length
 /// 4. Validates time period configuration
 /// 5. Validates reputation and voting settings
 /// 
@@ -70,15 +68,8 @@ pub fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String
         }
     }
 
-    // Step 3: Validate description length (max 1024 characters)
-    if tag_data.description.len() > 1024 {
-        let err_msg = format!(
-            "[validate_tag_document] Tag description cannot exceed 1024 characters (current length: {})",
-            tag_data.description.len()
-        );
-        logger!("error", "{}", err_msg);
-        return Err(err_msg);
-    }
+    // Step 3: Validate description format and length
+    validate_description(&tag_data.description)?;
 
     // Step 4: Validate time periods using the struct validation function
     validate_tag_date_struct(&tag_data.time_periods)?;

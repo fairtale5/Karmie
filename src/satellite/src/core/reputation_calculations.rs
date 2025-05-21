@@ -1,12 +1,11 @@
 use ic_cdk; // Import ic_cdk
-use junobuild_satellite::{list_docs, set_doc_store, get_doc, list_docs_store}; // Import junobuild_satellite functions
+use junobuild_satellite::{set_doc_store, get_doc}; // Import junobuild_satellite functions
 use junobuild_satellite::SetDoc; // why is this not in the previous import?
-use junobuild_shared::types::list::{ListMatcher, ListParams}; // Import junobuild_shared types
 use std::collections::HashMap; // Import std::collections::HashMap
 use junobuild_utils::{encode_doc_data, decode_doc_data}; // Import junobuild_utils functions
 use crate::logger; // Import our logger from the utils module 
 use crate::utils::time::calculate_months_between; // Import time calculations
-use crate::processors::document_keys::{create_reputation_key, format_reputation_key, format_tag_key};
+use crate::processors::document_keys::{create_reputation_key, format_reputation_key};
 use crate::processors::document_queries::query_doc_by_key;
 
 // Import our data structures
@@ -17,64 +16,6 @@ use crate::utils::structs::{
 
 // Import tag calculations
 use crate::core::get_active_users_count;
-
-/// Retrieves a user's cached reputation data for a specific tag.
-///
-/// Queries the reputations collection for a document with description 
-/// formatted as: "owner=userKey;tag=tagKey;"
-///
-/// The function sanitizes all keys to remove special characters before building
-/// the query pattern, ensuring consistent document retrieval.
-///
-/// # Arguments
-/// * `user_key` - The user's document key
-/// * `tag_key` - The tag's document key
-///
-/// # Returns
-/// * `Result<Option<ReputationData>, String>` - The user's reputation data or None if not found, or an error message
-pub async fn get_user_reputation_data(user_key: &str, tag_key: &str) -> Result<Option<ReputationData>, String> {
-    // Create reputation key format: usr_{user_ulid}_tag_{tag_ulid}_
-    let reputation_key = match format_reputation_key(user_key, tag_key) {
-        Ok(key) => key,
-        Err(e) => {
-            logger!("error", "[get_user_reputation_data] Failed to format reputation key: user={}, tag={}, error={}", 
-                user_key, tag_key, e);
-            return Err(format!("Failed to format reputation key: {}", e));
-        }
-    };
-    
-    // Get the document directly by exact key match, which is more efficient
-    // than querying by description field
-    let reputation_doc = junobuild_satellite::get_doc(
-        String::from("reputations"),
-        reputation_key.clone()
-    );
-    
-    // Return None if no document found
-    if reputation_doc.is_none() {
-        logger!("debug", "[get_user_reputation_data] No reputation document found for user={}, tag={}", 
-            user_key, tag_key);
-        return Ok(None);
-    }
-    
-    // Unwrap the document (safe because we checked for None above)
-    let doc = reputation_doc.unwrap();
-    
-    // Decode the reputation data from binary format
-    let reputation_data = match decode_doc_data::<ReputationData>(&doc.data) {
-        Ok(data) => data,
-        Err(e) => {
-            logger!("error", "[get_user_reputation_data] Failed to deserialize reputation data: key={}, error={}", 
-                reputation_key, e);
-            return Err(format!("Failed to deserialize reputation data: {}", e));
-        }
-    };
-    
-    logger!("debug", "[get_user_reputation_data] Retrieved reputation data for user={}, tag={}", 
-        user_key, tag_key);
-    
-    Ok(Some(reputation_data))
-}
 
 /// Gets a slim version of user reputation data optimized for vote processing
 ///
@@ -154,23 +95,6 @@ pub async fn get_user_reputation_slim(user_key: &str, tag_key: &str) -> Result<O
             Err(format!("Failed to decode reputation data: {}", e))
         }
     }
-}
-
-/// Gets the base weight for a vote from the author's reputation
-/// 
-/// This is a helper function that calculates the base weight for a vote
-/// based on the author's reputation information. It's used in the
-/// calculate_and_store_vote_weight function.
-/// 
-/// # Arguments
-/// * `author_info` - The author's reputation information
-/// 
-/// # Returns
-/// * `f64` - The base weight for votes by this author
-fn calculate_vote_base_weight(author_info: &AuthorInfo) -> f64 {
-    // Start with a base weight of 1.0
-    // In the future, this could be adjusted based on the author's reputation
-    1.0
 }
 
 /// Calculates and stores the weight of a vote, based on the voter's reputation.
@@ -1199,19 +1123,24 @@ async fn get_tag_doc(tag_doc_ulid: &str) -> Result<Tag, String> {
     Ok(tag)
 }
 
-/// Updates a user's reputation when they receive a vote
-///
-/// When a user receives a vote in a tag, this function is called to update their
-/// reputation document. If no reputation document exists, one will be created.
-///
+/// Updates a user's reputation when they receive a new vote.
+/// 
+/// This is currently unused as we use full recalculation instead of incremental updates.
+/// Kept for future optimization when we implement real-time reputation updates.
+/// 
+/// Note: Incremental updates would be faster but slightly less accurate due to
+/// vote weight changes affecting all past votes. The accuracy impact needs to be
+/// evaluated based on the number of votes and weight calculation sensitivity.
+/// 
 /// # Arguments
 /// * `target_key` - The key of the user receiving the vote (vote target)
 /// * `tag_key` - The tag the vote is assigned to
 /// * `vote_value` - The value of the vote (often +1 or -1)
 /// * `vote_weight` - The weight of the vote (from author's voting power)
-///
+/// 
 /// # Returns
 /// * `Result<(), String>` - Success or an error message
+#[allow(dead_code)]
 pub async fn update_reputation_on_vote(
     target_key: &str,
     tag_key: &str,

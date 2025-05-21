@@ -5,7 +5,6 @@
  * It ensures that time periods are properly formatted and logically valid.
  */
 
-use ic_cdk::api::time;
 use crate::utils::structs::TimePeriod;
 use crate::logger;
 

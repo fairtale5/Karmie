@@ -2,10 +2,8 @@ use crate::logger;
 use junobuild_satellite::AssertSetDocContext;
 use crate::utils::structs::VoteData;
 use junobuild_utils::decode_doc_data;
-use junobuild_shared::types::list::{ListMatcher, ListParams};
-use crate::list_docs;
 use crate::processors::document_queries::query_doc_by_key;
-use crate::processors::ulid_timestamp_extract::extract_timestamp_ms;
+use crate::validation::{validate_ulid_timestamp, CheckULIDisNew};
 use ic_cdk;
 
 /// Validates a vote document before creation or update
@@ -31,7 +29,7 @@ pub fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), Strin
     
     // Decode and validate the basic vote data structure
     let vote_doc = &context.data.data.proposed;
-    let vote_data: VoteData = decode_doc_data(&context.data.data.proposed.data)
+    let vote_data: VoteData = decode_doc_data(&vote_doc.data)
         .map_err(|e| {
             logger!("error", "[validate_vote_document] Failed to decode vote data: key={}, error={}", context.data.key, e);
             format!("Invalid vote data format: {}", e)
@@ -41,31 +39,9 @@ pub fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), Strin
     // Extract vote_key from the document key (it's the last ULID in the key)
     let key_parts: Vec<&str> = context.data.key.split('_').collect();
     if let Some(vote_ulid) = key_parts.last() {
-        // Extract timestamp from the ULID (in milliseconds)
-        let vote_timestamp = extract_timestamp_ms(vote_ulid)?;
-        
-        // Get current IC time in milliseconds (convert from nanoseconds)
-        let current_time = ic_cdk::api::time() / 1_000_000;
-        
-        // Allow for small clock skew (5 minutes in milliseconds)
-        const ALLOWED_SKEW_MS: u64 = 5 * 60 * 1000;
-        
-        // Check if vote timestamp is too far in the past
-        if vote_timestamp + ALLOWED_SKEW_MS < current_time {
-            let err_msg = format!(
-                "[validate_vote_document] Vote timestamp is backdated: vote_time={}, current_time={}, allowed_skew={}ms",
-                vote_timestamp, current_time, ALLOWED_SKEW_MS
-            );
-            logger!("error", "{}", err_msg);
-            return Err(err_msg);
-        }
-
-        // Check if vote timestamp is too far in the future
-        if vote_timestamp > current_time + ALLOWED_SKEW_MS {
-            let err_msg = format!(
-                "[validate_vote_document] Vote timestamp is in the future: vote_time={}, current_time={}, allowed_skew={}ms",
-                vote_timestamp, current_time, ALLOWED_SKEW_MS
-            );
+        // Validate ULID timestamp using our centralized validation
+        if let Err(e) = validate_ulid_timestamp(vote_ulid, CheckULIDisNew::yes()) {
+            let err_msg = format!("[validate_vote_document] Invalid vote timestamp: {}", e);
             logger!("error", "{}", err_msg);
             return Err(err_msg);
         }

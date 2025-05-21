@@ -5,7 +5,6 @@ pub mod tag_calculations;
 pub use reputation_calculations::{
     calculate_and_store_vote_weight,
     calculate_user_reputation,
-    get_user_reputation_data,
     get_user_reputation_slim,
     update_reputation_on_vote,
 };
