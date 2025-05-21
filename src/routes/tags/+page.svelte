@@ -1,7 +1,7 @@
 <script lang="ts">
 // --- Skeleton v3 Toasts: Ensure <Toaster /> is present in your root layout (e.g., +layout.svelte) ---
 import { onMount } from 'svelte';
-import { listDocs, type Doc, authSubscribe, type User } from '@junobuild/core';
+import { listDocs, type Doc } from '@junobuild/core';
 import { toaster } from '$lib/skeletonui/toaster-skeleton';
 // import sigma.js for future graph integration (placeholder for now)
 // import Sigma from 'sigma';
@@ -10,11 +10,11 @@ import { initJuno } from '$lib/juno';
 import { Avatar } from '@skeletonlabs/skeleton-svelte';
 import { UserRoundPen } from 'lucide-svelte';
 import NotLoggedInAlert from '$lib/components/common/NotLoggedInAlert.svelte';
+import { authUserDoc } from '$lib/stores/authUserDoc';
 
 // --- State ---
 let loading = true;
 let error: string | null = null;
-let user: User | null = null;
 let tags: Doc<any>[] = [];
 let selectedTagKey = '';
 let selectedTag: Doc<any> | null = null;
@@ -25,19 +25,12 @@ let userRecentActivity: any[] = [];
 
 // --- Fetch Data ---
 onMount(async () => {
-	// Ensure Juno is initialized before any backend calls (see docs/README.md#juno-integration)
+	// Ensure Juno is initialized before any backend calls
 	await initJuno();
 	try {
 		loading = true;
 		error = null;
-		// Subscribe to auth state
-		authSubscribe((state) => {
-			user = state;
-			if (!user) {
-				error = 'You must be logged in to view this page.';
-				loading = false;
-			}
-		});
+
 		// Fetch tags (reputation communities)
 		const tagsList = await listDocs({ collection: 'tags' });
 		tags = tagsList.items;
@@ -61,12 +54,26 @@ async function fetchTagData() {
 		error = null;
 		selectedTag = tags.find((t) => t.key === selectedTagKey) || null;
 		if (!selectedTag) return;
-		// Fetch user's reputation in this tag (stub, replace with real call)
-		userReputation = {
-			score: 123,
-			rank: 5,
-			badges: ['Active', 'Top Voter']
-		};
+
+		// Only fetch user-specific data if logged in
+		if ($authUserDoc) {
+			// Fetch user's reputation in this tag (stub, replace with real call)
+			userReputation = {
+				score: 123,
+				rank: 5,
+				badges: ['Active', 'Top Voter']
+			};
+			// Fetch user's recent activity (stub, replace with real call)
+			userRecentActivity = [
+				{ target: 'bob', value: 1, date: '2024-06-01' },
+				{ target: 'carol', value: -1, date: '2024-05-30' },
+				// ...
+			];
+		} else {
+			userReputation = null;
+			userRecentActivity = [];
+		}
+
 		// Fetch top users (stub, replace with real call)
 		topUsers = [
 			{ username: 'alice', score: 200, bar: 1 },
@@ -78,12 +85,6 @@ async function fetchTagData() {
 		recentVotes = [
 			{ author: 'alice', target: 'bob', value: 1 },
 			{ author: 'carol', target: 'alice', value: -1 },
-			// ...
-		];
-		// Fetch user's recent activity (stub, replace with real call)
-		userRecentActivity = [
-			{ target: 'bob', value: 1, date: '2024-06-01' },
-			{ target: 'carol', value: -1, date: '2024-05-30' },
 			// ...
 		];
 	} catch (e) {
@@ -237,7 +238,7 @@ function onTagChange(event: Event) {
 
 		<!-- Call to Action -->
 		<div class="mb-6">
-			{#if user && selectedTag}
+			{#if selectedTag}
 				<button class="btn preset-filled-primary-500 w-full">
 					{userReputation && userReputation.score > 0 ? 'Contribute' : 'Join Community'}
 				</button>
