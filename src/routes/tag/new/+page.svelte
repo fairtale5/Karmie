@@ -12,21 +12,16 @@ import { Popover } from '@skeletonlabs/skeleton-svelte';
 import { X } from 'lucide-svelte';
 import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
 import { LoaderCircle, CheckCircle, XCircle } from 'lucide-svelte';
+import { createTagDoc } from '$lib/docs-crud/tag_create';
 
 // Tag form state
 let tagBeingEdited = $state<Doc<TagData>>({
   key: '',
-  description: '',
-  owner: '',
-  created_at: BigInt(0),
-  updated_at: BigInt(0),
-  version: BigInt(0),
   data: {
     user_key: '',
-    tag_key: '',
     tag_handle: '',
     description: '',
-    time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
+    time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS] as Array<{ months: number; multiplier: number }>,
     reputation_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.REPUTATION_THRESHOLD,
     vote_reward: REPUTATION_SETTINGS.DEFAULT_TAG.VOTE_REWARD,
     min_users_for_threshold: REPUTATION_SETTINGS.DEFAULT_TAG.MIN_USERS_FOR_THRESHOLD
@@ -162,26 +157,12 @@ async function saveTag() {
       return;
     }
 
-    // Generate new ULID for tag
-    const tagUlid = createUlid();
-    const tagKey = formatTagKey(userDoc.data.user_key, tagUlid, tagBeingEdited.data.tag_handle);
-    const docData = {
-      collection: 'tags',
-      doc: {
-        key: tagKey,
-        data: {
-          tag_handle: tagBeingEdited.data.tag_handle,
-          description: tagBeingEdited.data.description,
-          user_key: userDoc.data.user_key,
-          tag_key: tagUlid,
-          time_periods: tagBeingEdited.data.time_periods,
-          reputation_threshold: tagBeingEdited.data.reputation_threshold,
-          vote_reward: tagBeingEdited.data.vote_reward,
-          min_users_for_threshold: tagBeingEdited.data.min_users_for_threshold
-        }
-      }
-    };
-    await setDoc(docData);
+    // Set the user key from the auth doc
+    tagBeingEdited.data.user_key = userDoc.data.user_key;
+
+    // Create the tag using our utility function
+    await createTagDoc(tagBeingEdited);
+
     toaster.success({ title: 'Tag created!', description: 'Your tag was created successfully.' });
     goto('/tags');
   } catch (e) {
