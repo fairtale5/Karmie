@@ -28,8 +28,8 @@ let tagBeingEdited = $state<Doc<TagData>>({
   }
 });
 
-let loading = false;
-let errorGlobal = '';
+let loading = $state(false);
+let errorGlobal = $state('');
 
 // Popover states
 let reputationPopoverOpen = $state(false);
@@ -174,20 +174,23 @@ async function saveTag() {
 }
 
 function addTimePeriod() {
+  const periods = tagBeingEdited.data.time_periods as Array<{ months: number; multiplier: number }>;
   tagBeingEdited.data.time_periods = [
-    ...tagBeingEdited.data.time_periods,
+    ...periods,
     { months: 12, multiplier: 1.0 }
   ];
 }
+
 function removeTimePeriod(i: number) {
-  tagBeingEdited.data.time_periods = tagBeingEdited.data.time_periods.filter((_, idx) => idx !== i);
+  const periods = tagBeingEdited.data.time_periods as Array<{ months: number; multiplier: number }>;
+  tagBeingEdited.data.time_periods = periods.filter((_, idx) => idx !== i);
 }
 </script>
 
 <div class="min-h-screen flex items-center justify-center py-8">
   <div class="card bg-surface-100-900 border border-surface-200-800 shadow-xl max-w-lg w-full p-8">
     <h1 class="text-2xl font-bold mb-6 text-primary-700-300">Create New Tag</h1>
-    <form on:submit|preventDefault={saveTag} class="space-y-5">
+    <form onsubmit={(e) => { e.preventDefault(); saveTag(); }} class="space-y-5">
       <div>
         <label class="label">
           <div class="flex items-center gap-1">
@@ -207,7 +210,7 @@ function removeTimePeriod(i: number) {
               {#snippet content()}
                 <header class="flex justify-between">
                   <p class="font-bold">Creating a Reputation Tag</p>
-                  <button class="btn-icon hover:preset-tonal" on:click={closeTagNamePopover}><X class="w-4 h-4" /></button>
+                  <button class="btn-icon hover:preset-tonal" onclick={closeTagNamePopover}><X class="w-4 h-4" /></button>
                 </header>
                 <article>
                   <p class="opacity-60">
@@ -268,7 +271,7 @@ function removeTimePeriod(i: number) {
               {#snippet content()}
                 <header class="flex justify-between">
                   <p class="font-bold">Tag Description</p>
-                  <button class="btn-icon hover:preset-tonal" on:click={closeDescriptionPopover}><X class="w-4 h-4" /></button>
+                  <button class="btn-icon hover:preset-tonal" onclick={closeDescriptionPopover}><X class="w-4 h-4" /></button>
                 </header>
                 <article>
                   <p class="opacity-60">
@@ -293,80 +296,82 @@ function removeTimePeriod(i: number) {
         </label>
       </div>
       <div>
-        <div class="flex items-center gap-1 mb-1">
-          <label class="block text-base font-medium opacity-70">Set vote decay rules</label>
-          <Popover
-            open={timePeriodsPopoverOpen}
-            onOpenChange={(e) => (timePeriodsPopoverOpen = e.open)}
-            positioning={{ placement: 'top', flip: true }}
-            triggerBase="btn-icon variant-ghost"
-            contentBase="card bg-surface-200-800 p-4 space-y-4 max-w-[320px]"
-            arrow
-            arrowBackground="!bg-surface-200 dark:!bg-surface-800"
-          >
-            {#snippet trigger()}
-              <CircleHelp class="w-4 h-4 opacity-70" />
-            {/snippet}
-            {#snippet content()}
-              <header class="flex justify-between">
-                <p class="font-bold">Vote Decay Rules</p>
-                <button class="btn-icon hover:preset-tonal" on:click={closeTimePeriodsPopover}><X class="w-4 h-4" /></button>
-              </header>
-              <article>
-                <p class="opacity-60">
-                  Define how votes lose their impact over time. Each period represents a time window where votes are weighted by their multiplier. For example, votes from the last 3 months might count fully (1.0x), while older votes gradually lose their impact. This helps ensure that reputation reflects recent contributions while still considering historical activity.
-                </p>
-              </article>
-            {/snippet}
-          </Popover>
-        </div>
-        <div class="space-y-2">
-          <table class="w-full border-collapse">
-            <thead class="opacity-70 text-center">
-              <tr>
-                <th class="font-normal text-left py-2">Period</th>
-                <th class="font-normal py-2">Duration</th>
-                <th class="font-normal py-2">Multiplier</th>
-                <th class="font-normal py-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each tagBeingEdited.data.time_periods as period, i}
+        <fieldset>
+          <legend class="flex items-center gap-1 mb-1">
+            <span class="block text-base font-medium opacity-70">Set vote decay rules</span>
+            <Popover
+              open={timePeriodsPopoverOpen}
+              onOpenChange={(e) => (timePeriodsPopoverOpen = e.open)}
+              positioning={{ placement: 'top', flip: true }}
+              triggerBase="btn-icon variant-ghost"
+              contentBase="card bg-surface-200-800 p-4 space-y-4 max-w-[320px]"
+              arrow
+              arrowBackground="!bg-surface-200 dark:!bg-surface-800"
+            >
+              {#snippet trigger()}
+                <CircleHelp class="w-4 h-4 opacity-70" />
+              {/snippet}
+              {#snippet content()}
+                <header class="flex justify-between">
+                  <p class="font-bold">Vote Decay Rules</p>
+                  <button class="btn-icon hover:preset-tonal" onclick={closeTimePeriodsPopover}><X class="w-4 h-4" /></button>
+                </header>
+                <article>
+                  <p class="opacity-60">
+                    Define how votes lose their impact over time. Each period represents a time window where votes are weighted by their multiplier. For example, votes from the last 3 months might count fully (1.0x), while older votes gradually lose their impact. This helps ensure that reputation reflects recent contributions while still considering historical activity.
+                  </p>
+                </article>
+              {/snippet}
+            </Popover>
+          </legend>
+          <div class="space-y-2">
+            <table class="w-full border-collapse">
+              <thead class="opacity-70 text-center">
                 <tr>
-                  <td class="border p-2 bg-surface-50-950 text-center">{i + 1}</td>
-                  <td class="border p-2 bg-surface-50-950">
-                    <input
-                      type="number"
-                      bind:value={period.months}
-                      class="input input-sm w-full border-secondary-300-700 focus:border-secondary-500 bg-surface-100-900 text-right"
-                      min="1"
-                      max={i === tagBeingEdited.data.time_periods.length - 1 ? 999 : 12}
-                      required
-                    />
-                  </td>
-                  <td class="border p-2 bg-surface-50-950">
-                    <input
-                      type="number"
-                      bind:value={period.multiplier}
-                      class="input input-sm w-full border-tertiary-300-700 focus:border-tertiary-500 bg-surface-100-900 text-center"
-                      min="0"
-                      max="10"
-                      step="0.05"
-                      required
-                    />
-                  </td>
-                  <td class="border p-2 text-center bg-surface-50-950">
-                    {#if i === tagBeingEdited.data.time_periods.length - 1}
-                      <button type="button" on:click={addTimePeriod} class="btn btn-xs preset-filled-secondary-500">Add</button>
-                    {:else}
-                      <button type="button" on:click={() => removeTimePeriod(i)} class="btn btn-xs preset-filled-error-500">Remove</button>
-                    {/if}
-                  </td>
+                  <th class="font-normal text-left py-2">Period</th>
+                  <th class="font-normal py-2">Duration</th>
+                  <th class="font-normal py-2">Multiplier</th>
+                  <th class="font-normal py-2">Actions</th>
                 </tr>
-              {/each}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {#each (tagBeingEdited.data.time_periods as Array<{ months: number; multiplier: number }>) as period, i}
+                  <tr>
+                    <td class="border p-2 bg-surface-50-950 text-center">{i + 1}</td>
+                    <td class="border p-2 bg-surface-50-950">
+                      <input
+                        type="number"
+                        bind:value={period.months}
+                        class="input input-sm w-full border-secondary-300-700 focus:border-secondary-500 bg-surface-100-900 text-right"
+                        min="1"
+                        max={i === (tagBeingEdited.data.time_periods as Array<{ months: number; multiplier: number }>).length - 1 ? 999 : 12}
+                        required
+                      />
+                    </td>
+                    <td class="border p-2 bg-surface-50-950">
+                      <input
+                        type="number"
+                        bind:value={period.multiplier}
+                        class="input input-sm w-full border-tertiary-300-700 focus:border-tertiary-500 bg-surface-100-900 text-center"
+                        min="0"
+                        max="10"
+                        step="0.05"
+                        required
+                      />
+                    </td>
+                    <td class="border p-2 text-center bg-surface-50-950">
+                      {#if i === (tagBeingEdited.data.time_periods as Array<{ months: number; multiplier: number }>).length - 1}
+                        <button type="button" onclick={addTimePeriod} class="btn btn-xs preset-filled-secondary-500">Add</button>
+                      {:else}
+                        <button type="button" onclick={() => removeTimePeriod(i)} class="btn btn-xs preset-filled-error-500">Remove</button>
+                      {/if}
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        </fieldset>
       </div>
       <div class="space-y-4">
         <div class="flex items-center justify-between gap-4">
@@ -387,7 +392,7 @@ function removeTimePeriod(i: number) {
               {#snippet content()}
                 <header class="flex justify-between">
                   <p class="font-bold">Set the barrier to entry</p>
-                  <button class="btn-icon hover:preset-tonal" on:click={closeReputationPopover}><X class="w-4 h-4" /></button>
+                  <button class="btn-icon hover:preset-tonal" onclick={closeReputationPopover}><X class="w-4 h-4" /></button>
                 </header>
                 <article>
                   <p class="opacity-60">
@@ -425,7 +430,7 @@ function removeTimePeriod(i: number) {
               {#snippet content()}
                 <header class="flex justify-between">
                   <p class="font-bold">Rewards for Voting</p>
-                  <button class="btn-icon hover:preset-tonal" on:click={closeVoteRewardPopover}><X class="w-4 h-4" /></button>
+                  <button class="btn-icon hover:preset-tonal" onclick={closeVoteRewardPopover}><X class="w-4 h-4" /></button>
                 </header>
                 <article>
                   <p class="opacity-60">
@@ -463,7 +468,7 @@ function removeTimePeriod(i: number) {
               {#snippet content()}
                 <header class="flex justify-between">
                   <p class="font-bold">Minimum Users to activate bot-protection</p>
-                  <button class="btn-icon hover:preset-tonal" on:click={closeMinUsersPopover}><X class="w-4 h-4" /></button>
+                  <button class="btn-icon hover:preset-tonal" onclick={closeMinUsersPopover}><X class="w-4 h-4" /></button>
                 </header>
                 <article>
                   <p class="opacity-60">
@@ -491,7 +496,7 @@ function removeTimePeriod(i: number) {
         <button type="submit" class="btn preset-filled-primary-500" disabled={loading}>
           {loading ? 'Creating...' : 'Create Tag'}
         </button>
-        <button type="button" class="btn preset-tonal-secondary" on:click={() => goto('/tags')}>
+        <button type="button" onclick={() => goto('/tags')} class="btn preset-tonal-secondary">
           Cancel
         </button>
       </div>
