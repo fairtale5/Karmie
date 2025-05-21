@@ -3,14 +3,6 @@ description: git commit process
 globs: 
 alwaysApply: false
 ---
-git commits should always:
-- check if all files are staged, and either stage them or warn if not all files are staged for commit.
-- check what files, and which code changed since the last commit, by checking the lines of code changed.
-- write a logn commit message into commit_message.txt
-- use that file to commit the latest changes
-- delete the file afterwards
-- push the changes to github
-
 Example of what a good commit looks like:
 
 type(scope): concise summary of changes

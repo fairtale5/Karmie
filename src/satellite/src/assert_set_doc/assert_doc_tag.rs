@@ -2,7 +2,7 @@ use junobuild_satellite::AssertSetDocContext;
 use junobuild_utils::decode_doc_data;
 use junobuild_shared::types::list::{ListMatcher, ListParams};
 use crate::{
-    validation::{validate_handle, validate_display_name, validate_tag_date_struct},
+    validation::{validate_handle, validate_tag_date_struct},
     utils::structs::TagData,
     list_docs,
     logger,
@@ -55,31 +55,22 @@ pub fn validate_tag_document(context: &AssertSetDocContext) -> Result<(), String
     if !existing_tags.items.is_empty() {
         for (doc_key, doc) in existing_tags.items {
             // Check if this is an update by looking at current data
-    let is_update = context.data.data.current.is_some();
+            let is_update = context.data.data.current.is_some();
     
             // For updates, skip if we're looking at the current document
-        if is_update && doc_key == context.data.key {
+            if is_update && doc_key == context.data.key {
                 logger!("debug", "[validate_tag_document] Skipping current document during update check");
-            continue;
-        }
+                continue;
+            }
         
             // If we get here, we found a duplicate tag
             let err_msg = format!("Tag with name '{}' already exists", tag_data.tag_handle);
             logger!("error", "[validate_tag_document] {}", err_msg);
-                        return Err(err_msg);
+            return Err(err_msg);
         }
     }
 
-    // Step 3: Validate description using display_name validation
-    // For tag descriptions, we use display_name validation but with different length constraints
-    validate_display_name(&tag_data.description)
-        .map_err(|e| {
-            let err_msg = format!("[assert_set_doc] Tag description validation failed: {}", e);
-            logger!("error", "{}", err_msg);
-            err_msg
-        })?;
-        
-    // Additional length check for description (can be longer than display names)
+    // Step 3: Validate description length (max 1024 characters)
     if tag_data.description.len() > 1024 {
         let err_msg = format!(
             "[validate_tag_document] Tag description cannot exceed 1024 characters (current length: {})",
