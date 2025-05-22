@@ -117,10 +117,101 @@ function onTagChange(event: Event) {
 <!-- Main Container -->
 <div class="container mx-auto p-4">
 	{#if loading}
-		<!-- Loading State: Use reusable SkeletonLoader for cards and lists -->
-		<SkeletonLoader count={1} variant="card" />
-		<SkeletonLoader count={1} variant="list" />
-		<SkeletonLoader count={1} variant="card" />
+		<!-- Header Section Skeleton -->
+		<div class="flex flex-col gap-4 mb-6">
+			<div class="flex items-center gap-4">
+				<div class="placeholder animate-pulse w-64 h-12 rounded"></div>
+				<div class="placeholder animate-pulse w-32 h-8 rounded"></div>
+			</div>
+			<div class="flex gap-2">
+				{#each Array(5) as _}
+					<div class="placeholder animate-pulse w-16 h-8 rounded"></div>
+				{/each}
+			</div>
+		</div>
+
+		<!-- Tag Info & Settings Skeleton -->
+		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+			<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
+				<div class="placeholder animate-pulse w-24 h-6 mb-4 rounded"></div>
+				<div class="placeholder animate-pulse w-full h-24 rounded"></div>
+			</div>
+			<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
+				<div class="flex justify-between items-center mb-4">
+					<div class="placeholder animate-pulse w-24 h-6 rounded"></div>
+					<div class="placeholder animate-pulse w-32 h-10 rounded"></div>
+				</div>
+				<div class="grid grid-cols-2 gap-4">
+					{#each Array(3) as _}
+						<div class="p-3 bg-surface-200-800 rounded">
+							<div class="placeholder animate-pulse w-32 h-4 mb-2 rounded"></div>
+							<div class="placeholder animate-pulse w-16 h-8 rounded"></div>
+						</div>
+					{/each}
+				</div>
+			</div>
+		</div>
+
+		<!-- Stats Overview Skeleton -->
+		<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+			{#each Array(3) as _}
+				<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
+					<div class="placeholder animate-pulse w-24 h-4 mb-2 rounded"></div>
+					<div class="placeholder animate-pulse w-16 h-8 mb-2 rounded"></div>
+					<div class="placeholder animate-pulse w-full h-1 rounded"></div>
+				</div>
+			{/each}
+		</div>
+
+		<!-- User's Tag Info Skeleton -->
+		<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6 mb-6">
+			<div class="flex justify-between items-center mb-4">
+				<div class="placeholder animate-pulse w-32 h-6 rounded"></div>
+				<div class="placeholder animate-pulse w-24 h-10 rounded"></div>
+			</div>
+			<div class="grid grid-cols-3 gap-4">
+				{#each Array(3) as _}
+					<div class="p-3 bg-surface-200-800 rounded">
+						<div class="placeholder animate-pulse w-16 h-4 mb-2 rounded"></div>
+						<div class="placeholder animate-pulse w-12 h-8 rounded"></div>
+					</div>
+				{/each}
+			</div>
+		</div>
+
+		<!-- Activity Sections Skeleton -->
+		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+			{#each Array(2) as _}
+				<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
+					<div class="flex justify-between items-center mb-4">
+						<div class="placeholder animate-pulse w-32 h-6 rounded"></div>
+						<div class="placeholder animate-pulse w-24 h-10 rounded"></div>
+					</div>
+					<div class="space-y-2">
+						{#each Array(3) as _}
+							<div class="flex justify-between items-center">
+								<div class="placeholder animate-pulse w-24 h-6 rounded"></div>
+								<div class="placeholder animate-pulse w-16 h-6 rounded"></div>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/each}
+		</div>
+
+		<!-- Graph Preview Skeleton -->
+		<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6 mb-6">
+			<div class="flex justify-between items-center mb-4">
+				<div class="placeholder animate-pulse w-32 h-6 rounded"></div>
+				<div class="placeholder animate-pulse w-32 h-10 rounded"></div>
+			</div>
+			<div class="placeholder animate-pulse w-full h-64 rounded"></div>
+		</div>
+
+		<!-- Call to Action Skeleton -->
+		<div class="mb-6">
+			<div class="placeholder animate-pulse w-full h-12 rounded"></div>
+		</div>
 	{:else if error}
 		<!-- Error State -->
 		<div class="alert alert-error">{error}</div>
