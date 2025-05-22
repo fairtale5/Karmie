@@ -160,14 +160,26 @@ async function saveTag() {
     // Set the user key from the auth doc
     tagBeingEdited.data.user_key = userDoc.data.user_key;
 
+    // Show loading toast
+    toaster.info({ 
+      title: 'Creating Tag', 
+      description: 'Please wait while we create your tag...' 
+    });
+
     // Create the tag using our utility function
     await createTagDoc(tagBeingEdited);
 
-    toaster.success({ title: 'Tag created!', description: 'Your tag was created successfully.' });
+    toaster.success({ 
+      title: 'Tag Created!', 
+      description: 'Your tag was created successfully. Redirecting to the new tag page...' 
+    });
     goto('/tags');
   } catch (e) {
     errorGlobal = e instanceof Error ? e.message : 'Failed to create tag.';
-    toaster.error({ title: 'Error', description: errorGlobal });
+    toaster.error({ 
+      title: 'Error Creating Tag', 
+      description: errorGlobal 
+    });
   } finally {
     loading = false;
   }
