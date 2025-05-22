@@ -165,7 +165,6 @@ use junobuild_satellite::{
 // =============================================================================
 // Types for working with Juno's list functionality
 
-use junobuild_shared::types::list::{ListMatcher, ListParams};
 use ic_cdk_macros::*;
 use ic_cdk;  // Add this import
 
@@ -200,18 +199,16 @@ use ic_cdk;  // Add this import
 // ===========================================================================
 
 
-use junobuild_utils::{decode_doc_data, encode_doc_data};
+use junobuild_utils::decode_doc_data;
 
 // Import our utility modules
 use crate::utils::{
-    normalize::normalize_handle,
-    structs::{Vote, VoteData, Tag, Reputation, UserData, TagData, TimePeriod, ReputationData}
+    structs::{VoteData, ReputationData}
 };
 
 // Import our core modules
 use crate::core::{
     calculate_user_reputation,
-    get_user_reputation_data,
     calculate_and_store_vote_weight,
 };
 

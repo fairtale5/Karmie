@@ -22,8 +22,7 @@
 
 use serde::{Deserialize, Serialize, Deserializer, Serializer};
 use std::fmt;
-use junobuild_utils::{encode_doc_data, decode_doc_data};
-use crate::validation::ulid_timestamp_validate::validate_timestamp_component;
+use crate::validation::ulid_timestamp_validate::{validate_ulid_timestamp, CheckULIDisNew};
 use crate::processors::ulid_timestamp_extract::extract_timestamp_ms;
 
 /// A strongly-typed ULID implementation with validation
@@ -80,7 +79,7 @@ impl ULID {
         }
         
         // Validate timestamp component (first 10 characters)
-        if let Err(e) = validate_timestamp_component(&value) {
+        if let Err(e) = validate_ulid_timestamp(&value, CheckULIDisNew::no()) {
             return Err(e);
         }
         
@@ -151,6 +150,7 @@ pub struct CustomData {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use junobuild_utils::{encode_doc_data, decode_doc_data};
 
     #[test]
     fn test_normal_serialization() {

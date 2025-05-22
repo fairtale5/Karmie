@@ -2,9 +2,9 @@ use junobuild_satellite::AssertSetDocContext;
 use junobuild_utils::decode_doc_data;
 use junobuild_shared::types::list::{ListMatcher, ListParams};
 use crate::{
-    validation::{validate_handle, validate_display_name},
+    validation::{validate_handle, validate_display_name, validate_ulid_timestamp, CheckULIDisNew},
     utils::structs::UserData,
-    processors::document_keys::{create_user_key, format_user_key},
+    processors::document_keys::format_user_key,
     processors::document_queries::query_doc_by_key,
 };
 use crate::list_docs;
@@ -43,14 +43,21 @@ pub fn assert_doc_user(context: &AssertSetDocContext) -> Result<(), String> {
     // Step 2: Validate document key format
     // First validate that the user_key field in the user data is a valid ULID
     if let Some(ref user_key) = user_data.user_key {
-        // Validate ULID format
+        // Step 2.1: Validate ULID format
         if let Err(e) = crate::processors::ulid_generator::validate_ulid(user_key) {
             let err_msg = format!("[assert_doc_user] Invalid ULID format: {}", e);
             logger!("error", "{}", err_msg);
             return Err(err_msg);
         }
+
+        // Step 2.2: Validate ULID timestamp
+        if let Err(e) = validate_ulid_timestamp(user_key, CheckULIDisNew::yes()) {
+            let err_msg = format!("[assert_doc_user] Invalid ULID timestamp: {}", e);
+            logger!("error", "{}", err_msg);
+            return Err(err_msg);
+        }
         
-        // Then check if the formatted key matches what was provided
+        // Step 2.3: Then check if the formatted key matches what was provided
         match format_user_key(&context.caller.to_string(), user_key, &user_data.user_handle) {
             Ok(expected_key) => {
                 if expected_key != context.data.key {

@@ -2,7 +2,6 @@ use crate::logger;
 use junobuild_satellite::AssertSetDocContext;
 use junobuild_utils::decode_doc_data;
 use crate::utils::structs::ReputationData;
-use crate::IS_PLAYGROUND;
 use crate::processors::document_keys::{validate_reputation_key, format_reputation_key};
 
 /// Validates a reputation document before creation or update

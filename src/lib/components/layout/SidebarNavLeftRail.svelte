@@ -47,8 +47,8 @@
 			<Navigation.Tile id="/dashboard" href="/dashboard" labelExpanded="Dashboard" label="" selected={currentPath === '/dashboard'} labelClasses={currentPath === '/dashboard' ? 'text-primary-600-300' : ''}>
 				<LayoutDashboard class={currentPath === '/dashboard' ? 'text-primary-600-300' : ''} />
 			</Navigation.Tile>
-			<Navigation.Tile id="/tags-hub" href="/tags-hub" labelExpanded="Tags Hub" label="" selected={currentPath === '/tags-hub'} labelClasses={currentPath === '/tags-hub' ? 'text-primary-600-300' : ''}>
-				<Orbit class={currentPath === '/tags-hub' ? 'text-primary-600-300' : ''} />
+			<Navigation.Tile id="/tags" href="/tags" labelExpanded="Tags" label="" selected={currentPath === '/tags'} labelClasses={currentPath === '/tags' ? 'text-primary-600-300' : ''}>
+				<Orbit class={currentPath === '/tags' ? 'text-primary-600-300' : ''} />
 			</Navigation.Tile>
 			<Navigation.Tile id="/tag/new" href="/tag/new" labelExpanded="Create Tag" label="" selected={currentPath === '/tag/new'} labelClasses={currentPath === '/tag/new' ? 'text-primary-600-300' : ''}>
 				<SquarePen class={currentPath === '/tag/new' ? 'text-primary-600-300' : ''} />

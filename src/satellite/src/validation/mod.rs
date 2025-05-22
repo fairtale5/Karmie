@@ -22,7 +22,7 @@ pub use description::validate_description;
 pub use display_name::validate_display_name;
 pub use validate_handle::validate_handle;
 pub use validate_tag_date::validate_tag_date_struct;
-pub use ulid_timestamp_validate::validate_timestamp_component;
+pub use ulid_timestamp_validate::{validate_ulid_timestamp, CheckULIDisNew};
 
 // TODO: As validation functions are moved from utils to this module,
 // add the following structure:

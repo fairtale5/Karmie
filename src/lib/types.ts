@@ -33,17 +33,17 @@ export interface UserData {
  * - min_users_for_threshold: Minimum users needed before vote rewards are restricted
  */
 export interface TagData {
-    user_key: string;         // ULID key of the creator (references Users collection)
-    tag_key: string;          // ULID for this tag (required)
-    tag_handle: string;     // Tag handle (required)
-    description: string;    // Description of the tag's purpose 
+    user_key?: string;         // ULID key of the creator (references Users collection)
+    tag_key?: string;          // ULID for this tag (required)
+    tag_handle?: string;     // Tag handle (required)
+    description?: string;    // Description of the tag's purpose 
     time_periods: Array<{   // Array of time period objects
         months: number;     // Duration in months (1-999)
         multiplier: number; // Weight multiplier (0.25-1.5)
     }>;
-    reputation_threshold: number;    // Minimum reputation needed for voting power
-    vote_reward: number;             // Reputation points given for casting votes
-    min_users_for_threshold: number; // Minimum users needed before vote rewards are restricted
+    reputation_threshold?: number;    // Minimum reputation needed for voting power
+    vote_reward?: number;             // Reputation points given for casting votes
+    min_users_for_threshold?: number; // Minimum users needed before vote rewards are restricted
 }
 
 /**

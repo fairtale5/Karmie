@@ -48,7 +48,7 @@
 				user = state;
 				// Only redirect if on the homepage
 				if (user !== null && currentPath === '/') {
-					goto('/tags-hub');
+					goto('/dashboard');
 				}
 			});
 			initialized = true;
@@ -73,7 +73,7 @@
 						if (!userDoc || !hasRequiredFields) {
 							goto('/onboarding');
 						} else {
-							goto('/tags-hub');
+							goto('/dashboard');
 						}
 						unsubscribe();
 						resolve();
