@@ -121,7 +121,7 @@ function onTagChange(event: Event) {
 			<label for="reputation-select" class="block mb-2 text-lg font-bold">Select Reputation Community</label>
 			<select id="reputation-select" class="input input-lg w-full" bind:value={selectedTagKey} on:change={onTagChange}>
 				{#each tags as tag}
-					<option value={tag.key}>{tag.data.name}</option>
+					<option value={tag.key}>{tag.data.tag_handle}</option>
 				{/each}
 			</select>
 		</div>
@@ -129,7 +129,7 @@ function onTagChange(event: Event) {
 		<!-- Community Description -->
 		{#if selectedTag}
 			<div class="card p-4 mb-6 bg-surface-100-900">
-				<div class="font-bold text-xl mb-2">{selectedTag.data.name}</div>
+				<div class="font-bold text-xl mb-2">{selectedTag.data.tag_handle}</div>
 				<div class="text-base opacity-80">{selectedTag.data.description}</div>
 			</div>
 		{/if}
