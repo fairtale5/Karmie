@@ -3,12 +3,13 @@
 import { onMount } from 'svelte';
 import { listDocs, type Doc } from '@junobuild/core';
 import { toaster } from '$lib/skeletonui/toaster-skeleton';
+import { goto } from '$app/navigation';
 // import sigma.js for future graph integration (placeholder for now)
 // import Sigma from 'sigma';
 import SkeletonLoader from '$lib/components/common/SkeletonLoader.svelte';
 import { initJuno } from '$lib/juno';
 import { Avatar } from '@skeletonlabs/skeleton-svelte';
-import { UserRoundPen } from 'lucide-svelte';
+import { UserRoundPen, Expand } from 'lucide-svelte';
 import NotLoggedInAlert from '$lib/components/common/NotLoggedInAlert.svelte';
 import { authUserDoc } from '$lib/stores/authUserDoc';
 
@@ -22,6 +23,14 @@ let userReputation: any = null;
 let topUsers: any[] = [];
 let recentVotes: any[] = [];
 let userRecentActivity: any[] = [];
+let selectedPeriod = '24h';
+
+// Dummy stats data
+let stats = {
+	totalUsers: 1234,
+	verifiedUsers: 567,
+	activeUsers: 89
+};
 
 // --- Fetch Data ---
 onMount(async () => {
@@ -116,123 +125,213 @@ function onTagChange(event: Event) {
 		<!-- Error State -->
 		<div class="alert alert-error">{error}</div>
 	{:else}
-		<!-- Reputation Tag Selector -->
-		<div class="mb-6">
-			<label for="reputation-select" class="block mb-2 text-lg font-bold">Select Reputation Community</label>
-			<select id="reputation-select" class="input input-lg w-full" bind:value={selectedTagKey} on:change={onTagChange}>
-				{#each tags as tag}
-					<option value={tag.key}>{tag.data.tag_handle}</option>
+		<!-- Header Section -->
+		<div class="flex flex-col gap-4 mb-6">
+			<!-- Tag Selector & Title -->
+			<div class="flex items-center gap-4">
+				<select class="input input-lg" bind:value={selectedTagKey} on:change={onTagChange}>
+					{#each tags as tag}
+						<option value={tag.key}>{tag.data.tag_handle}</option>
+					{/each}
+				</select>
+				<h1 class="text-2xl font-bold">#{selectedTag?.data.tag_handle}</h1>
+			</div>
+
+			<!-- Global Time Filter -->
+			<div class="flex gap-2">
+				{#each ['24h', '7d', '30d', '90d', '1y'] as period}
+					<button 
+						class="btn preset-tonal-primary text-xs" 
+						class:preset-filled-primary-500={selectedPeriod === period}
+						on:click={() => selectedPeriod = period}
+					>
+						{period}
+					</button>
 				{/each}
-			</select>
+			</div>
 		</div>
 
-		<!-- Community Description -->
-		{#if selectedTag}
-			<div class="card p-4 mb-6 bg-surface-100-900">
-				<div class="font-bold text-xl mb-2">{selectedTag.data.tag_handle}</div>
-				<div class="text-base opacity-80">{selectedTag.data.description}</div>
+		<!-- Tag Info & Settings -->
+		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+			<!-- Tag Description -->
+			<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
+				<h2 class="text-lg font-bold mb-2">About</h2>
+				<p class="whitespace-pre-line opacity-80">{selectedTag?.data.description}</p>
 			</div>
-		{/if}
 
-		<!-- User's Reputation in Selected Tag -->
+			<!-- Tag Settings -->
+			<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
+				<div class="flex justify-between items-center mb-4">
+					<h2 class="text-lg font-bold">Settings</h2>
+					{#if $authUserDoc?.data.user_key === selectedTag?.data.user_key}
+						<button class="btn preset-tonal-primary" on:click={() => goto(`/tag/edit/${selectedTagKey}`)}>
+							Edit Settings
+						</button>
+					{/if}
+				</div>
+				<div class="grid grid-cols-2 gap-4">
+					<div class="p-3 bg-surface-200-800 rounded">
+						<span class="text-sm opacity-70">Reputation Threshold</span>
+						<p class="font-mono text-lg">{selectedTag?.data.reputation_threshold}</p>
+					</div>
+					<div class="p-3 bg-surface-200-800 rounded">
+						<span class="text-sm opacity-70">Vote Reward</span>
+						<p class="font-mono text-lg">{selectedTag?.data.vote_reward}</p>
+					</div>
+					<div class="p-3 bg-surface-200-800 rounded">
+						<span class="text-sm opacity-70">Min Users</span>
+						<p class="font-mono text-lg">{selectedTag?.data.min_users_for_threshold}</p>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Stats Overview -->
+		<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+			<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
+				<h3 class="text-sm opacity-70">Total Users</h3>
+				<p class="text-2xl font-bold">{stats.totalUsers}</p>
+				<div class="mt-2 h-1 w-full bg-surface-200-800 rounded-full overflow-hidden">
+					<div class="h-full bg-primary-500" style="width: 100%"></div>
+				</div>
+			</div>
+			<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
+				<h3 class="text-sm opacity-70">Verified Users</h3>
+				<p class="text-2xl font-bold">{stats.verifiedUsers}</p>
+				<div class="mt-2 h-1 w-full bg-surface-200-800 rounded-full overflow-hidden">
+					<div class="h-full bg-success-500" style="width: {stats.verifiedUsers / stats.totalUsers * 100}%"></div>
+				</div>
+			</div>
+			<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
+				<h3 class="text-sm opacity-70">Active Users</h3>
+				<p class="text-2xl font-bold">{stats.activeUsers}</p>
+				<div class="mt-2 h-1 w-full bg-surface-200-800 rounded-full overflow-hidden">
+					<div class="h-full bg-warning-500" style="width: {stats.activeUsers / stats.totalUsers * 100}%"></div>
+				</div>
+			</div>
+		</div>
+
+		<!-- User's Tag Info -->
 		{#if userReputation}
-			<div class="card preset-tonal-primary grid grid-cols-1 items-center gap-4 p-4 mb-6 lg:grid-cols-[1fr_auto]">
-				<div>
-					<div class="font-bold text-lg">Your Reputation</div>
-					<div>Score: <span class="font-mono">{userReputation.score}</span></div>
-					<div>Rank: <span class="font-mono">#{userReputation.rank}</span></div>
-					<div class="flex gap-2">
-						{#each userReputation.badges as badge}
-							<span class="badge badge-success">{badge}</span>
-						{/each}
+			<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6 mb-6">
+				<div class="flex justify-between items-center mb-4">
+					<h2 class="text-lg font-bold">Your Reputation</h2>
+					<button class="btn preset-tonal-primary" on:click={() => goto(`/tags/${selectedTagKey}/reputation`)}>
+						<Expand class="w-4 h-4 mr-2" />
+						See More
+					</button>
+				</div>
+				<div class="grid grid-cols-3 gap-4">
+					<div class="p-3 bg-surface-200-800 rounded">
+						<span class="text-sm opacity-70">Score</span>
+						<p class="text-2xl font-bold">{userReputation.score}</p>
+					</div>
+					<div class="p-3 bg-surface-200-800 rounded">
+						<span class="text-sm opacity-70">Rank</span>
+						<p class="text-2xl font-bold">#{userReputation.rank}</p>
+					</div>
+					<div class="p-3 bg-surface-200-800 rounded">
+						<span class="text-sm opacity-70">Recent Activity</span>
+						<p class="text-2xl font-bold">{userRecentActivity.length}</p>
 					</div>
 				</div>
 			</div>
 		{/if}
 
-		<!-- User's Recent Activity -->
-		<div class="mb-6">
-			<div class="font-bold mb-2">Your Recent Activity</div>
-			{#if userRecentActivity.length === 0}
-				<div class="opacity-60">No recent activity.</div>
-			{:else}
-				<ul class="space-y-1">
-					{#each userRecentActivity as activity}
-						<li class="flex items-center gap-2">
-							<span class={activity.value > 0 ? 'text-success-500' : 'text-error-500'}>
-								{activity.value > 0 ? '+1' : '-1'}
-							</span>
-							<span>to {activity.target}</span>
-							<span class="text-xs opacity-60">({activity.date})</span>
-						</li>
-					{/each}
-				</ul>
-			{/if}
+		<!-- Activity Sections -->
+		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+			<!-- Recent Votes -->
+			<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
+				<div class="flex justify-between items-center mb-4">
+					<h2 class="text-lg font-bold">Recent Votes</h2>
+					<button class="btn preset-tonal-primary" on:click={() => goto(`/tags/${selectedTagKey}/votes`)}>
+						<Expand class="w-4 h-4 mr-2" />
+						See More
+					</button>
+				</div>
+				<div class="table-wrap">
+					<table class="table caption-bottom">
+						<thead>
+							<tr>
+								<th>From</th>
+								<th>To</th>
+								<th class="text-right">Value</th>
+							</tr>
+						</thead>
+						<tbody class="[&>tr]:hover:preset-tonal-primary">
+							{#each recentVotes as vote}
+								<tr>
+									<td class="font-mono">{vote.author}</td>
+									<td class="font-mono">{vote.target}</td>
+									<td class="text-right">
+										<span class="badge preset-filled-{vote.value > 0 ? 'success' : 'error'}-500">
+											{vote.value > 0 ? '+1' : '-1'}
+										</span>
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			<!-- Top Users -->
+			<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
+				<div class="flex justify-between items-center mb-4">
+					<h2 class="text-lg font-bold">Top Users</h2>
+					<button class="btn preset-tonal-primary" on:click={() => goto(`/tags/${selectedTagKey}/users`)}>
+						<Expand class="w-4 h-4 mr-2" />
+						See More
+					</button>
+				</div>
+				<div class="table-wrap">
+					<table class="table caption-bottom">
+						<thead>
+							<tr>
+								<th>User</th>
+								<th class="text-right">Score</th>
+							</tr>
+						</thead>
+						<tbody class="[&>tr]:hover:preset-tonal-primary">
+							{#each topUsers as user, i}
+								<tr>
+									<td>
+										<div class="flex items-center gap-2">
+											<Avatar name={user.username}>
+												<UserRoundPen class="w-6 h-6 text-surface-700" />
+											</Avatar>
+											<span class="font-bold">{user.username}</span>
+											{#if i === 0}
+												<span class="text-yellow-500">🥇</span>
+											{:else if i === 1}
+												<span class="text-gray-400">🥈</span>
+											{:else if i === 2}
+												<span class="text-orange-700">🥉</span>
+											{/if}
+										</div>
+									</td>
+									<td class="text-right">
+										<span class="badge preset-filled-primary-500">{user.score} points</span>
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			</div>
 		</div>
 
-		<!-- Top Users in Reputation -->
-		<div class="mb-6">
-			<div class="font-bold mb-2">Top Users</div>
-			{#if topUsers.length === 0}
-				<div class="opacity-60">No users yet.</div>
-			{:else}
-				<ul class="space-y-2">
-					{#each topUsers as user, i}
-						<li class="card shadow bg-surface-100-900 border border-surface-200-800 grid grid-cols-[auto_1fr_auto] items-center gap-4 p-4 relative">
-							<!-- Avatar with fallback icon -->
-							<Avatar name={user.username}>
-								<UserRoundPen class="w-8 h-8 text-surface-700" />
-							</Avatar>
-							<!-- User info -->
-							<div>
-								<p class="font-bold">{user.username}</p>
-								<p class="opacity-60 text-xs">@{user.username}</p>
-							</div>
-							<!-- Score and bar graph -->
-							<div class="flex flex-col items-end z-10">
-								<span class="font-bold">{user.score}</span>
-								<span class="absolute left-0 bottom-0 h-2 rounded bg-primary-500 opacity-20" style="width: {user.bar * 100}%;"></span>
-								{#if i === 0}
-									<span class="ml-2 text-yellow-500">🥇</span>
-								{:else if i === 1}
-									<span class="ml-2 text-gray-400">🥈</span>
-								{:else if i === 2}
-									<span class="ml-2 text-orange-700">🥉</span>
-								{/if}
-							</div>
-						</li>
-					{/each}
-				</ul>
-			{/if}
-		</div>
-
-		<!-- Most Recent Votes -->
-		<div class="mb-6">
-			<div class="font-bold mb-2">Most Recent Votes</div>
-			{#if recentVotes.length === 0}
-				<div class="opacity-60">No votes yet.</div>
-			{:else}
-				<ul class="space-y-1">
-					{#each recentVotes as vote}
-						<li class="flex items-center gap-2">
-							<span class="font-mono">{vote.author}</span>
-							<span>→</span>
-							<span class="font-mono">{vote.target}</span>
-							<span class={vote.value > 0 ? 'text-success-500' : 'text-error-500'}>
-								{vote.value > 0 ? '+1' : '-1'}
-							</span>
-						</li>
-					{/each}
-				</ul>
-			{/if}
-		</div>
-
-		<!-- Graph Overview (sigma.js placeholder) -->
-		<div class="mb-6">
-			<div class="font-bold mb-2">Graph Overview</div>
-			<div class="w-full h-64 bg-surface-200-800 rounded flex items-center justify-center opacity-50">
-				<!-- TODO: Integrate sigma.js graph here -->
-				<span>Graph visualization coming soon…</span>
+		<!-- Graph Preview -->
+		<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6 mb-6">
+			<div class="flex justify-between items-center mb-4">
+				<h2 class="text-lg font-bold">Graph Overview</h2>
+				<button class="btn preset-tonal-primary" on:click={() => goto(`/tags/${selectedTagKey}/graph`)}>
+					<Expand class="w-4 h-4 mr-2" />
+					View Full Graph
+				</button>
+			</div>
+			<div class="w-full h-64 bg-surface-200-800 rounded flex items-center justify-center">
+				<span class="opacity-50">Graph visualization coming soon…</span>
 			</div>
 		</div>
 
@@ -245,4 +344,4 @@ function onTagChange(event: Event) {
 			{/if}
 		</div>
 	{/if}
-</div> 
+</div>
