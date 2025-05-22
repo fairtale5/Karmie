@@ -67,7 +67,7 @@ const quickActions = [
 </script>
 
 <!-- Main dashboard grid -->
-<div class="grid grid-cols-1 2xl:grid-cols-3 gap-10">
+<div class="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-10">
   <!-- Column 1 -->
   <div class="space-y-10">
     <!-- User Profile Card -->
