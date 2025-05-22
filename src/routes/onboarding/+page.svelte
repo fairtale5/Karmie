@@ -26,13 +26,13 @@
   let avatarUrlToSave = $state('');
   let avatarUploadComplete = $state(false);
   let saveProfileRequested = $state(false);
+  let avatarFile = $state<File | null>(null);
 
   /**
    * Single source of truth for the avatar file.
    * This variable is shared between the upload area and the cropper.
    * When set/cleared in one place, the other updates automatically.
    */
-  let avatarFile: File | null = null;
 
   function validateUsername(name: string): { isValid: boolean; error?: string } {
     if (!name) return { isValid: false, error: 'Username is required' };
@@ -271,7 +271,7 @@
   {/if}
 
   <form class="card shadow bg-surface-100-900 border border-surface-200-800 p-5 space-y-5 max-w-md mx-auto mt-10"
-        on:submit|preventDefault={handleSubmit}>
+        onsubmit={handleSubmit}>
     <fieldset class="space-y-2">
       <h2 class="h2">Set Up Your Profile</h2>
       <p class="opacity-60">Choose a username and display name. You can add an avatar later.</p>
