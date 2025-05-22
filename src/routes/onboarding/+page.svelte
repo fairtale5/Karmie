@@ -47,7 +47,7 @@
     if (!validFormat.test(name)) {
       return { 
         isValid: false, 
-        error: 'Only letters, numbers, and single dashes between words allowed' 
+        error: 'Only letters, numbers, and single dashes (-) between words allowed' 
       };
     }
 
@@ -299,6 +299,8 @@
           <span class="text-success-500 text-xs mt-1">Username is available!</span>
         {:else if user_handle && user_handle.length > 0 && user_handle.length < 3}
           <span class="text-error-500 text-xs mt-1">Username must be at least 3 characters.</span>
+        {:else if usernameStatus === 'invalid'}
+          <span class="text-error-500 text-xs mt-1">{usernameError}</span>
         {/if}
       </label>
       <label class="label">
