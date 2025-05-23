@@ -160,30 +160,27 @@ async function saveTag() {
     // Set the user key from the auth doc
     tagBeingEdited.data.user_key = userDoc.data.user_key;
 
-    // Create a promise for the save operation
-    const savePromise = (async () => {
-      // Create the tag using our utility function
-      await createTagDoc(tagBeingEdited);
-      goto('/tags');
-    })();
-
-    // Use toaster.promise to handle the loading, success, and error states
-    await toaster.promise(savePromise, {
-      loading: {
-        title: 'Creating Tag on the Blockchain',
-        description: 'Please wait while we create your tag...'
-      },
-      success: () => ({
-        title: 'Tag Created!',
-        description: 'Your tag was created successfully. Redirecting to the tags page...'
-      }),
-      error: (error) => ({
-        title: 'Error Creating Tag',
-        description: error instanceof Error ? error.message : 'Failed to create tag.'
-      })
+    // Show loading toast
+    toaster.loading({
+      title: 'Creating Tag on the Blockchain',
+      description: 'Please wait while we create your tag...'
     });
+
+    // Create the tag using our utility function
+    await createTagDoc(tagBeingEdited);
+    
+    toaster.success({
+      title: 'Tag Created!',
+      description: 'Your tag was created successfully. Redirecting to the tags page...'
+    });
+    
+    goto('/tags');
   } catch (e) {
     errorGlobal = e instanceof Error ? e.message : 'Failed to create tag.';
+    toaster.error({
+      title: 'Error Creating Tag',
+      description: e instanceof Error ? e.message : 'Failed to create tag.'
+    });
   } finally {
     loading = false;
   }
