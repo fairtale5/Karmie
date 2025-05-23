@@ -26,13 +26,13 @@
   let avatarUrlToSave = $state('');
   let avatarUploadComplete = $state(false);
   let saveProfileRequested = $state(false);
+  let avatarFile = $state<File | null>(null);
 
   /**
    * Single source of truth for the avatar file.
    * This variable is shared between the upload area and the cropper.
    * When set/cleared in one place, the other updates automatically.
    */
-  let avatarFile: File | null = null;
 
   function validateUsername(name: string): { isValid: boolean; error?: string } {
     if (!name) return { isValid: false, error: 'Username is required' };
@@ -47,7 +47,7 @@
     if (!validFormat.test(name)) {
       return { 
         isValid: false, 
-        error: 'Only letters, numbers, and single dashes between words allowed' 
+        error: 'Only letters, numbers, and single dashes (-) between words allowed' 
       };
     }
 
@@ -194,52 +194,61 @@
   async function saveProfile() {
     loading = true;
     try {
-      // Validate username
-      if (!user_handle.trim()) {
-        toaster.error({ title: 'Validation Error', description: 'You must enter a username.' });
-        loading = false;
-        return;
-      }
-      // Validate display name
-      if (!displayName.trim()) {
-        toaster.error({ title: 'Validation Error', description: 'You must enter a display name.' });
-        loading = false;
-        return;
-      }
-      // Validate authentication
-      if (!$authUser) {
-        toaster.error({ title: 'User not authenticated.', description: 'Please log in to set up your profile.' });
-        loading = false;
-        return;
-      }
-      saveProfileRequested = true;
-      // If avatar upload is in progress, wait for it to finish
-      if (avatarUploadPromise) {
-        await avatarUploadPromise;
-      }
-      // Use the uploaded avatar URL if available, otherwise fallback to previous avatarUrl
-      const finalAvatarUrl = avatarUrlToSave || avatarUrl || '';
-      // Save the user document with the avatar URL
-      await createUserDoc({
-        user_handle: user_handle.trim(),
-        display_name: displayName.trim() || ' ',
-        avatar_url: finalAvatarUrl
-      });
+      // Create a promise for the save operation
+      const savePromise = (async () => {
+        // Validate username
+        if (!user_handle.trim()) {
+          throw new Error('You must enter a username.');
+        }
+        // Validate display name
+        if (!displayName.trim()) {
+          throw new Error('You must enter a display name.');
+        }
+        // Validate authentication
+        if (!$authUser) {
+          throw new Error('Please log in to set up your profile.');
+        }
+        saveProfileRequested = true;
+        // If avatar upload is in progress, wait for it to finish
+        if (avatarUploadPromise) {
+          await avatarUploadPromise;
+        }
+        // Use the uploaded avatar URL if available, otherwise fallback to previous avatarUrl
+        const finalAvatarUrl = avatarUrlToSave || avatarUrl || '';
+        // Save the user document with the avatar URL
+        await createUserDoc({
+          user_handle: user_handle.trim(),
+          display_name: displayName.trim() || ' ',
+          avatar_url: finalAvatarUrl
+        });
 
-      // Fetch the newly created document to ensure it's in the store
-      const keyPattern = `_prn_${$authUser.key}_`;
-      const results = await queryDocsByKey<UserData>('users', keyPattern);
-      const userDoc = results.items[0];
-      if (userDoc) {
-        authUserDoc.set(userDoc);
-        toaster.success({ title: 'Profile saved!', description: 'Your profile has been updated.' });
-        goto('/dashboard');
-      } else {
-        throw new Error('Failed to fetch created user document');
-      }
-    } catch (e) {
-      // Show an error toast if saving fails
-      toaster.error({ title: 'Failed to save profile.', description: e instanceof Error ? e.message : 'Unknown error.' });
+        // Fetch the newly created document to ensure it's in the store
+        const keyPattern = `_prn_${$authUser.key}_`;
+        const results = await queryDocsByKey<UserData>('users', keyPattern);
+        const userDoc = results.items[0];
+        if (userDoc) {
+          authUserDoc.set(userDoc);
+          goto('/dashboard');
+        } else {
+          throw new Error('Failed to fetch created user document');
+        }
+      })();
+
+      // Use toaster.promise to handle the loading, success, and error states
+      await toaster.promise(savePromise, {
+        loading: {
+          title: 'Creating Profile on the Blockchain',
+          description: 'Please wait while we create your user profile on the ICP blockchain.'
+        },
+        success: () => ({
+          title: 'Profile saved!',
+          description: 'Your profile has been updated.'
+        }),
+        error: (error) => ({
+          title: 'Failed to save profile.',
+          description: error instanceof Error ? error.message : 'Unknown error.'
+        })
+      });
     } finally {
       loading = false;
       saveProfileRequested = false;
@@ -262,7 +271,7 @@
   {/if}
 
   <form class="card shadow bg-surface-100-900 border border-surface-200-800 p-5 space-y-5 max-w-md mx-auto mt-10"
-        on:submit|preventDefault={handleSubmit}>
+        onsubmit={handleSubmit}>
     <fieldset class="space-y-2">
       <h2 class="h2">Set Up Your Profile</h2>
       <p class="opacity-60">Choose a username and display name. You can add an avatar later.</p>
@@ -299,6 +308,8 @@
           <span class="text-success-500 text-xs mt-1">Username is available!</span>
         {:else if user_handle && user_handle.length > 0 && user_handle.length < 3}
           <span class="text-error-500 text-xs mt-1">Username must be at least 3 characters.</span>
+        {:else if usernameStatus === 'invalid'}
+          <span class="text-error-500 text-xs mt-1">{usernameError}</span>
         {/if}
       </label>
       <label class="label">
@@ -333,7 +344,12 @@
         {/if}
       </div>
       <button type="submit" class="btn preset-filled-primary-500 w-full" disabled={loading || !$authUser || croppingInProgress}>
-        {loading ? 'Saving...' : 'Save Profile'}
+        {#if loading}
+          <LoaderCircle class="animate-spin mr-2" />
+          Saving...
+        {:else}
+          Save Profile
+        {/if}
       </button>
     </fieldset>
   </form>

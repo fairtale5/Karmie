@@ -87,39 +87,41 @@
 </svelte:head>
 
 <header class="bg-surface-50-950 border-b border-surface-200-800/80">
-	<div class="container mx-auto p-3 flex justify-between items-center">
-		<div class="flex items-center gap-4">
-			<span class="ml-2 text-xl font-semibold text-primary-700-300">{meta.title ?? ''}</span>
-		</div>
-		<div class="flex items-center gap-4">
-			<Switch 
-				name="mode" 
-				controlActive="bg-[var(--color-surface-200-800)]" 
-				checked={checked} 
-				{onCheckedChange}
-			>
-				{#snippet inactiveChild()}<Moon size={14} />{/snippet}
-				{#snippet activeChild()}<Sun size={14} />{/snippet}
-			</Switch>
-			{#if $authUser === null}
-				<button
-					type="button"
-					class="btn preset-filled-primary-500"
-					on:click={handleLogin}
-					aria-label="Login with Internet Identity"
+	<div class="p-4">
+		<div class="px-4 flex justify-between items-center">
+			<div class="flex items-center gap-4">
+				<span class="text-xl font-semibold text-primary-700-300">{meta.title ?? ''}</span>
+			</div>
+			<div class="flex items-center gap-4">
+				<Switch 
+					name="mode" 
+					controlActive="bg-[var(--color-surface-200-800)]" 
+					checked={checked} 
+					{onCheckedChange}
 				>
-					Login
-				</button>
-			{:else}
-				<button
-					type="button"
-					class="btn preset-outlined-primary-500"
-					on:click={handleLogout}
-					aria-label="Logout"
-				>
-					Logout
-				</button>
-			{/if}
+					{#snippet inactiveChild()}<Moon size={14} />{/snippet}
+					{#snippet activeChild()}<Sun size={14} />{/snippet}
+				</Switch>
+				{#if $authUser === null}
+					<button
+						type="button"
+						class="btn preset-filled-primary-500"
+						on:click={handleLogin}
+						aria-label="Login with Internet Identity"
+					>
+						Login
+					</button>
+				{:else}
+					<button
+						type="button"
+						class="btn preset-outlined-primary-500"
+						on:click={handleLogout}
+						aria-label="Logout"
+					>
+						Logout
+					</button>
+				{/if}
+			</div>
 		</div>
 	</div>
 </header>

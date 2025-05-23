@@ -4,6 +4,7 @@ globs:
 alwaysApply: false
 ---
 Example of what a good commit looks like:
+Avoid filler words and lawyer-talk. Avoid words like "enhanced" (say updated).
 
 type(scope): concise summary of changes
 

@@ -18,6 +18,7 @@
 //! - Used for validating new documents
 
 use crate::processors::ulid_timestamp_extract::extract_timestamp_ms;
+use ic_cdk;
 
 /// Configuration for checking if a ULID timestamp is new
 /// This is a boolean that makes the code easier to read
@@ -64,11 +65,9 @@ pub fn validate_ulid_timestamp(ulid_str: &str, check_new: CheckULIDisNew) -> Res
     // Extract timestamp from the ULID
     let timestamp_ms = extract_timestamp_ms(ulid_str)?;
     
-    // Get current time
-    let now_ms = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis() as u64;
+    // Get current time from IC in milliseconds
+    // (IC time is in nanoseconds, divide by 1_000_000 to get milliseconds)
+    let now_ms = ic_cdk::api::time() / 1_000_000;
         
     // General validation (always done)
     let year_2025_ms: u64 = 1735689600000; // Jan 1, 2025

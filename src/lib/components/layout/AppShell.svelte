@@ -52,7 +52,7 @@
 		<div class="sticky top-0 z-10">
 			<Header />
 		</div>
-		<main class="flex-1 overflow-y-auto p-4 pb-[64px] md:pb-0">
+		<main class="flex-1 overflow-y-auto p-4 md:pb-0">
 			<slot />
 		</main>
 		<footer class="flex-shrink-0 p-4">
