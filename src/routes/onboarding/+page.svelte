@@ -192,65 +192,54 @@
    * Error handling ensures the user is notified if validation fails or if the upload/save fails.
    */
   async function saveProfile() {
-    loading = true;
     try {
-      // Create a promise for the save operation
-      const savePromise = (async () => {
-        // Validate username
-        if (!user_handle.trim()) {
-          throw new Error('You must enter a username.');
-        }
-        // Validate display name
-        if (!displayName.trim()) {
-          throw new Error('You must enter a display name.');
-        }
-        // Validate authentication
-        if (!$authUser) {
-          throw new Error('Please log in to set up your profile.');
-        }
-        saveProfileRequested = true;
-        // If avatar upload is in progress, wait for it to finish
-        if (avatarUploadPromise) {
-          await avatarUploadPromise;
-        }
-        // Use the uploaded avatar URL if available, otherwise fallback to previous avatarUrl
-        const finalAvatarUrl = avatarUrlToSave || avatarUrl || '';
-        // Save the user document with the avatar URL
-        await createUserDoc({
-          user_handle: user_handle.trim(),
-          display_name: displayName.trim() || ' ',
-          avatar_url: finalAvatarUrl
-        });
+      // Validate username
+      if (!user_handle.trim()) {
+        throw new Error('You must enter a username.');
+      }
+      // Validate display name
+      if (!displayName.trim()) {
+        throw new Error('You must enter a display name.');
+      }
+      // Validate authentication
+      if (!$authUser) {
+        throw new Error('Please log in to set up your profile.');
+      }
+      saveProfileRequested = true;
+      // If avatar upload is in progress, wait for it to finish
+      if (avatarUploadPromise) {
+        await avatarUploadPromise;
+      }
+      // Use the uploaded avatar URL if available, otherwise fallback to previous avatarUrl
+      const finalAvatarUrl = avatarUrlToSave || avatarUrl || '';
+      // Save the user document with the avatar URL
+      await createUserDoc({
+        user_handle: user_handle.trim(),
+        display_name: displayName.trim() || ' ',
+        avatar_url: finalAvatarUrl
+      });
 
-        // Fetch the newly created document to ensure it's in the store
-        const keyPattern = `_prn_${$authUser.key}_`;
-        const results = await queryDocsByKey<UserData>('users', keyPattern);
-        const userDoc = results.items[0];
-        if (userDoc) {
-          authUserDoc.set(userDoc);
-          goto('/dashboard');
-        } else {
-          throw new Error('Failed to fetch created user document');
-        }
-      })();
-
-      // Use toaster.promise to handle the loading, success, and error states
-      await toaster.promise(savePromise, {
-        loading: {
-          title: 'Creating Profile on the Blockchain',
-          description: 'Please wait while we create your user profile on the ICP blockchain.'
-        },
-        success: () => ({
+      // Fetch the newly created document to ensure it's in the store
+      const keyPattern = `_prn_${$authUser.key}_`;
+      const results = await queryDocsByKey<UserData>('users', keyPattern);
+      const userDoc = results.items[0];
+      if (userDoc) {
+        authUserDoc.set(userDoc);
+        toaster.success({ 
           title: 'Profile saved!',
           description: 'Your profile has been updated.'
-        }),
-        error: (error) => ({
-          title: 'Failed to save profile.',
-          description: error instanceof Error ? error.message : 'Unknown error.'
-        })
+        });
+        goto('/dashboard');
+      } else {
+        throw new Error('Failed to fetch created user document');
+      }
+    } catch (e) {
+      toaster.error({ 
+        title: 'Failed to save profile.',
+        description: e instanceof Error ? e.message : 'Unknown error.'
       });
+      throw e;
     } finally {
-      loading = false;
       saveProfileRequested = false;
     }
   }
@@ -343,7 +332,32 @@
           <span class="text-error-500 text-sm font-medium">Crop your image or remove it to save profile</span>
         {/if}
       </div>
-      <button type="submit" class="btn preset-filled-primary-500 w-full" disabled={loading || !$authUser || croppingInProgress}>
+      <button 
+        type="submit" 
+        class="btn preset-filled-primary-500 w-full" 
+        disabled={loading || !$authUser || croppingInProgress}
+        onclick={async (e) => {
+          e.preventDefault();
+          if (!$authUser) {
+            toaster.error({ title: 'You must be logged in to set up your profile.' });
+            return;
+          }
+          loading = true;
+          try {
+            // Show loading toast
+            toaster.loading({
+              title: 'Creating Profile on the Blockchain',
+              description: 'Please wait while we create your user profile on the ICP blockchain.'
+            });
+            await saveProfile();
+          } catch (e) {
+            // Error is already handled in saveProfile
+            console.error('Save profile failed:', e);
+          } finally {
+            loading = false;
+          }
+        }}
+      >
         {#if loading}
           <LoaderCircle class="animate-spin mr-2" />
           Saving...
