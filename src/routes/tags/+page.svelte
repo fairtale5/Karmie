@@ -218,71 +218,67 @@ function onTagChange(event: Event) {
 						</Tabs.Control>
 					{/snippet}
 					{#snippet content()}
-						<div class="pt-4 h-[288px] overflow-y-auto">
+						<div class="h-[288px] overflow-y-auto">
 							<Tabs.Panel value="about">
-								<div class="pt-4">
-									{#if (initialTagsLoading && !selectedTagKey) || (Boolean(selectedTagKey) && pageLoading && !selectedTag?.data?.description) }
-										<div class="placeholder animate-pulse w-full h-24 rounded"></div>
-									{:else if selectedTag?.data?.description}
-										<p class="whitespace-pre-line opacity-80">{selectedTag.data.description}</p>
-									{:else if selectedTag && !selectedTag.data?.description}
-										<p class="opacity-50 text-sm">No description available for this tag.</p>
-									{:else if !initialTagsLoading && tags.length > 0 && !selectedTagKey}
-										<p class="text-center opacity-70">Select a tag to see its details.</p>
-									{:else if !initialTagsLoading && tags.length === 0}
-										<p class="text-center opacity-70">No tags found to display.</p>
-									{/if}
-								</div>
+								{#if (initialTagsLoading && !selectedTagKey) || (Boolean(selectedTagKey) && pageLoading && !selectedTag?.data?.description) }
+									<div class="placeholder animate-pulse w-full h-24 rounded"></div>
+								{:else if selectedTag?.data?.description}
+									<p class="whitespace-pre-line opacity-80">{selectedTag.data.description}</p>
+								{:else if selectedTag && !selectedTag.data?.description}
+									<p class="opacity-50 text-sm">No description available for this tag.</p>
+								{:else if !initialTagsLoading && tags.length > 0 && !selectedTagKey}
+									<p class="text-center opacity-70">Select a tag to see its details.</p>
+								{:else if !initialTagsLoading && tags.length === 0}
+									<p class="text-center opacity-70">No tags found to display.</p>
+								{/if}
 							</Tabs.Panel>
 							<Tabs.Panel value="settings">
-								<div class="pt-4 h-[288px] overflow-y-auto">
-									{#if (initialTagsLoading && !selectedTagKey) || (Boolean(selectedTagKey) && pageLoading && !selectedTag?.data)}
-										<div class="placeholder animate-pulse w-1/2 h-8 rounded mb-4"></div>
-										<div class="grid grid-cols-2 gap-4">
-											<div class="p-3 bg-surface-200-800 rounded placeholder animate-pulse h-16"></div>
-											<div class="p-3 bg-surface-200-800 rounded placeholder animate-pulse h-16"></div>
-											<div class="p-3 bg-surface-200-800 rounded placeholder animate-pulse h-16"></div>
+								{#if (initialTagsLoading && !selectedTagKey) || (Boolean(selectedTagKey) && pageLoading && !selectedTag?.data)}
+									<div class="placeholder animate-pulse w-1/2 h-8 rounded mb-4"></div>
+									<div class="grid grid-cols-2 gap-4">
+										<div class="p-3 bg-surface-200-800 rounded placeholder animate-pulse h-16"></div>
+										<div class="p-3 bg-surface-200-800 rounded placeholder animate-pulse h-16"></div>
+										<div class="p-3 bg-surface-200-800 rounded placeholder animate-pulse h-16"></div>
+									</div>
+								{:else if selectedTag?.data}
+									<div class="flex justify-between items-center mb-0">
+										{#if $authUserDoc?.data.user_key === selectedTag.data.user_key}
+											<button class="btn preset-tonal-primary" onclick={() => goto(`/tag/edit/${selectedTagKey}`)}>
+												Edit Settings
+											</button>
+										{/if}
+									</div>
+									<div class="grid grid-cols-2 gap-4">
+										<div class="p-3 bg-surface-200-800 rounded">
+											<span class="text-sm opacity-70">Reputation Threshold</span>
+											<p class="font-mono text-lg">{selectedTag.data.reputation_threshold ?? 'N/A'}</p>
 										</div>
-									{:else if selectedTag?.data}
-										<div class="flex justify-between items-center mb-4">
-											{#if $authUserDoc?.data.user_key === selectedTag.data.user_key}
-												<button class="btn preset-tonal-primary" onclick={() => goto(`/tag/edit/${selectedTagKey}`)}>
-													Edit Settings
-												</button>
-											{/if}
+										<div class="p-3 bg-surface-200-800 rounded">
+											<span class="text-sm opacity-70">Vote Reward</span>
+											<p class="font-mono text-lg">{selectedTag.data.vote_reward ?? 'N/A'}</p>
 										</div>
-										<div class="grid grid-cols-2 gap-4">
-											<div class="p-3 bg-surface-200-800 rounded">
-												<span class="text-sm opacity-70">Reputation Threshold</span>
-												<p class="font-mono text-lg">{selectedTag.data.reputation_threshold ?? 'N/A'}</p>
+										<div class="p-3 bg-surface-200-800 rounded">
+											<span class="text-sm opacity-70">Min Users</span>
+											<p class="font-mono text-lg">{selectedTag.data.min_users_for_threshold ?? 'N/A'}</p>
+										</div>
+									</div>
+									<hr class="my-4 border-surface-300-700" />
+									<div>
+										<h4 class="text-md font-semibold mb-2">Decay Rules</h4>
+										<p class="text-sm opacity-70">
+											{selectedTag.data.decay_rules_description || 'Decay rules for this tag are not currently specified. Reputation may be subject to periodic adjustments based on overall network activity or specific tag settings that are not detailed here.'}
+										</p>
+										{#if selectedTag.data.decay_percentage && selectedTag.data.decay_period_days}
+											<div class="mt-2 p-2 bg-surface-200-800 rounded text-xs">
+												Reputation score decays by <span class="font-semibold">{selectedTag.data.decay_percentage}%</span> every <span class="font-semibold">{selectedTag.data.decay_period_days} days</span> if no new positive reputation is gained.
 											</div>
-											<div class="p-3 bg-surface-200-800 rounded">
-												<span class="text-sm opacity-70">Vote Reward</span>
-												<p class="font-mono text-lg">{selectedTag.data.vote_reward ?? 'N/A'}</p>
-											</div>
-											<div class="p-3 bg-surface-200-800 rounded">
-												<span class="text-sm opacity-70">Min Users</span>
-												<p class="font-mono text-lg">{selectedTag.data.min_users_for_threshold ?? 'N/A'}</p>
-											</div>
-										</div>
-										<hr class="my-4 border-surface-300-700" />
-										<div>
-											<h4 class="text-md font-semibold mb-2">Decay Rules</h4>
-											<p class="text-sm opacity-70">
-												{selectedTag.data.decay_rules_description || 'Decay rules for this tag are not currently specified. Reputation may be subject to periodic adjustments based on overall network activity or specific tag settings that are not detailed here.'}
-											</p>
-											{#if selectedTag.data.decay_percentage && selectedTag.data.decay_period_days}
-												<div class="mt-2 p-2 bg-surface-200-800 rounded text-xs">
-													Reputation score decays by <span class="font-semibold">{selectedTag.data.decay_percentage}%</span> every <span class="font-semibold">{selectedTag.data.decay_period_days} days</span> if no new positive reputation is gained.
-												</div>
-											{/if}
-										</div>
-									{:else if !initialTagsLoading && tags.length > 0 && !selectedTagKey}
-										<p class="text-center opacity-70">Select a tag to see its settings.</p>
-									{:else if !initialTagsLoading && tags.length === 0}
-										<p class="text-center opacity-70">No tags found to display settings for.</p>
-									{/if}
-								</div>
+										{/if}
+									</div>
+								{:else if !initialTagsLoading && tags.length > 0 && !selectedTagKey}
+									<p class="text-center opacity-70">Select a tag to see its settings.</p>
+								{:else if !initialTagsLoading && tags.length === 0}
+									<p class="text-center opacity-70">No tags found to display settings for.</p>
+								{/if}
 							</Tabs.Panel>
 						</div>
 					{/snippet}
@@ -317,7 +313,7 @@ function onTagChange(event: Event) {
 					</div>
 				</div>
 				<div class="flex-1 flex flex-col min-h-0">
-					<div class="flex justify-start gap-1 mb-2 flex-wrap">
+					<div class="flex justify-start border-b-[1px] border-surface-200-800 mb-0 gap-2">
 						<button type="button" class="chip text-xs {userActivityFilter === 'all' ? 'preset-filled-primary-500' : 'preset-tonal-surface'}" onclick={() => userActivityFilter = 'all'}>All</button>
 						<button type="button" class="chip text-xs {userActivityFilter === 'in' ? 'preset-filled-secondary-500' : 'preset-tonal-surface'}" onclick={() => userActivityFilter = 'in'}>In</button>
 						<button type="button" class="chip text-xs {userActivityFilter === 'out' ? 'preset-filled-tertiary-500' : 'preset-tonal-surface'}" onclick={() => userActivityFilter = 'out'}>Out</button>
