@@ -8,7 +8,7 @@
 </script>
 
 <!-- Top separator only, no box -->
-<hr class="my-2 h-px bg-surface-300-50 opacity-22 w-[80%] mx-auto mt-16 mb-6" />
+<hr class="my-2 h-px bg-surface-300-50 opacity-22 w-[80%] mx-auto mt-6 mb-0" />
 
 <footer class="w-full p-4 bg-transparent">
 	<!-- Two columns: About (left), Built using (right) -->
