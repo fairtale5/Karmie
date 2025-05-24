@@ -6,7 +6,19 @@ This will involve using `src/lib/docs-crud/vote_create.ts` for creating vote doc
 
 ## Proposed Implementation Order
 
-**Phase 1: Core Voting on Tags Page**
+**Phase 1: Dashboard Quick Actions Menu**
+[ ] **Dashboard "Quick Actions" - Voting Tab:**
+    *   Refactor "Quick Actions" to use Skeleton UI Tabs.
+    *   "Vote on Users" tab:
+        *   Tag Selection: Input field (e.g., Skeleton Input Chips - investigate suggestion support). Suggest top 3 tags.
+        *   User Search: Input field. Suggest last 5 voted/top 5 most voted users.
+        *   Reuse/adapt User-ID-Card modal (needs to handle tag selection within modal).
+[ ]Voting & 
+
+**Phase 2: Core Voting on Tags Page**
+
+[ ] **Quick Action Menu with Tabs (Reputation Page):**
+    *   Update the quick action menu on the Reputation page to use 
 [ ] **Quick Action Menu with Tabs (Tags Page):**
     *   Implement a quick action menu with tabs on the Tags page.
     *   Add a "Vote" action that allows users to vote on other users.
@@ -28,7 +40,7 @@ This will involve using `src/lib/docs-crud/vote_create.ts` for creating vote doc
     *   Initial search by handle; display handle in results. Full name can be in User-ID-Card.
     *   Search results are clickable to open the User-ID-Card.
 
-**Phase 2: Enhancing Voting Context (Tags Page)**
+**Phase 3: Enhancing Voting Context (Tags Page)**
 [ ] **Data Model & `vote_create.ts` Update (Prerequisite):**
     *   Modify the "votes" collection schema and update `src/lib/docs-crud/vote_create.ts` to include:
         *   `context: string | null` (optional, for the vote reason).
@@ -40,22 +52,27 @@ This will involve using `src/lib/docs-crud/vote_create.ts` for creating vote doc
     *   Place below "Recent Votes". Defer upvoting/downvoting of these contextual votes.
     *   When a user votes through a "review" vote, the author of the "review" vote will earn a reputation boost. (needs to be implemented in the backend reputation calculations).
 
-**Phase 3: Dashboard Voting & Profile Page Integration**
-[ ] **Dashboard "Quick Actions" - Voting Tab:**
-    *   Refactor "Quick Actions" to use Skeleton UI Tabs.
-    *   "Vote on Users" tab:
-        *   Tag Selection: Input field (e.g., Skeleton Input Chips - investigate suggestion support). Suggest top 3 tags.
-        *   User Search: Input field. Suggest last 5 voted/top 5 most voted users.
-        *   Reuse/adapt User-ID-Card modal (needs to handle tag selection within modal).
+**Phase 4: Create Profile Pages**
 [ ] **Profile Page Voting:**
-    *   Create/enhance user profile pages.
+    *   Create user profile pages.
     *   Add vote buttons (similar to User-ID-Card). Optionally show voting history.
+    *   The url of profile pages should be the user's handle.
+    *   The profile page should have the following sections:
+        *   Component: User Info (same as User-ID-Card?)
+        *   Component: Voting History
+        *   Component: Top Reputation Tags and his Reputation in each of them
+        *   Component: Recent Activity (same as on the Tags page: displays history of votes all/in/out/positive/negative).
+        *   Component: Connections Graph (same as on the Tags page: displays connections graph using sigmajs).
+        *   Component: Activity Feed: Not entirely sure about this one. If we go the router of a social media app, this would make sense. But if we focus solely on reputations, this wouldn't make sense. Maybe a social feed of "reviews" and allow users to comment on each other's reviews?
 
-**Phase 4: Advanced Features & Polish**
-[ ] **Refine User-ID-Card (re-evaluate "recent activity", implement tag selection if opened outside tag context).**
-[ ] **Implement upvoting/downvoting of contextual "review" votes.**
-[ ] **"User List with Quick Actions" (Low Priority, Tags Page): Direct hover vote buttons.**
-[ ] **Dashboard User Milestones, Smart Suggestions, Mobile-Friendly Enhancements, Social Features, Accessibility, Anti-Abuse Measures.**
+**Phase 5: Advanced Features & Polish**
+[ ] Refine User-ID-Card (re-evaluate "recent activity", implement tag selection if opened outside tag context).
+[ ] Implement upvoting/downvoting of contextual "review" votes.
+[ ] "User List with Quick Actions" (Low Priority, Tags Page): Direct hover vote buttons.
+[ ] Dashboard User Milestones, Smart Suggestions, Mobile-Friendly Enhancements, Social Features, Accessibility, Anti-Abuse Measures.
+
+
+# **Brainstorming, notes and ideas**
 
 ## Tags Page Enhancements
 
