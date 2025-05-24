@@ -4,10 +4,10 @@
   import { fade } from 'svelte/transition';
 
   const quickActions = [
+    { name: 'Vote', icon: Vote },
     { name: 'Create Tag', icon: Plus },
     { name: 'Invite User', icon: Mail },
-    { name: 'View Reports', icon: BarChart },
-    { name: 'Vote', icon: Vote }
+    { name: 'View Reports', icon: BarChart }
   ];
 
   let activeAction: string | null = null;
