@@ -23,9 +23,9 @@
     <div class="grid grid-cols-4 gap-2">
       {#each quickActions as action}
         <button 
-          class="btn preset-tonal-primary flex flex-col items-center p-2 transition-all duration-200"
-          class:ring-2={activeAction === action.name}
-          class:ring-primary-500={activeAction === action.name}
+          class="btn preset-outlined-primary-500 flex flex-col items-center p-2 transition-all duration-200"
+          class:preset-tonal-primary={activeAction === action.name}
+          class:!border-0={activeAction === action.name}
           on:click={() => handleActionClick(action.name)}
         >
           <svelte:component this={action.icon} size={24} class="mb-1" />
