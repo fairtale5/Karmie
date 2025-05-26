@@ -242,7 +242,7 @@ function onTagChange(event: Event) {
 									</div>
 								{:else if selectedTag?.data}
 									<div class="flex justify-between items-center mb-0">
-										{#if $authUserDoc?.data.user_key === selectedTag.data.user_key}
+										{#if $authUserDoc?.data.user_ulid === selectedTag.data.user_key}
 											<button class="btn preset-tonal-primary" onclick={() => goto(`/tag/edit/${selectedTagKey}`)}>
 												Edit Settings
 											</button>

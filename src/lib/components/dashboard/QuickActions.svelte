@@ -1,11 +1,15 @@
 <script lang="ts">
-  import { Plus, Mail, BarChart, Vote, LoaderCircle, CheckCircle, XCircle } from 'lucide-svelte';
+  import { Plus, Mail, BarChart, Vote, LoaderCircle, CheckCircle, XCircle, ThumbsUp, ThumbsDown } from 'lucide-svelte';
   import { slide } from 'svelte/transition';
   import { fade } from 'svelte/transition';
   import { listDocs } from '@junobuild/core';
   import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
   import { authUserDoneInitializing, authUser } from '$lib/stores/authUser';
-  import type { TagDocument, ReputationDocument, TagData, ReputationData } from '$lib/types';
+  import type { TagDocument, UserDocument, ReputationDocument, TagData, UserData, ReputationData } from '$lib/types';
+  import { createVoteDoc } from '$lib/docs-crud/vote_create';
+  import { toaster } from '$lib/skeletonui/toaster-skeleton';
+  import { authUserDoc } from '$lib/stores/authUserDoc';
+  import { isValid } from 'ulid';
 
   // Quick action buttons configuration
   const quickActions = [
@@ -18,14 +22,23 @@
   // Component state
   let activeAction: string | null = null;
   let selectedTag: TagDocument | null = null;
+  let selectedUser: UserDocument | null = null;
   let tags: TagDocument[] = [];
+  let users: UserDocument[] = [];
   let suggestedTags: TagDocument[] = []; // Tags sorted by user's reputation
   let isLoading = true;
   let error: string | null = null;
-  let searchQuery = '';
-  let searchStatus: 'idle' | 'loading' | 'found' | 'not_found' | 'error' = 'idle';
-  let searchResults: TagDocument[] = [];
-  let debounceTimer: ReturnType<typeof setTimeout>;
+  let tagSearchQuery = '';
+  let userSearchQuery = '';
+  let tagSearchStatus: 'idle' | 'loading' | 'found' | 'not_found' | 'error' = 'idle';
+  let userSearchStatus: 'idle' | 'loading' | 'found' | 'not_found' | 'error' = 'idle';
+  let tagSearchResults: TagDocument[] = [];
+  let userSearchResults: UserDocument[] = [];
+  let tagDebounceTimer: ReturnType<typeof setTimeout>;
+  let userDebounceTimer: ReturnType<typeof setTimeout>;
+  let currentFocus: 'tag' | 'user' | 'vote' = 'tag';
+  let selectedVoteValue: number | null = null;
+  let isVoting = false;
 
   // Only load tags when auth is initialized
   $: if ($authUserDoneInitializing) {
@@ -74,7 +87,7 @@
 
         // Match reputation documents with their corresponding tags
         suggestedTags = topReputations
-          .map(rep => tags.find(tag => tag.key === rep.data.tag_key))
+          .map(rep => tags.find(tag => tag.key === rep.data.tag_ulid))
           .filter((tag): tag is TagDocument => tag !== null);
 
         console.log('Suggested tags:', suggestedTags);
@@ -92,26 +105,36 @@
 
   function handleActionClick(action: string) {
     activeAction = activeAction === action ? null : action;
+    if (!activeAction) {
+      // Reset state when closing
+      selectedTag = null;
+      selectedUser = null;
+      currentFocus = 'tag';
+      tagSearchQuery = '';
+      userSearchQuery = '';
+      tagSearchResults = [];
+      userSearchResults = [];
+    }
   }
 
   /**
    * Searches tags based on user input.
    * Currently performs frontend search on pre-fetched tags.
-   * TODO: Move this to backend search for better performance with large datasets.
    */
   async function searchTags(query: string) {
     console.log('Searching tags with query:', query);
-    searchStatus = 'loading';
+    tagSearchStatus = 'loading';
+    currentFocus = 'tag';
     
     try {
       // Clear previous timer
-      clearTimeout(debounceTimer);
+      clearTimeout(tagDebounceTimer);
       
       // Set new timer for debouncing
-      debounceTimer = setTimeout(async () => {
+      tagDebounceTimer = setTimeout(async () => {
         if (!query.trim()) {
-          searchStatus = 'idle';
-          searchResults = [];
+          tagSearchStatus = 'idle';
+          tagSearchResults = [];
           return;
         }
 
@@ -124,20 +147,147 @@
 
         console.log('Search results:', results);
         
-        searchResults = results;
-        searchStatus = results.length > 0 ? 'found' : 'not_found';
+        tagSearchResults = results;
+        tagSearchStatus = results.length > 0 ? 'found' : 'not_found';
       }, 300); // 300ms debounce
     } catch (e) {
       console.error('Error searching tags:', e);
-      searchStatus = 'error';
+      tagSearchStatus = 'error';
+    }
+  }
+
+  /**
+   * Searches users based on user input.
+   * Searches across any part of the user's key (username, handle, principal, ulid).
+   */
+  async function searchUsers(query: string) {
+    console.log('Searching users with query:', query);
+    userSearchStatus = 'loading';
+    currentFocus = 'user';
+    
+    try {
+      // Clear previous timer
+      clearTimeout(userDebounceTimer);
+      
+      // Set new timer for debouncing
+      userDebounceTimer = setTimeout(async () => {
+        if (!query.trim()) {
+          userSearchStatus = 'idle';
+          userSearchResults = [];
+          return;
+        }
+
+        console.log('Executing user search for:', query);
+        
+        // Search users by any part of their key
+        const results = await queryDocsByKey<UserData>(
+          'users',
+          query.toLowerCase() // Search across any part of the key
+        );
+
+        console.log('User search results:', results);
+        
+        userSearchResults = results.items;
+        userSearchStatus = results.items.length > 0 ? 'found' : 'not_found';
+      }, 300); // 300ms debounce
+    } catch (e) {
+      console.error('Error searching users:', e);
+      userSearchStatus = 'error';
     }
   }
 
   function handleTagSelect(tag: TagDocument) {
     console.log('Tag selected:', tag);
     selectedTag = tag;
-    searchQuery = tag.data.tag_handle || '';
-    searchStatus = 'found';
+    tagSearchQuery = tag.data.tag_handle || '';
+    tagSearchStatus = 'found';
+    tagSearchResults = [];
+    currentFocus = 'user';
+  }
+
+  function handleUserSelect(user: UserDocument) {
+    console.log('User selected:', user);
+    selectedUser = user;
+    userSearchQuery = user.data.user_handle;
+    userSearchStatus = 'found';
+    userSearchResults = [];
+    currentFocus = 'vote';
+  }
+
+  async function handleVote(value: number) {
+    if (!selectedTag || !selectedUser) return;
+    selectedVoteValue = value;
+  }
+
+  async function confirmVote() {
+    try {
+        // Check if all required selections exist in memory
+        if (!selectedTag || !selectedUser || selectedVoteValue === undefined || !$authUserDoc) {
+            throw new Error('Please select a tag, user, and vote value');
+        }
+
+    // Debug logging
+    console.log('[QuickActions] Auth User Doc:', $authUserDoc);
+    console.log('[QuickActions] Selected User:', selectedUser);
+    console.log('[QuickActions] Selected Tag:', selectedTag);
+
+        // Create vote document with empty key to satisfy TypeScript
+        const voteDoc = {
+            key: '', // Empty key string to satisfy TypeScript
+            data: {
+                owner_ulid: $authUserDoc.data.user_ulid,
+                target_ulid: selectedUser.data.user_ulid,
+                tag_ulid: selectedTag.data.tag_ulid || selectedTag.key,
+                value: Number(selectedVoteValue), // Ensure value is a number
+                weight: 1 // Default weight
+            }
+        };
+
+      // Log the vote document for debugging
+      console.log('[QuickActions] Vote document before sending:', voteDoc);
+
+      // Validate ULID format using ulid package's isValid function
+      // Checks if string is 26 chars, uppercase, valid Crockford Base32, and valid timestamp
+      if (!isValid(voteDoc.data.owner_ulid)) {
+        throw new Error('Invalid owner ULID format');
+      }
+      if (!isValid(voteDoc.data.target_ulid)) {
+        throw new Error('Invalid target ULID format');
+      }
+      if (!isValid(voteDoc.data.tag_ulid)) {
+        throw new Error('Invalid tag ULID format');
+      }
+
+        // Show loading toast after all validations pass
+        toaster.loading({
+            title: 'Creating vote...',
+            description: 'Please wait while we process your vote...'
+        });
+
+        // Call vote_create.ts to create the vote document
+        // This will execute the vote on the blockchain
+        await createVoteDoc(voteDoc);
+
+        // Show success toast
+        toaster.success({
+            title: 'Vote created successfully!',
+            description: 'Your vote has been recorded'
+        });
+
+        // Reset form
+        selectedTag = null;
+        selectedUser = null;
+        selectedVoteValue = null;
+        tagSearchQuery = '';
+        userSearchQuery = '';
+        currentFocus = 'tag';
+    } catch (error) {
+        console.error('Error creating vote:', error);
+        toaster.error({
+            title: 'Failed to create vote',
+            description: error instanceof Error ? error.message : 'An unknown error occurred'
+        });
+    }
   }
 </script>
 
@@ -168,7 +318,7 @@
       <div class="bg-surface-100-900/95 backdrop-blur-sm rounded-b-lg shadow-lg">
         <div class="p-4" transition:fade={{ duration: 150 }}>
           {#if activeAction === 'Vote'}
-            <div class="text-sm space-y-4">
+            <div class="text-sm">
               {#if !$authUserDoneInitializing}
                 <div class="text-center">Initializing...</div>
               {:else if isLoading}
@@ -176,86 +326,188 @@
               {:else if error}
                 <div class="text-error-500">{error}</div>
               {:else}
-                <div>
-                  <div class="flex items-center gap-2 mb-2">
-                    <label class="label" for="tag-search">Select a Tag</label>
-                    {#if suggestedTags.length > 0}
-                      <div class="flex flex-wrap gap-2">
-                        {#each suggestedTags as tag}
-                          <button
-                            class="btn btn-sm preset-tonal-primary"
-                            on:click={() => handleTagSelect(tag)}
-                          >
-                            {tag.data.tag_handle}
-                          </button>
-                        {/each}
+                <div class="grid grid-cols-2 gap-4">
+                  <!-- Left Column: Input Fields -->
+                  <div class="space-y-4">
+                    <!-- Tag Search -->
+                    <div>
+                      <div class="flex items-center gap-2 mb-2">
+                        <label class="label" for="tag-search">Select a Tag</label>
+                        {#if suggestedTags.length > 0}
+                          <div class="flex flex-wrap gap-2">
+                            {#each suggestedTags as tag}
+                              <button
+                                class="btn btn-sm preset-tonal-primary"
+                                on:click={() => handleTagSelect(tag)}
+                              >
+                                {tag.data.tag_handle}
+                              </button>
+                            {/each}
+                          </div>
+                        {/if}
+                      </div>
+                      <div class="relative">
+                        <input
+                          type="text"
+                          id="tag-search"
+                          bind:value={tagSearchQuery}
+                          on:input={(e) => searchTags(e.currentTarget.value)}
+                          class="input pr-10 border-primary-300-700 focus:border-primary-500 focus:ring-primary-500 bg-surface-50-950 w-full"
+                          placeholder="Search for a tag..."
+                        />
+                        <span class="absolute right-2 top-1/2 -translate-y-1/2" aria-live="polite">
+                          {#if tagSearchStatus === 'loading'}
+                            <LoaderCircle class="animate-spin text-gray-400" />
+                          {:else if tagSearchStatus === 'found'}
+                            <CheckCircle class="text-success-500" />
+                          {:else if tagSearchStatus === 'not_found'}
+                            <XCircle class="text-error-500" />
+                          {/if}
+                        </span>
+                      </div>
+                      {#if tagSearchStatus === 'not_found'}
+                        <span class="text-error-500 text-xs mt-1">No tags found matching "{tagSearchQuery}"</span>
+                      {:else if tagSearchStatus === 'found' && !selectedTag}
+                        <span class="text-success-500 text-xs mt-1">Found {tagSearchResults.length} matching tags</span>
+                      {:else if selectedTag}
+                        <span class="text-success-500 text-xs mt-1">Selected #{selectedTag.data.tag_handle}</span>
+                      {/if}
+                    </div>
+
+                    <!-- User Search -->
+                    {#if selectedTag}
+                      <div>
+                        <label class="label" for="user-search">Select a User</label>
+                        <div class="relative">
+                          <input
+                            type="text"
+                            id="user-search"
+                            bind:value={userSearchQuery}
+                            on:input={(e) => searchUsers(e.currentTarget.value)}
+                            class="input pr-10 border-primary-300-700 focus:border-primary-500 focus:ring-primary-500 bg-surface-50-950 w-full"
+                            placeholder="Search for a user..."
+                          />
+                          <span class="absolute right-2 top-1/2 -translate-y-1/2" aria-live="polite">
+                            {#if userSearchStatus === 'loading'}
+                              <LoaderCircle class="animate-spin text-gray-400" />
+                            {:else if userSearchStatus === 'found'}
+                              <CheckCircle class="text-success-500" />
+                            {:else if userSearchStatus === 'not_found'}
+                              <XCircle class="text-error-500" />
+                            {/if}
+                          </span>
+                        </div>
+                        {#if userSearchStatus === 'not_found'}
+                          <span class="text-error-500 text-xs mt-1">No users found matching "{userSearchQuery}"</span>
+                        {:else if userSearchStatus === 'found' && !selectedUser}
+                          <span class="text-success-500 text-xs mt-1">Found {userSearchResults.length} matching users</span>
+                        {:else if selectedUser}
+                          <span class="text-success-500 text-xs mt-1">Selected @{selectedUser.data.user_handle}</span>
+                        {/if}
                       </div>
                     {/if}
                   </div>
-                  <div class="relative">
-                    <input
-                      type="text"
-                      id="tag-search"
-                      bind:value={searchQuery}
-                      on:input={(e) => searchTags(e.currentTarget.value)}
-                      class="input pr-10 border-primary-300-700 focus:border-primary-500 focus:ring-primary-500 bg-surface-50-950 w-full"
-                      placeholder="Search for a tag..."
-                    />
-                    <span class="absolute right-2 top-1/2 -translate-y-1/2" aria-live="polite">
-                      {#if searchStatus === 'loading'}
-                        <LoaderCircle class="animate-spin text-gray-400" />
-                      {:else if searchStatus === 'found'}
-                        <CheckCircle class="text-success-500" />
-                      {:else if searchStatus === 'not_found'}
-                        <XCircle class="text-error-500" />
-                      {/if}
-                    </span>
-                  </div>
-                  {#if searchStatus === 'not_found'}
-                    <span class="text-error-500 text-xs mt-1">No tags found matching "{searchQuery}"</span>
-                  {:else if searchStatus === 'found'}
-                    <span class="text-success-500 text-xs mt-1">Found {searchResults.length} matching tags</span>
-                  {/if}
-                  
-                  {#if searchResults.length > 0}
-                    <div class="mt-4">
-                      <h3 class="text-sm font-medium mb-2">Search Results</h3>
-                      <div class="flex flex-wrap gap-2">
-                        {#each searchResults as tag}
+
+                  <!-- Right Column: Search Results or Vote Options -->
+                  <div class="space-y-4">
+                    {#if currentFocus === 'tag' && tagSearchResults.length > 0}
+                      <div class="space-y-2 max-h-[300px] overflow-y-auto">
+                        {#each tagSearchResults as tag}
                           <button
-                            class="chip preset-tonal-primary hover:scale-105 transition-transform duration-200 flex items-center gap-1.5"
+                            class="card shadow bg-surface-100-900 border border-surface-200-800 p-3 w-full text-left hover:preset-tonal-primary transition-colors duration-200"
                             on:click={() => handleTagSelect(tag)}
                           >
-                            <span class="i-lucide-tag text-xs" />
-                            #{tag.data.tag_handle}
+                            <div class="flex items-center gap-2">
+                              <span class="i-lucide-tag text-primary-500" />
+                              <span class="font-bold">#{tag.data.tag_handle}</span>
+                            </div>
                           </button>
                         {/each}
                       </div>
-                    </div>
-                  {/if}
-                </div>
-
-                {#if selectedTag}
-                  <div class="mt-4 p-3 bg-surface-200-800 rounded-lg">
-                    <h3 class="text-sm font-medium mb-2">Selected Tag</h3>
-                    <div class="flex items-center gap-2">
-                      <span class="chip preset-filled-primary-500 flex items-center gap-1.5">
-                        <span class="i-lucide-check text-xs" />
-                        #{selectedTag.data.tag_handle}
-                      </span>
-                      <button 
-                        class="btn btn-sm variant-ghost-surface"
-                        on:click={() => {
-                          selectedTag = null;
-                          searchQuery = '';
-                          searchStatus = 'idle';
-                        }}
-                      >
-                        Change
-                      </button>
-                    </div>
+                    {:else if currentFocus === 'user' && userSearchResults.length > 0}
+                      <div class="space-y-2 max-h-[300px] overflow-y-auto">
+                        {#each userSearchResults as user}
+                          <button
+                            class="card shadow bg-surface-100-900 border border-surface-200-800 p-3 w-full text-left hover:preset-tonal-primary transition-colors duration-200"
+                            on:click={() => handleUserSelect(user)}
+                          >
+                            <div class="flex items-center gap-3">
+                              <figure class="overflow-hidden isolate bg-surface-400-600 size-10 rounded-full">
+                                {#if user.data.avatar_url}
+                                  <img src={user.data.avatar_url} alt="" class="w-full object-cover" />
+                                {:else}
+                                  <span class="w-full h-full flex justify-center items-center text-surface-700">
+                                    {user.data.display_name?.[0]?.toUpperCase() || '?'}
+                                  </span>
+                                {/if}
+                              </figure>
+                              <div>
+                                <p class="font-bold">{user.data.display_name}</p>
+                                <p class="opacity-60 text-xs">@{user.data.user_handle}</p>
+                              </div>
+                            </div>
+                          </button>
+                        {/each}
+                      </div>
+                    {:else if currentFocus === 'vote' && selectedTag && selectedUser}
+                      <div class="flex flex-col items-center justify-center h-full gap-4">
+                        <p class="text-center opacity-70">
+                          Vote for <span class="font-bold">@{selectedUser.data.user_handle}</span>
+                          <br>in <span class="font-bold">#{selectedTag.data.tag_handle}</span>
+                        </p>
+                        <div class="flex gap-4">
+                          <button
+                            class="btn preset-filled-success-500 p-4 transition-all duration-200"
+                            class:border-2={selectedVoteValue === 1}
+                            class:border-success-500={selectedVoteValue === 1}
+                            class:opacity-75={selectedVoteValue === -1}
+                            on:click={() => handleVote(1)}
+                            disabled={isVoting}
+                          >
+                            <ThumbsUp size={24} />
+                          </button>
+                          <button
+                            class="btn preset-filled-error-500 p-4 transition-all duration-200"
+                            class:border-2={selectedVoteValue === -1}
+                            class:border-error-500={selectedVoteValue === -1}
+                            class:opacity-75={selectedVoteValue === 1}
+                            on:click={() => handleVote(-1)}
+                            disabled={isVoting}
+                          >
+                            <ThumbsDown size={24} />
+                          </button>
+                        </div>
+                        <!-- Placeholder div to prevent layout shift -->
+                        <div class="h-[40px] mt-4">
+                          {#if selectedVoteValue !== null}
+                            <button
+                              class="btn preset-filled-primary-500 w-full"
+                              on:click={confirmVote}
+                              disabled={isVoting}
+                            >
+                              {#if isVoting}
+                                <LoaderCircle class="animate-spin mr-2" />
+                                Recording Vote...
+                              {:else}
+                                Confirm Vote
+                              {/if}
+                            </button>
+                          {/if}
+                        </div>
+                      </div>
+                    {:else}
+                      <div class="flex items-center justify-center h-full">
+                        <p class="text-center opacity-70">
+                          {#if !selectedTag}
+                            Search for a tag to begin
+                          {:else if !selectedUser}
+                            Search for a user to vote on
+                          {/if}
+                        </p>
+                      </div>
+                    {/if}
                   </div>
-                {/if}
+                </div>
               {/if}
             </div>
           {:else if activeAction === 'Create Tag'}

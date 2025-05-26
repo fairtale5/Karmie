@@ -225,10 +225,6 @@
       const userDoc = results.items[0];
       if (userDoc) {
         authUserDoc.set(userDoc);
-        toaster.success({ 
-          title: 'Profile saved!',
-          description: 'Your profile has been updated.'
-        });
         goto('/dashboard');
       } else {
         throw new Error('Failed to fetch created user document');
@@ -344,14 +340,21 @@
           }
           loading = true;
           try {
-            // Show loading toast
-            toaster.loading({
-              title: 'Creating Profile on the Blockchain',
-              description: 'Please wait while we create your user profile on the ICP blockchain.'
+            await toaster.promise(saveProfile(), {
+              loading: {
+                title: 'Creating Profile on the Blockchain',
+                description: 'Please wait while we create your user profile on the ICP blockchain.'
+              },
+              success: () => ({
+                title: 'Profile Created!',
+                description: 'Your profile has been stored on-chain.'
+              }),
+              error: (e) => ({
+                title: 'Failed to Create Profile',
+                description: e instanceof Error ? e.message : 'An unknown error occurred.'
+              })
             });
-            await saveProfile();
           } catch (e) {
-            // Error is already handled in saveProfile
             console.error('Save profile failed:', e);
           } finally {
             loading = false;

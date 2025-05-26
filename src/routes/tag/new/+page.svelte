@@ -18,7 +18,7 @@ import { createTagDoc } from '$lib/docs-crud/tag_create';
 let tagBeingEdited = $state<Doc<TagData>>({
   key: '',
   data: {
-    user_key: '',
+    owner_ulid: '',
     tag_handle: '',
     description: '',
     time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS] as Array<{ months: number; multiplier: number }>,
@@ -151,14 +151,14 @@ async function saveTag() {
     }
 
     const userDoc = $authUserDoc;
-    if (!userDoc || !userDoc.data.user_key) {
+    if (!userDoc || !userDoc.data.user_ulid) {
       errorGlobal = 'You must be logged in to create a tag.';
       loading = false;
       return;
     }
 
     // Set the user key from the auth doc
-    tagBeingEdited.data.user_key = userDoc.data.user_key;
+    tagBeingEdited.data.owner_ulid = userDoc.data.user_ulid;
 
     // Show loading toast
     toaster.loading({

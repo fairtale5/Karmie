@@ -42,7 +42,7 @@ pub struct UserData {
     /// ULID for this user, stored separately from the formatted key
     /// This is the raw ULID without username and prefixes
     /// Optional for backward compatibility during transition
-    pub user_key: Option<String>,
+    pub user_ulid: Option<String>,
 
     /// Unique username (must be unique across all users)
     pub user_handle: String,
@@ -91,11 +91,11 @@ pub struct TagData {
 
     /// ULID for the user who created this tag
     /// This is the raw ULID without prefixes, stored as uppercase
-    pub user_key: String,
+    pub owner_ulid: String,
 
     /// ULID for this tag
     /// This is the raw ULID without prefixes, stored as uppercase
-    pub tag_key: String,
+    pub tag_ulid: String,
 
     /// Display name of the tag
     pub tag_handle: String,
@@ -153,19 +153,19 @@ pub struct VoteData {
 
     /// ULID for the user who cast this vote
     /// This is the raw ULID without prefixes, stored as uppercase
-    pub user_key: String,
+    pub owner_ulid: String,
 
     /// ULID for the target user receiving the vote
     /// This is the raw ULID without prefixes, stored as uppercase
-    pub target_key: String,
+    pub target_ulid: String,
 
     /// ULID for the tag this vote is for
     /// This is the raw ULID without prefixes, stored as uppercase
-    pub tag_key: String,
+    pub tag_ulid: String,
     
     /// ULID for this specific vote
     /// This is the raw ULID without prefixes, stored as uppercase
-    pub vote_key: String,
+    pub vote_ulid: String,
 
     /// Vote value (+1 for upvote, -1 for downvote)
     pub value: f64,
@@ -211,11 +211,11 @@ pub struct ReputationData {
 
     /// ULID for the user this reputation is for
     /// This is the raw ULID without prefixes, stored as uppercase
-    pub user_key: String,
+    pub owner_ulid: String,
 
     /// ULID for the tag this reputation is for
     /// This is the raw ULID without prefixes, stored as uppercase
-    pub tag_key: String,
+    pub tag_ulid: String,
 
     /// Reputation from received votes
     pub reputation_basis: f64,

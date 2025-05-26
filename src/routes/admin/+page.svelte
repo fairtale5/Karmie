@@ -52,7 +52,7 @@
 		data: {
 			user_handle: '',
 			display_name: '',
-			user_key: '',
+			user_ulid: '',
 			avatar_url: ''  // Add required avatar_url field with empty string default
 		}
 	};
@@ -69,8 +69,8 @@
 		updated_at: BigInt(0),
 		version: BigInt(0),
 		data: {
-			user_key: '', // Keep as string for now
-			tag_key: '', // Keep as string for now
+			owner_ulid: '', // Keep as string for now
+			tag_ulid: '', // Keep as string for now
 			tag_handle: '',
 			description: '',
 			time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
@@ -84,11 +84,12 @@
 	let selectedAuthorKey = '';
 
 	// List of all tags
+	// this should not be needed, since we have the tag type in the types.ts file. remind me to delete this and replace with the global tags doc type.
 	let tags: Doc<{
 		tag_handle: string;
 		description: string;
-		user_key: string;
-		tag_key: string;
+		user_ulid: string;
+		tag_ulid: string;
 		time_periods: Array<{ months: number; multiplier: number }>;
 		reputation_threshold: number;
 		vote_reward: number;
@@ -146,7 +147,7 @@
 			
 			// Get the selected tag document to access its data
 			const selectedTagDoc = tags.find(tag => tag.key === tagKey);
-			if (!selectedTagDoc || !selectedTagDoc.data.tag_key) {
+			if (!selectedTagDoc || !selectedTagDoc.data.tag_ulid) {
 				console.error('[Admin] Tag document not found or missing tag_key:', tagKey);
 				return;
 			}
@@ -157,7 +158,7 @@
 				collection: 'reputations',
 				filter: {
 					matcher: {
-						key: `tag_${selectedTagDoc.data.tag_key}`
+						key: `tag_${selectedTagDoc.data.tag_ulid}`
 					}
 				}
 			});
@@ -165,19 +166,19 @@
 			// Create a map of user_key to reputation data
 			const reputationMap = new Map<string, ReputationData>();
 			for (const item of reputationsList.items) {
-				if (item.data.user_key) {
-					reputationMap.set(item.data.user_key, item.data);
+				if (item.data.owner_ulid) {
+					reputationMap.set(item.data.owner_ulid, item.data);
 				}
 			}
 			
 			// Get reputation data for each user
 			userReputations = {};
 			for (const user of usersList.items) {
-				if (!user.data.user_key) continue;
+				if (!user.data.user_ulid) continue;
 				
-				const reputation = reputationMap.get(user.data.user_key) || {
-					user_key: user.data.user_key,
-					tag_key: selectedTagDoc.data.tag_key,
+				const reputation = reputationMap.get(user.data.user_ulid) || {
+					owner_ulid: user.data.user_ulid,
+					tag_ulid: selectedTagDoc.data.tag_ulid,
 					reputation_basis: 0,
 					reputation_rewards: 0,
 					reputation_total_effective: 0,
@@ -185,7 +186,7 @@
 					has_voting_power: false,
 					last_calculation: BigInt(0)
 				};
-				userReputations[user.data.user_key] = reputation;
+				userReputations[user.data.user_ulid] = reputation;
 			}
 			
 			console.log('[Admin] Loaded reputations:', userReputations);
@@ -226,7 +227,7 @@
 			const usersList = await listDocs<{
 				user_handle: string;
 				display_name: string;
-				user_key: string;
+				user_ulid: string;
 			}>({
 				collection: 'users'
 			});
@@ -247,11 +248,11 @@
 			if (selectedTag) {
 				// Get the selected tag document to access its data
 				const selectedTagDoc = tags.find(tag => tag.key === selectedTag);
-				if (selectedTagDoc && selectedTagDoc.data.tag_key) {
+				if (selectedTagDoc && selectedTagDoc.data.tag_ulid) {
 					// Filter votes by tag ULID directly from the data field
 					filter = {
 						matcher: {
-							key: `tag_${selectedTagDoc.data.tag_key}`
+							key: `tag_${selectedTagDoc.data.tag_ulid}`
 						}
 					};
 				}
@@ -285,11 +286,11 @@
 			if (userKey) {
 				// Get the user document to access its data
 				const userDoc = users.find(user => user.key === userKey);
-				if (userDoc && userDoc.data.user_key) {
+				if (userDoc && userDoc.data.user_ulid) {
 					// Filter tags by user ULID directly from the data field
 					filter = {
 						matcher: {
-							key: `usr_${userDoc.data.user_key}`
+							key: `usr_${userDoc.data.user_ulid}`
 						}
 					};
 				}
@@ -298,8 +299,8 @@
 			const tagsList = await listDocs<{ 
 				tag_handle: string; 
 				description: string; 
-				user_key: string;
-				tag_key: string;
+				user_ulid: string;
+				tag_ulid: string;
 				time_periods: { months: number; multiplier: number }[];
 				reputation_threshold: number;
 				vote_reward: number;
@@ -326,22 +327,22 @@
 			if (userKey) {
 				// Get the user document to access its data
 				const userDoc = users.find(user => user.key === userKey);
-				if (userDoc && userDoc.data.user_key) {
+				if (userDoc && userDoc.data.user_ulid) {
 					// Filter reputations by user ULID directly from the data field
 					filter = {
 						matcher: {
-							key: `usr_${userDoc.data.user_key}`
+							key: `usr_${userDoc.data.user_ulid}`
 						}
 					};
 				}
 			} else if (tagKey) {
 				// Get the tag document to access its data
 				const tagDoc = tags.find(tag => tag.key === tagKey);
-				if (tagDoc && tagDoc.data.tag_key) {
+				if (tagDoc && tagDoc.data.tag_ulid) {
 					// Filter reputations by tag ULID directly from the data field
 					filter = {
 						matcher: {
-							key: `tag_${tagDoc.data.tag_key}`
+							key: `tag_${tagDoc.data.tag_ulid}`
 						}
 					};
 				}
@@ -401,7 +402,7 @@
 					data: {
 						user_handle: userBeingEdited.data.user_handle!.toString().trim(),
 						display_name: userBeingEdited.data.display_name!.toString().trim(),
-						user_key: userDocKeyResult || userBeingEdited.data.user_key,
+						user_ulid: userDocKeyResult || userBeingEdited.data.user_ulid,
 						avatar_url: userBeingEdited.data.avatar_url || ''
 					},
 					...(userDocVersion && { version: userDocVersion })
@@ -425,7 +426,7 @@
 				data: {
 					user_handle: '',
 					display_name: '',
-					user_key: '',
+					user_ulid: '',
 					avatar_url: ''
 				}
 			};
@@ -459,8 +460,8 @@
 		tagDoc: Doc<{
 			tag_handle: string;
 			description: string;
-			user_key: string;
-			tag_key: string;
+			user_ulid: string;
+			tag_ulid: string;
 			author_key?: string;
 			time_periods: Array<{ months: number; multiplier: number }>;
 			reputation_threshold: number;
@@ -479,8 +480,8 @@
 			data: {
 				tag_handle: tagDoc.data.tag_handle,
 				description: tagDoc.data.description,
-				user_key: tagDoc.data.user_key, // Copy the user_key field if it exists
-				tag_key: tagDoc.data.tag_key, // Copy the tag_key field if it exists
+				owner_ulid: tagDoc.data.user_ulid,
+				tag_ulid: tagDoc.data.tag_ulid,
 				time_periods: [...tagDoc.data.time_periods],
 				reputation_threshold: tagDoc.data.reputation_threshold,
 				vote_reward: tagDoc.data.vote_reward,
@@ -508,8 +509,8 @@
 
 			// Find the selected user to get their user_key
 			const selectedUser = users.find(u => u.key === selectedAuthorKey);
-			if (!selectedUser || !selectedUser.data.user_key) {
-				errorGlobal = 'Selected user not found or missing user key';
+			if (!selectedUser || !selectedUser.data.user_ulid) {
+				errorGlobal = 'Selected user not found or missing user_ulid';
 				return;
 			}
 
@@ -522,19 +523,19 @@
 				// If tagBeingEdited.key is not null, we know we're updating an existing tag
 				
 				// For updates, use existing tag_key
-				tagDocUlid = tagBeingEdited.data.tag_key || null;
+				tagDocUlid = tagBeingEdited.data.tag_ulid || null;
 			} else {
 				// Creating new tag - generate new ULID for the tag
 				tagDocUlid = createUlid();
-				const selectedUser = users.find(u => u.key === selectedAuthorKey);
-				if (!selectedUser?.data?.user_key) {
-					throw new Error('Selected user not found or missing user_key');
+                const selectedUser = users.find(u => u.key === selectedAuthorKey);
+				if (!selectedUser?.data?.user_ulid) {
+					throw new Error('Selected user not found or missing user_ulid');
 				}
 				if (!tagDocUlid) {
 					throw new Error('Tag ULID key is missing');
 				}
 				tagDocKey = formatTagKey(
-					selectedUser.data.user_key,
+					selectedUser.data.user_ulid,
 					tagDocUlid,
 					tagBeingEdited.data.tag_handle
 				);
@@ -548,8 +549,8 @@
 					data: {
 						name: tagBeingEdited.data.tag_handle,
 						description: tagBeingEdited.data.description,
-						user_key: selectedUser.data.user_key,
-						tag_key: tagDocUlid || tagBeingEdited.data.tag_key,
+						user_ulid: selectedUser.data.user_ulid,
+						tag_ulid: tagDocUlid || tagBeingEdited.data.tag_ulid,
 						time_periods: tagBeingEdited.data.time_periods,
 						reputation_threshold: tagBeingEdited.data.reputation_threshold,
 						vote_reward: tagBeingEdited.data.vote_reward,
@@ -574,8 +575,8 @@
 				updated_at: BigInt(0),
 				version: BigInt(0),
 				data: {
-					user_key: '',
-					tag_key: '',
+					owner_ulid: '',
+					tag_ulid: '',
 					tag_handle: '',
 					description: '',
 					time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
@@ -707,7 +708,7 @@
 			const targetDoc = users.find(u => u.key === newVote.data.target_key);
 			const tagDoc = tags.find(t => t.key === newVote.data.tag_key);
 
-			if (!authorDoc?.data.user_key || !targetDoc?.data.user_key || !tagDoc?.data.tag_key) {
+			if (!authorDoc?.data.user_ulid || !targetDoc?.data.user_ulid || !tagDoc?.data.tag_ulid) {
 				errorGlobal = 'Could not find required keys for author, target, or tag';
 				return;
 			}
@@ -717,9 +718,9 @@
 
 			// Format the vote key using all required ULIDs
 			const voteKey = formatVoteKey(
-				authorDoc.data.user_key,
-				tagDoc.data.tag_key,
-				targetDoc.data.user_key,
+				authorDoc.data.user_ulid,
+				tagDoc.data.tag_ulid,
+				targetDoc.data.user_ulid,
 				voteUlid
 			);
 
@@ -729,9 +730,9 @@
 				doc: {
 					key: voteKey,
 					data: {
-						user_key: authorDoc.data.user_key,
-						target_key: targetDoc.data.user_key,
-						tag_key: tagDoc.data.tag_key,
+						user_key: authorDoc.data.user_ulid,
+						target_key: targetDoc.data.user_ulid,
+						tag_key: tagDoc.data.tag_ulid,
 						vote_key: voteUlid,
 						value: newVote.data.value,
 						weight: 1 // Fixed weight for now
@@ -1096,7 +1097,7 @@
 									data: {
 										user_handle: '',
 										display_name: '',
-										user_key: '',
+										user_ulid: '',
 										avatar_url: ''
 									}
 								};
@@ -1133,7 +1134,7 @@
 					</thead>
 					<tbody>
 						{#each users as userSelected}
-							{@const reputation = userReputations[userSelected.data.user_key] ?? {
+							{@const reputation = userReputations[userSelected.data.user_ulid] ?? {
 								reputation_basis: 0,
 								reputation_rewards: 0,
 								reputation_total_effective: 0,
@@ -1180,7 +1181,7 @@
 									<div class="flex justify-center gap-2">
 										<button
 											class="btn btn-xs btn-primary"
-											on:click={() => recalculateReputation(userSelected.data.user_key, selectedTag)}
+											on:click={() => recalculateReputation(userSelected.data.user_ulid, selectedTag)}
 											title="Recalculate reputation"
 										>
 											🔄
@@ -1218,7 +1219,7 @@
 						<option value="">Select Author</option>
 						{#each users as user}
 							<option value={user.key}>
-								{user.data.display_name} ({user.data.user_handle}) - {user.data.user_key}
+								{user.data.display_name} ({user.data.user_handle}) - {user.data.user_ulid}
 							</option>
 						{/each}
 					</select>
@@ -1230,7 +1231,7 @@
 						<option value="">Select Target</option>
 						{#each users as user}
 							<option value={user.key}>
-								{user.data.display_name} ({user.data.user_handle}) - {user.data.user_key}
+								{user.data.display_name} ({user.data.user_handle}) - {user.data.user_ulid}
 							</option>
 						{/each}
 					</select>
@@ -1242,7 +1243,7 @@
 						<option value="">Select Tag</option>
 						{#each tags as tag}
 							<option value={tag.key}>
-								{tag.data.tag_handle} - {tag.data.tag_key}
+								{tag.data.tag_handle} - {tag.data.tag_ulid}
 							</option>
 						{/each}
 					</select>
@@ -1297,9 +1298,9 @@
 					</thead>
 					<tbody>
 						{#each votes as vote}
-							{@const author = users.find((u) => u.data.user_key === vote.data.user_key)}
-							{@const target = users.find((u) => u.data.user_key === vote.data.target_key)}
-							{@const tag = tags.find((t) => t.data.tag_key === vote.data.tag_key)}
+							{@const author = users.find((u) => u.data.user_ulid === vote.data.user_key)}
+							{@const target = users.find((u) => u.data.user_ulid === vote.data.target_key)}
+							{@const tag = tags.find((t) => t.data.tag_ulid === vote.data.tag_key)}
 							<tr>
 								<td>
 									<div class="space-y-1">
@@ -1548,8 +1549,8 @@
 									updated_at: BigInt(0),
 									version: BigInt(0),
 									data: {
-										user_key: '',
-										tag_key: '',
+										owner_ulid: '',
+										tag_ulid: '',
 										tag_handle: '',
 										description: '',
 										time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS],
@@ -1610,10 +1611,10 @@
 									<div class="space-y-1">
 										<div class="font-bold">{tag.data.tag_handle}</div>
 										<div class="text-sm opacity-75">{tag.data.description}</div>
-										<div class="font-mono text-xs">User ULID: {tag.data.user_key}
+										<div class="font-mono text-xs">User ULID: {tag.data.user_ulid}
 										</div>
-										{#if tag.data.tag_key}
-											<div class="font-mono text-xs">Tag ULID: {tag.data.tag_key}</div>
+										{#if tag.data.tag_ulid}
+											<div class="font-mono text-xs">Tag ULID: {tag.data.tag_ulid}</div>
 										{/if}
 									</div>
 								</td>
@@ -1686,8 +1687,8 @@
 								</td>
 								<td>
 									<div class="space-y-1">
-										<div>User Key: {doc.data.user_key || 'N/A'}</div>
-										<div>Tag Key: {doc.data.tag_key || 'N/A'}</div>
+										<div>User ULID: {doc.data.owner_ulid || 'N/A'}</div>
+										<div>Tag ULID: {doc.data.tag_ulid || 'N/A'}</div>
 										<div>Base Rep: {(doc.data.reputation_basis || 0).toFixed(2)}</div>
 										<div>Vote Rep: {(doc.data.reputation_rewards || 0).toFixed(2)}</div>
 										<div>Total Rep: {(doc.data.reputation_total_effective || 0).toFixed(2)}</div>
@@ -1701,7 +1702,7 @@
 								<td>
 									<div class="flex justify-center gap-2">
 										<button
-											on:click={() => recalculateReputation(doc.data.user_key, doc.data.tag_key)}
+											on:click={() => recalculateReputation(doc.data.owner_ulid, doc.data.tag_ulid)}
 											class="btn btn-xs btn-primary"
 											title="Recalculate reputation"
 										>

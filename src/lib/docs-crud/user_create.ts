@@ -48,7 +48,7 @@ export async function createUserDoc({
     user_handle,
     display_name,
     avatar_url,
-    user_key: userUlid
+    user_ulid: userUlid
   };
 
   // Create the document object for setDoc

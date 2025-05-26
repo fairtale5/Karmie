@@ -36,17 +36,10 @@ pub fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), Strin
         })?;
 
     // Step 2: Validate vote timestamp is not backdated or in the future
-    // Extract vote_key from the document key (it's the last ULID in the key)
-    let key_parts: Vec<&str> = context.data.key.split('_').collect();
-    if let Some(vote_ulid) = key_parts.last() {
-        // Validate ULID timestamp using our centralized validation
-        if let Err(e) = validate_ulid_timestamp(vote_ulid, CheckULIDisNew::yes()) {
-            let err_msg = format!("[validate_vote_document] Invalid vote timestamp: {}", e);
-            logger!("error", "{}", err_msg);
-            return Err(err_msg);
-        }
-    } else {
-        let err_msg = format!("[validate_vote_document] Invalid vote key format: {}", context.data.key);
+    // Pass the vote_key to validate_ulid_timestamp with CheckULIDisNew::yes() to ensure
+    // the timestamp is recent (within last 5 minutes) and not in the future
+    if let Err(e) = validate_ulid_timestamp(&vote_data.vote_ulid, CheckULIDisNew::yes()) {
+        let err_msg = format!("[validate_vote_document] Invalid vote timestamp: {}", e);
         logger!("error", "{}", err_msg);
         return Err(err_msg);
     }
@@ -89,10 +82,10 @@ pub fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), Strin
     }
 
     // Step 5: Validate tag exists
-    logger!("debug", "[validate_vote_document] Verifying tag exists: {}", vote_data.tag_key);
+    logger!("debug", "[validate_vote_document] Verifying tag exists: {}", vote_data.tag_ulid);
     
     // First validate that tag_key is not empty
-    if vote_data.tag_key.trim().is_empty() {
+    if vote_data.tag_ulid.trim().is_empty() {
         let err_msg = "[validate_vote_document] Tag key cannot be empty";
         logger!("error", "{}", err_msg);
         return Err(err_msg.to_string());
@@ -102,7 +95,7 @@ pub fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), Strin
     // Tag keys follow the pattern: tag_{ulid}_
     // This pattern will match any document that contains this tag ULID segment
     // For example: usr_123_tag_456_hdl_example_ would match with pattern "tag_456_"
-    let tag_key_pattern = format!(".*tag_{}_.*", vote_data.tag_key);
+    let tag_key_pattern = format!(".*tag_{}_.*", vote_data.tag_ulid);
     
     // Query for the tag using the constructed key pattern
     let tag_results = query_doc_by_key(
@@ -117,20 +110,20 @@ pub fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), Strin
         return Err(err_msg);
     }
     
-    logger!("debug", "[validate_vote_document] Found tag: {}", vote_data.tag_key);
+    logger!("debug", "[validate_vote_document] Found tag: {}", vote_data.tag_ulid);
 
     // Step 6: Validate no self-voting
-    if vote_data.user_key == vote_data.target_key {
+    if vote_data.owner_ulid == vote_data.target_ulid {
         let err_msg = "[validate_vote_document] Users cannot vote on themselves";
         logger!("error", "{}", err_msg);
         return Err(err_msg.to_string());
     }
 
     logger!("info", "[validate_vote_document] Vote validation passed: author={} voted {} on target={} in tag={}",
-        vote_data.user_key,
+        vote_data.owner_ulid,
         vote_data.value,
-        vote_data.target_key,
-        vote_data.tag_key
+        vote_data.target_ulid,
+        vote_data.tag_ulid
     );
 
     Ok(())
