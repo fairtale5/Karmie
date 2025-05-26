@@ -13,6 +13,7 @@ import { UserRoundPen, Expand, BookOpen, SlidersHorizontal, Orbit } from 'lucide
 import NotLoggedInAlert from '$lib/components/common/NotLoggedInAlert.svelte';
 import { authUserDoc } from '$lib/stores/authUserDoc';
 import { Tabs } from '@skeletonlabs/skeleton-svelte';
+import QuickActionsTags from '$lib/components/dashboard/QuickActionsTags.svelte';
 
 // --- State ---
 let pageLoading = $state(true); // True when initially loading tags list or when fetching specific tag data
@@ -203,91 +204,99 @@ function onTagChange(event: Event) {
 
 	<!-- Main Grid Layout -->
 	<div class="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
-		<!-- About & Settings -->
-		<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6 col-span-1 h-[400px]">
-			<div class="h-full flex flex-col">
-				<Tabs value={activeTab} onValueChange={async (e) => { activeTab = e.value; await tick();}}>
-					{#snippet list()}
-						<Tabs.Control value="about" disabled={(initialTagsLoading && !selectedTagKey) || (Boolean(selectedTagKey) && pageLoading && !selectedTag?.data?.description)}>
-							{#snippet lead()}<Orbit size={20} />{/snippet}
-							{#if selectedTag}#{selectedTag.data.tag_handle}{:else}About{/if}
-						</Tabs.Control>
-						<Tabs.Control value="settings" disabled={(initialTagsLoading && !selectedTagKey) || (Boolean(selectedTagKey) && pageLoading && !selectedTag?.data)}>
-							{#snippet lead()}<SlidersHorizontal size={20} />{/snippet}
-							Settings
-						</Tabs.Control>
-					{/snippet}
-					{#snippet content()}
-						<div class="h-[288px] overflow-y-auto">
-							<Tabs.Panel value="about">
-								{#if (initialTagsLoading && !selectedTagKey) || (Boolean(selectedTagKey) && pageLoading && !selectedTag?.data?.description) }
-									<div class="placeholder animate-pulse w-full h-24 rounded"></div>
-								{:else if selectedTag?.data?.description}
-									<p class="whitespace-pre-line opacity-80">{selectedTag.data.description}</p>
-								{:else if selectedTag && !selectedTag.data?.description}
-									<p class="opacity-50 text-sm">No description available for this tag.</p>
-								{:else if !initialTagsLoading && tags.length > 0 && !selectedTagKey}
-									<p class="text-center opacity-70">Select a tag to see its details.</p>
-								{:else if !initialTagsLoading && tags.length === 0}
-									<p class="text-center opacity-70">No tags found to display.</p>
-								{/if}
-							</Tabs.Panel>
-							<Tabs.Panel value="settings">
-								{#if (initialTagsLoading && !selectedTagKey) || (Boolean(selectedTagKey) && pageLoading && !selectedTag?.data)}
-									<div class="placeholder animate-pulse w-1/2 h-8 rounded mb-4"></div>
-									<div class="grid grid-cols-2 gap-4">
-										<div class="p-3 bg-surface-200-800 rounded placeholder animate-pulse h-16"></div>
-										<div class="p-3 bg-surface-200-800 rounded placeholder animate-pulse h-16"></div>
-										<div class="p-3 bg-surface-200-800 rounded placeholder animate-pulse h-16"></div>
-									</div>
-								{:else if selectedTag?.data}
-									<div class="flex justify-between items-center mb-0">
-										{#if $authUserDoc?.data.user_ulid === selectedTag.data.user_key}
-											<button class="btn preset-tonal-primary" onclick={() => goto(`/tag/edit/${selectedTagKey}`)}>
-												Edit Settings
-											</button>
-										{/if}
-									</div>
-									<div class="grid grid-cols-2 gap-4">
-										<div class="p-3 bg-surface-200-800 rounded">
-											<span class="text-sm opacity-70">Reputation Threshold</span>
-											<p class="font-mono text-lg">{selectedTag.data.reputation_threshold ?? 'N/A'}</p>
+		<!-- Left Column: About/Settings and Quick Actions -->
+		<div class="flex flex-col gap-6">
+			<!-- About & Settings -->
+			<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6 h-[400px]">
+				<div class="h-full flex flex-col">
+					<Tabs value={activeTab} onValueChange={async (e) => { activeTab = e.value; await tick();}}>
+						{#snippet list()}
+							<Tabs.Control value="about" disabled={(initialTagsLoading && !selectedTagKey) || (Boolean(selectedTagKey) && pageLoading && !selectedTag?.data?.description)}>
+								{#snippet lead()}<Orbit size={20} />{/snippet}
+								{#if selectedTag}#{selectedTag.data.tag_handle}{:else}About{/if}
+							</Tabs.Control>
+							<Tabs.Control value="settings" disabled={(initialTagsLoading && !selectedTagKey) || (Boolean(selectedTagKey) && pageLoading && !selectedTag?.data)}>
+								{#snippet lead()}<SlidersHorizontal size={20} />{/snippet}
+								Settings
+							</Tabs.Control>
+						{/snippet}
+						{#snippet content()}
+							<div class="h-[288px] overflow-y-auto">
+								<Tabs.Panel value="about">
+									{#if (initialTagsLoading && !selectedTagKey) || (Boolean(selectedTagKey) && pageLoading && !selectedTag?.data?.description) }
+										<div class="placeholder animate-pulse w-full h-24 rounded"></div>
+									{:else if selectedTag?.data?.description}
+										<p class="whitespace-pre-line opacity-80">{selectedTag.data.description}</p>
+									{:else if selectedTag && !selectedTag.data?.description}
+										<p class="opacity-50 text-sm">No description available for this tag.</p>
+									{:else if !initialTagsLoading && tags.length > 0 && !selectedTagKey}
+										<p class="text-center opacity-70">Select a tag to see its details.</p>
+									{:else if !initialTagsLoading && tags.length === 0}
+										<p class="text-center opacity-70">No tags found to display.</p>
+									{/if}
+								</Tabs.Panel>
+								<Tabs.Panel value="settings">
+									{#if (initialTagsLoading && !selectedTagKey) || (Boolean(selectedTagKey) && pageLoading && !selectedTag?.data)}
+										<div class="placeholder animate-pulse w-1/2 h-8 rounded mb-4"></div>
+										<div class="grid grid-cols-2 gap-4">
+											<div class="p-3 bg-surface-200-800 rounded placeholder animate-pulse h-16"></div>
+											<div class="p-3 bg-surface-200-800 rounded placeholder animate-pulse h-16"></div>
+											<div class="p-3 bg-surface-200-800 rounded placeholder animate-pulse h-16"></div>
 										</div>
-										<div class="p-3 bg-surface-200-800 rounded">
-											<span class="text-sm opacity-70">Vote Reward</span>
-											<p class="font-mono text-lg">{selectedTag.data.vote_reward ?? 'N/A'}</p>
+									{:else if selectedTag?.data}
+										<div class="flex justify-between items-center mb-0">
+											{#if $authUserDoc?.data.user_ulid === selectedTag.data.user_key}
+												<button class="btn preset-tonal-primary" onclick={() => goto(`/tag/edit/${selectedTagKey}`)}>
+													Edit Settings
+												</button>
+											{/if}
 										</div>
-										<div class="p-3 bg-surface-200-800 rounded">
-											<span class="text-sm opacity-70">Min Users</span>
-											<p class="font-mono text-lg">{selectedTag.data.min_users_for_threshold ?? 'N/A'}</p>
-										</div>
-									</div>
-									<hr class="my-4 border-surface-300-700" />
-									<div>
-										<h4 class="text-md font-semibold mb-2">Decay Rules</h4>
-										<p class="text-sm opacity-70">
-											{selectedTag.data.decay_rules_description || 'Decay rules for this tag are not currently specified. Reputation may be subject to periodic adjustments based on overall network activity or specific tag settings that are not detailed here.'}
-										</p>
-										{#if selectedTag.data.decay_percentage && selectedTag.data.decay_period_days}
-											<div class="mt-2 p-2 bg-surface-200-800 rounded text-xs">
-												Reputation score decays by <span class="font-semibold">{selectedTag.data.decay_percentage}%</span> every <span class="font-semibold">{selectedTag.data.decay_period_days} days</span> if no new positive reputation is gained.
+										<div class="grid grid-cols-2 gap-4">
+											<div class="p-3 bg-surface-200-800 rounded">
+												<span class="text-sm opacity-70">Reputation Threshold</span>
+												<p class="font-mono text-lg">{selectedTag.data.reputation_threshold ?? 'N/A'}</p>
 											</div>
-										{/if}
-									</div>
-								{:else if !initialTagsLoading && tags.length > 0 && !selectedTagKey}
-									<p class="text-center opacity-70">Select a tag to see its settings.</p>
-								{:else if !initialTagsLoading && tags.length === 0}
-									<p class="text-center opacity-70">No tags found to display settings for.</p>
-								{/if}
-							</Tabs.Panel>
-						</div>
-					{/snippet}
-				</Tabs>
+											<div class="p-3 bg-surface-200-800 rounded">
+												<span class="text-sm opacity-70">Vote Reward</span>
+												<p class="font-mono text-lg">{selectedTag.data.vote_reward ?? 'N/A'}</p>
+											</div>
+											<div class="p-3 bg-surface-200-800 rounded">
+												<span class="text-sm opacity-70">Min Users</span>
+												<p class="font-mono text-lg">{selectedTag.data.min_users_for_threshold ?? 'N/A'}</p>
+											</div>
+										</div>
+										<hr class="my-4 border-surface-300-700" />
+										<div>
+											<h4 class="text-md font-semibold mb-2">Decay Rules</h4>
+											<p class="text-sm opacity-70">
+												{selectedTag.data.decay_rules_description || 'Decay rules for this tag are not currently specified. Reputation may be subject to periodic adjustments based on overall network activity or specific tag settings that are not detailed here.'}
+											</p>
+											{#if selectedTag.data.decay_percentage && selectedTag.data.decay_period_days}
+												<div class="mt-2 p-2 bg-surface-200-800 rounded text-xs">
+													Reputation score decays by <span class="font-semibold">{selectedTag.data.decay_percentage}%</span> every <span class="font-semibold">{selectedTag.data.decay_period_days} days</span> if no new positive reputation is gained.
+												</div>
+											{/if}
+										</div>
+									{:else if !initialTagsLoading && tags.length > 0 && !selectedTagKey}
+										<p class="text-center opacity-70">Select a tag to see its settings.</p>
+									{:else if !initialTagsLoading && tags.length === 0}
+										<p class="text-center opacity-70">No tags found to display settings for.</p>
+									{/if}
+								</Tabs.Panel>
+							</div>
+						{/snippet}
+					</Tabs>
+				</div>
+			</div>
+
+			<!-- Quick Actions -->
+			<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
+				<QuickActionsTags selectedTag={selectedTag} />
 			</div>
 		</div>
 
 		<!-- User Activity -->
-		<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6 col-span-1 h-[400px] flex flex-col">
+		<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6 h-[400px] flex flex-col">
 			<div class="flex justify-between items-center mb-4">
 				<h2 class="text-lg font-bold {((!selectedTag && !initialTagsLoading && !pageLoading && tags.length > 0 && !selectedTagKey) || (initialTagsLoading && !selectedTagKey) || !$authUserDoc) ? 'opacity-50' : ''}">Your Reputation in {selectedTag?.data.tag_handle}</h2>
 				{#if $authUserDoc && selectedTag}
