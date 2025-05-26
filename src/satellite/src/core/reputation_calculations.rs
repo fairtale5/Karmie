@@ -349,8 +349,8 @@ pub async fn calculate_and_store_vote_weight(user_key: &str, tag_key: &str) -> R
     } else {
         // Create new data with all default values
         ReputationData {
-            user_key: user_key.to_string(),
-            tag_key: tag_key.to_string(),
+            owner_ulid: user_key.to_string(),
+            tag_ulid: tag_key.to_string(),
             reputation_basis: 0.0,
             reputation_rewards: 0.0,
             reputation_total_effective: 0.0,
@@ -615,38 +615,38 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
             .map_err(|e| format!("Failed to deserialize vote: {}", e))?;
 
         // Skip if we already have this author's information
-        if author_index.contains_key(&vote_data.user_key) {
+        if author_index.contains_key(&vote_data.owner_ulid) {
             continue;
         }
 
         // Get author's reputation data
-        match get_user_reputation_slim(&vote_data.user_key, tag_key).await {
+        match get_user_reputation_slim(&vote_data.owner_ulid, tag_key).await {
             Ok(Some(author_info)) => {
                 // Skip if author's votes are not active
                 if !author_info.votes_active {
                     // Add  detailed info about why author is inactive
                     logger!("info", "[calculate_user_reputation] Author={} is inactive in tag={}: reputation={}, has_voting_power={}",
-                        vote_data.user_key, tag_key, author_info.effective_reputation, author_info.votes_active);
+                        vote_data.owner_ulid, tag_key, author_info.effective_reputation, author_info.votes_active);
                     continue;
                 }
                 
                 // Add info about active author - do this BEFORE inserting into HashMap
                 logger!("info", "[calculate_user_reputation] Active author={} in tag={}: reputation={}, vote_weight={}",
-                    vote_data.user_key, tag_key, author_info.effective_reputation, author_info.vote_weight.value());
+                    vote_data.owner_ulid, tag_key, author_info.effective_reputation, author_info.vote_weight.value());
 
                 // Store author information AFTER logging
                 author_index.insert(
-                    vote_data.user_key.clone(),
+                    vote_data.owner_ulid.clone(),
                     author_info, // Use the AuthorInfo directly
                 );
             }
             Ok(None) => {
                 logger!("warn", "No reputation data found for author in calculate_user_reputation: author={}, tag={}",
-                    vote_data.user_key, tag_key);
+                    vote_data.owner_ulid, tag_key);
             }
             Err(e) => {
                 logger!("error", "[calculate_user_reputation] Error getting author reputation: author={}, tag={}, error={}",
-                    vote_data.user_key, tag_key, e);
+                    vote_data.owner_ulid, tag_key, e);
                 continue;
             }
         }
@@ -676,11 +676,11 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
                 .map_err(|e| format!("Failed to deserialize vote: {}", e))?;
 
             // Get author's information from our index
-            let author_info = match author_index.get(&vote_data.user_key) {
+            let author_info = match author_index.get(&vote_data.owner_ulid) {
                 Some(info) => info,
                 None => {
                     logger!("warn", "[calculate_user_reputation - Iterate Votes] Warning: Author info not found in index to calculate vote, author={}",
-                        vote_data.user_key);
+                        vote_data.owner_ulid);
                     continue;
                 }
             };
@@ -897,8 +897,8 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
 
     // Create the reputation data with all calculated values
     let reputation_data = ReputationData {
-        user_key: user_key.to_string(),
-        tag_key: tag_key.to_string(),
+        owner_ulid: user_key.to_string(),
+        tag_ulid: tag_key.to_string(),
         reputation_basis: total_basis_reputation,
         reputation_rewards: total_voting_rewards_reputation,
         reputation_total_effective: effective_reputation,
@@ -1195,8 +1195,8 @@ pub async fn update_reputation_on_vote(
         });
         
         let rep_data = ReputationData {
-            user_key: target_key.to_string(),
-            tag_key: tag_key.to_string(),
+            owner_ulid: target_key.to_string(),
+            tag_ulid: tag_key.to_string(),
             reputation_basis: 0.0,
             reputation_rewards: 0.0,
             reputation_total_effective: 0.0,

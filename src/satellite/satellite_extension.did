@@ -3,13 +3,13 @@
 
 type ReputationData = record {
   last_calculation : nat64;
-  user_key : text;
   reputation_basis : float64;
-  tag_key : text;
   reputation_rewards : float64;
   vote_weight : float64;
   has_voting_power : bool;
+  tag_ulid : text;
   reputation_total_effective : float64;
+  owner_ulid : text;
 };
 type Result = variant { Ok : text; Err : text };
 type Result_1 = variant { Ok : float64; Err : text };

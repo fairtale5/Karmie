@@ -23,18 +23,18 @@ import type { TagDocument } from '../types';
  * });
  */
 export async function createTagDoc(doc: TagDocument): Promise<void> {
-  if (!doc.data.tag_handle || !doc.data.user_key) {
+  if (!doc.data.tag_handle || !doc.data.owner_ulid) {
     throw new Error('Tag handle and user key are required');
   }
 
   // Generate a new unique tag ULID
   const tagUlid = createUlid();
   // Build the document key using the author's ULID, tag ULID, and tag handle
-  const tagDocKey = formatTagKey(doc.data.user_key, tagUlid, doc.data.tag_handle);
+  const tagDocKey = formatTagKey(doc.data.owner_ulid, tagUlid, doc.data.tag_handle);
 
   // Set the generated fields
   doc.key = tagDocKey;
-  doc.data.tag_key = tagUlid;
+  doc.data.tag_ulid = tagUlid;
 
   // Log the document payload for debugging
   console.log('[tag_create] Sending to setDoc:', doc);

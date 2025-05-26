@@ -1,5 +1,7 @@
 <script lang="ts">
 // Placeholder data for dashboard widgets
+import QuickActions from '$lib/components/dashboard/QuickActions.svelte';
+
 const user = {
   handle: 'johndoe',
   displayName: 'John Doe',
@@ -69,7 +71,7 @@ const quickActions = [
 <!-- Main dashboard grid -->
 <div class="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6 p-4">
   <!-- Column 1 -->
-  <div class="space-y-10">
+  <div class="space-y-6">
     <!-- User Profile Card -->
     <div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6 flex flex-col items-center">
       <img src={user.avatarUrl} alt="avatar" class="rounded-full w-24 h-24 mb-4 border-4 border-primary-500" />
@@ -85,6 +87,9 @@ const quickActions = [
       </div>
     </div>
 
+    <!-- Quick Actions -->
+    <QuickActions />
+
     <!-- Most Recent Tags -->
     <div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
       <div class="font-bold text-lg mb-2">Most Recent Tags</div>
@@ -97,23 +102,10 @@ const quickActions = [
         {/each}
       </ul>
     </div>
-
-    <!-- Quick Actions -->
-    <div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
-      <div class="font-bold text-lg mb-2">Quick Actions</div>
-      <div class="grid grid-cols-3 gap-2">
-        {#each quickActions as action}
-          <button class="btn preset-tonal-primary flex flex-col items-center p-2">
-            <span class="text-xl mb-1">{action.icon}</span>
-            <span class="text-xs">{action.name}</span>
-          </button>
-        {/each}
-      </div>
-    </div>
   </div>
 
   <!-- Column 2 -->
-  <div class="space-y-10">
+  <div class="space-y-6">
     <!-- Reputation Change Users -->
     <div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
       <div class="flex justify-between items-center mb-2">
@@ -218,7 +210,7 @@ const quickActions = [
   </div>
 
   <!-- Column 3 -->
-  <div class="space-y-10">
+  <div class="space-y-6">
     <!-- Tags by Most Trusted Users -->
     <div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
       <div class="font-bold text-lg mb-2">Tags: Most Trusted Users</div>

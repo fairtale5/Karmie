@@ -284,37 +284,37 @@ async fn process_vote(context: &OnSetDocContext) -> Result<(), String> {
     
     // Log the vote details in a human-readable format
     logger!("info", "[process_vote] Processing new vote: author={} voted {} on target={} in tag={}",
-        vote_data.user_key,
+        vote_data.owner_ulid,
         vote_data.value,
-        vote_data.target_key,
-        vote_data.tag_key
+        vote_data.target_ulid,
+        vote_data.tag_ulid
     );
     
     // Ensure tag_key is not empty - this is critical to prevent later errors
-    if vote_data.tag_key.is_empty() {
+    if vote_data.tag_ulid.is_empty() {
         let err_msg = "Tag key cannot be empty";
         logger!("error", "[process_vote] {}", err_msg);
         return Err(err_msg.to_string());
     }
     
     // Step 1: Calculate and store the voting user's vote weight
-    logger!("info", "Step 1/3: Calculating vote weight for author: {}", vote_data.user_key);
-    let vote_weight = calculate_and_store_vote_weight(&vote_data.user_key, &vote_data.tag_key).await
+    logger!("info", "Step 1/3: Calculating vote weight for author: {}", vote_data.owner_ulid);
+    let vote_weight = calculate_and_store_vote_weight(&vote_data.owner_ulid, &vote_data.tag_ulid).await
         .map_err(|e| {
             logger!("error", "[process_vote] Failed to calculate vote weight: {}", e);
             e.to_string()
         })?;
-    logger!("info", "[process_vote] Step 1/3 COMPLETE: Vote weight for author={}: {}", vote_data.user_key, vote_weight);
+    logger!("info", "[process_vote] Step 1/3 COMPLETE: Vote weight for author={}: {}", vote_data.owner_ulid, vote_weight);
     
     // Step 2: Calculate reputation for the voting user (author)
-    logger!("info", "[process_vote] Step 2/3: Calculating reputation for author: {}", vote_data.user_key);
-    let author_rep = calculate_user_reputation(&vote_data.user_key, &vote_data.tag_key).await
+    logger!("info", "[process_vote] Step 2/3: Calculating reputation for author: {}", vote_data.owner_ulid);
+    let author_rep = calculate_user_reputation(&vote_data.owner_ulid, &vote_data.tag_ulid).await
         .map_err(|e| {
             logger!("error", "[process_vote] Failed to calculate author reputation: {}", e);
             e.to_string()
         })?;
     logger!("info", "[process_vote] Step 2/3 COMPLETE: Author={}: basisR={}, voteR={}, totalR={}, voting_power={}",
-        vote_data.user_key, 
+        vote_data.owner_ulid, 
         author_rep.reputation_basis,
         author_rep.reputation_rewards,
         author_rep.reputation_total_effective,
@@ -322,14 +322,14 @@ async fn process_vote(context: &OnSetDocContext) -> Result<(), String> {
     );
     
     // Step 3: Calculate reputation for the target user
-    logger!("info", "[process_vote] Step 3/3: Calculating reputation for target: {}", vote_data.target_key);
-    let target_rep = calculate_user_reputation(&vote_data.target_key, &vote_data.tag_key).await
+    logger!("info", "[process_vote] Step 3/3: Calculating reputation for target: {}", vote_data.target_ulid);
+    let target_rep = calculate_user_reputation(&vote_data.target_ulid, &vote_data.tag_ulid).await
         .map_err(|e| {
             logger!("error", "[process_vote] Failed to calculate target reputation: {}", e);
             e.to_string()
         })?;
     logger!("info", "[process_vote] Step 3/3 COMPLETE: Target={}: basisR={}, voteR={}, totalR={}, voting_power={}",
-        vote_data.target_key, 
+        vote_data.target_ulid, 
         target_rep.reputation_basis,
         target_rep.reputation_rewards,
         target_rep.reputation_total_effective,
@@ -337,9 +337,9 @@ async fn process_vote(context: &OnSetDocContext) -> Result<(), String> {
     );
 
     logger!("info", "[process_vote] Completed - author={}, target={}, tag={}, vote_value={}, vote_weight={}",
-        vote_data.user_key, 
-        vote_data.target_key, 
-        vote_data.tag_key, 
+        vote_data.owner_ulid, 
+        vote_data.target_ulid, 
+        vote_data.tag_ulid, 
         vote_data.value, 
         vote_weight
     );

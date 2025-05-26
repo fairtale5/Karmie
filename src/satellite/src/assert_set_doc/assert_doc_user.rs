@@ -42,7 +42,7 @@ pub fn assert_doc_user(context: &AssertSetDocContext) -> Result<(), String> {
     
     // Step 2: Validate document key format
     // First validate that the user_key field in the user data is a valid ULID
-    if let Some(ref user_key) = user_data.user_key {
+    if let Some(ref user_key) = user_data.user_ulid {
         // Step 2.1: Validate ULID format
         if let Err(e) = crate::processors::ulid_generator::validate_ulid(user_key) {
             let err_msg = format!("[assert_doc_user] Invalid ULID format: {}", e);

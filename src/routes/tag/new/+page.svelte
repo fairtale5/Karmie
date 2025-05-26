@@ -18,7 +18,7 @@ import { createTagDoc } from '$lib/docs-crud/tag_create';
 let tagBeingEdited = $state<Doc<TagData>>({
   key: '',
   data: {
-    user_key: '',
+    owner_ulid: '',
     tag_handle: '',
     description: '',
     time_periods: [...REPUTATION_SETTINGS.DEFAULT_TIME_PERIODS] as Array<{ months: number; multiplier: number }>,
@@ -151,36 +151,42 @@ async function saveTag() {
     }
 
     const userDoc = $authUserDoc;
-    if (!userDoc || !userDoc.data.user_key) {
+    if (!userDoc || !userDoc.data.user_ulid) {
       errorGlobal = 'You must be logged in to create a tag.';
       loading = false;
       return;
     }
 
     // Set the user key from the auth doc
-    tagBeingEdited.data.user_key = userDoc.data.user_key;
+    tagBeingEdited.data.owner_ulid = userDoc.data.user_ulid;
 
-    // Show loading toast
-    toaster.loading({
-      title: 'Creating Tag on the Blockchain',
-      description: 'Please wait while we create your tag...'
-    });
-
-    // Create the tag using our utility function
-    await createTagDoc(tagBeingEdited);
-    
-    toaster.success({
-      title: 'Tag Created!',
-      description: 'Your tag was created successfully. Redirecting to the tags page...'
-    });
-    
-    goto('/tags');
+    // Use toaster.promise() for consistent handling
+    await toaster.promise(
+      (async () => {
+        // Create the tag using our utility function
+        await createTagDoc(tagBeingEdited);
+        // Add a small delay to ensure toast is visible
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Navigate after success
+        goto('/tags');
+      })(),
+      {
+        loading: {
+          title: 'Creating Tag on the Blockchain',
+          description: 'Please wait while we store your tag on the ICP blockchain...'
+        },
+        success: () => ({
+          title: 'Tag Created!',
+          description: 'Your tag was created successfully.'
+        }),
+        error: (e) => ({
+          title: 'Error Creating Tag',
+          description: e instanceof Error ? e.message : 'Failed to create tag.'
+        })
+      }
+    );
   } catch (e) {
     errorGlobal = e instanceof Error ? e.message : 'Failed to create tag.';
-    toaster.error({
-      title: 'Error Creating Tag',
-      description: e instanceof Error ? e.message : 'Failed to create tag.'
-    });
   } finally {
     loading = false;
   }
