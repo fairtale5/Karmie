@@ -226,10 +226,10 @@
             throw new Error('Please select a tag, user, and vote value');
         }
 
-    // Debug logging
-    console.log('[QuickActions] Auth User Doc:', $authUserDoc);
-    console.log('[QuickActions] Selected User:', selectedUser);
-    console.log('[QuickActions] Selected Tag:', selectedTag);
+        // Debug logging
+        console.log('[QuickActions] Auth User Doc:', $authUserDoc);
+        console.log('[QuickActions] Selected User:', selectedUser);
+        console.log('[QuickActions] Selected Tag:', selectedTag);
 
         // Create vote document with empty key to satisfy TypeScript
         const voteDoc = {
@@ -243,38 +243,45 @@
             }
         };
 
-      // Log the vote document for debugging
-      console.log('[QuickActions] Vote document before sending:', voteDoc);
+        // Log the vote document for debugging
+        console.log('[QuickActions] Vote document before sending:', voteDoc);
 
-      // Validate ULID format using ulid package's isValid function
-      // Checks if string is 26 chars, uppercase, valid Crockford Base32, and valid timestamp
-      if (!isValid(voteDoc.data.owner_ulid)) {
-        throw new Error('Invalid owner ULID format');
-      }
-      if (!isValid(voteDoc.data.target_ulid)) {
-        throw new Error('Invalid target ULID format');
-      }
-      if (!isValid(voteDoc.data.tag_ulid)) {
-        throw new Error('Invalid tag ULID format');
-      }
+        // Validate ULID format using ulid package's isValid function
+        if (!isValid(voteDoc.data.owner_ulid)) {
+            throw new Error('Invalid owner ULID format');
+        }
+        if (!isValid(voteDoc.data.target_ulid)) {
+            throw new Error('Invalid target ULID format');
+        }
+        if (!isValid(voteDoc.data.tag_ulid)) {
+            throw new Error('Invalid tag ULID format');
+        }
 
-        // Show loading toast after all validations pass
-        toaster.loading({
-            title: 'Creating vote...',
-            description: 'Please wait while we process your vote...'
-        });
+        // Use toaster.promise() for consistent handling
+        await toaster.promise(
+            (async () => {
+                // Call vote_create.ts to create the vote document
+                await createVoteDoc(voteDoc);
+                // Add a small delay to ensure toast is visible
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            })(),
+            {
+                loading: {
+                    title: 'Recording Vote on the Blockchain',
+                    description: 'Please wait while we store your vote on the ICP blockchain...'
+                },
+                success: () => ({
+                    title: 'Vote Recorded!',
+                    description: 'Your vote has been stored on-chain.'
+                }),
+                error: (e) => ({
+                    title: 'Failed to Record Vote',
+                    description: e instanceof Error ? e.message : 'An unknown error occurred'
+                })
+            }
+        );
 
-        // Call vote_create.ts to create the vote document
-        // This will execute the vote on the blockchain
-        await createVoteDoc(voteDoc);
-
-        // Show success toast
-        toaster.success({
-            title: 'Vote created successfully!',
-            description: 'Your vote has been recorded'
-        });
-
-        // Reset form
+        // Reset form after successful vote
         selectedTag = null;
         selectedUser = null;
         selectedVoteValue = null;
@@ -283,10 +290,6 @@
         currentFocus = 'tag';
     } catch (error) {
         console.error('Error creating vote:', error);
-        toaster.error({
-            title: 'Failed to create vote',
-            description: error instanceof Error ? error.message : 'An unknown error occurred'
-        });
     }
   }
 </script>
@@ -418,7 +421,7 @@
                             on:click={() => handleTagSelect(tag)}
                           >
                             <div class="flex items-center gap-2">
-                              <span class="i-lucide-tag text-primary-500" />
+                              <span class="i-lucide-tag text-primary-500"></span>
                               <span class="font-bold">#{tag.data.tag_handle}</span>
                             </div>
                           </button>

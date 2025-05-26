@@ -160,27 +160,33 @@ async function saveTag() {
     // Set the user key from the auth doc
     tagBeingEdited.data.owner_ulid = userDoc.data.user_ulid;
 
-    // Show loading toast
-    toaster.loading({
-      title: 'Creating Tag on the Blockchain',
-      description: 'Please wait while we create your tag...'
-    });
-
-    // Create the tag using our utility function
-    await createTagDoc(tagBeingEdited);
-    
-    toaster.success({
-      title: 'Tag Created!',
-      description: 'Your tag was created successfully. Redirecting to the tags page...'
-    });
-    
-    goto('/tags');
+    // Use toaster.promise() for consistent handling
+    await toaster.promise(
+      (async () => {
+        // Create the tag using our utility function
+        await createTagDoc(tagBeingEdited);
+        // Add a small delay to ensure toast is visible
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Navigate after success
+        goto('/tags');
+      })(),
+      {
+        loading: {
+          title: 'Creating Tag on the Blockchain',
+          description: 'Please wait while we store your tag on the ICP blockchain...'
+        },
+        success: () => ({
+          title: 'Tag Created!',
+          description: 'Your tag was created successfully.'
+        }),
+        error: (e) => ({
+          title: 'Error Creating Tag',
+          description: e instanceof Error ? e.message : 'Failed to create tag.'
+        })
+      }
+    );
   } catch (e) {
     errorGlobal = e instanceof Error ? e.message : 'Failed to create tag.';
-    toaster.error({
-      title: 'Error Creating Tag',
-      description: e instanceof Error ? e.message : 'Failed to create tag.'
-    });
   } finally {
     loading = false;
   }
