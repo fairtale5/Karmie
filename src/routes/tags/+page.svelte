@@ -13,7 +13,7 @@ import { UserRoundPen, Expand, BookOpen, SlidersHorizontal, Orbit } from 'lucide
 import NotLoggedInAlert from '$lib/components/common/NotLoggedInAlert.svelte';
 import { authUserDoc } from '$lib/stores/authUserDoc';
 import { Tabs } from '@skeletonlabs/skeleton-svelte';
-import QuickActionsTags from '$lib/components/dashboard/QuickActionsTags.svelte';
+import QuickActionsTags from '$lib/components/tags/QuickActionsTags.svelte';
 import RecentVotes from '$lib/components/tags/RecentVotes.svelte';
 import type { TagDocument } from '$lib/types';
 
@@ -93,8 +93,10 @@ onMount(async () => {
 			? [...fetchedTags, previewTagForList as TagDocument]
 			: [previewTagForList as TagDocument, ...fetchedTags];
 
-		// Set initial selected tag
-		selectedTag = fetchedTags.length > 0 ? fetchedTags[0] : previewTagForList as TagDocument;
+		// Set initial selected tag - default to preview mode if not logged in
+		selectedTag = $authUserDoc 
+			? (fetchedTags.length > 0 ? fetchedTags[0] : previewTagForList as TagDocument)
+			: previewTagForList as TagDocument;
 	} catch (e) {
 		console.error('Failed to load tags:', e);
 		error = e instanceof Error ? e.message : 'Failed to load tags';
