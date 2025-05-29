@@ -23,11 +23,17 @@ export interface UserData {
 /**
  * Tag data interface
  *
- * - user_key: ULID of the creator (required, string)
- * - tag_key: ULID for this tag (required, string)
+ * - owner_ulid: ULID of the creator (references Users collection) (required, string)
+ * - tag_ulid: ULID for this tag (required, string)
  * - tag_handle: Tag handle (required)
  * - description: Description of the tag's purpose
- * - time_periods: Array of time period objects
+ * - time_periods: Array of decay rules that define how votes gain bonuses or decay based on the age of the vote.
+ *   Each period specifies:
+ *   - months: How long until this decay rule takes effect (1-999 months)
+ *   - multiplier: How much the reputation decays (0.05-100)
+ *     - multiplier < 1: Reputation decays by (1 - multiplier)%
+ *     - multiplier = 1: No decay
+ *     - multiplier > 1: Reputation increases by (multiplier - 1)%
  * - reputation_threshold: Minimum reputation needed for voting power
  * - vote_reward: Reputation points given for casting votes
  * - min_users_for_threshold: Minimum users needed before vote rewards are restricted
@@ -37,9 +43,12 @@ export interface TagData {
     tag_ulid?: string;          // ULID for this tag (required)
     tag_handle?: string;     // Tag handle (required)
     description?: string;    // Description of the tag's purpose 
-    time_periods: Array<{   // Array of time period objects
-        months: number;     // Duration in months (1-999)
-        multiplier: number; // Weight multiplier (0.25-1.5)
+    time_periods: Array<{   // Array of decay rules that define how reputation scores decrease over time
+        months: number;     // How long until this decay rule takes effect (1-999 months)
+        multiplier: number; // How much the reputation decays (0.05-100)
+                          // < 1: Decay by (1 - multiplier)%
+                          // = 1: No decay
+                          // > 1: Increase by (multiplier - 1)%
     }>;
     reputation_threshold?: number;    // Minimum reputation needed for voting power
     vote_reward?: number;             // Reputation points given for casting votes

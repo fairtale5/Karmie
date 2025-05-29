@@ -102,6 +102,25 @@ Additional guidelines:
   3. Confirm if certain patterns should be avoided
   4. Check if there are similar implementations to reference
 
+## Code Comments Guidelines
+- Focus on technical mechanisms rather than actions:
+  - Instead of "turns on the light", explain "triggers the interruptor circuit, allowing current flow from A to B"
+  - Instead of "updates the state", explain "modifies the internal state variable, triggering Svelte's reactive update cycle"
+- Structure comments hierarchically:
+  1. Section headers for major code blocks
+  2. Technical flow explanations for functions
+  3. Mechanism details for complex operations
+- Include debugging context:
+  - Data flow paths
+  - State transition points
+  - Error propagation routes
+  - Performance considerations
+- Document integration points:
+  - External API interactions
+  - Framework-specific behaviors
+  - State management patterns
+  - Event handling chains
+
 ## Error Handling
 - For any error:
   1. Explain what caused it
