@@ -10,6 +10,7 @@
   import { toaster } from '$lib/skeletonui/toaster-skeleton';
   import { authUserDoc } from '$lib/stores/authUserDoc';
   import { isValid } from 'ulid';
+  import { goto } from '$app/navigation';
 
   // Props
   export let selectedTag: TagDocument | null = null;
@@ -114,6 +115,10 @@
   }
 
   function handleActionClick(action: string) {
+    if (action === 'Create Tag') {
+        goto('/tag/new');
+        return;
+    }
     activeAction = activeAction === action ? null : action;
     if (!activeAction) {
       // Reset state when closing
@@ -494,10 +499,6 @@
                   </div>
                 </div>
               {/if}
-            </div>
-          {:else if activeAction === 'Create Tag'}
-            <div class="text-sm">
-              Create Tag content goes here
             </div>
           {:else if activeAction === 'Invite User'}
             <div class="text-sm">

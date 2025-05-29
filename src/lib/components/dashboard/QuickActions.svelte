@@ -10,6 +10,7 @@
   import { toaster } from '$lib/skeletonui/toaster-skeleton';
   import { authUserDoc } from '$lib/stores/authUserDoc';
   import { isValid } from 'ulid';
+  import { goto } from '$app/navigation';
 
   // Quick action buttons configuration
   const quickActions = [
@@ -104,6 +105,10 @@
   }
 
   function handleActionClick(action: string) {
+    if (action === 'Create Tag') {
+        goto('/tag/new');
+        return;
+    }
     activeAction = activeAction === action ? null : action;
     if (!activeAction) {
       // Reset state when closing
@@ -514,9 +519,7 @@
               {/if}
             </div>
           {:else if activeAction === 'Create Tag'}
-            <div class="text-sm">
-              Create Tag content goes here
-            </div>
+            <!-- Remove this section entirely as Create Tag now navigates directly -->
           {:else if activeAction === 'Invite User'}
             <div class="text-sm">
               Invite User content goes here
