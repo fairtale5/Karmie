@@ -486,43 +486,11 @@ function onTagChange(event: Event) {
 
 	<!-- Activity Sections -->
 	<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-		<!-- Recent Votes (Old Implementation) -->
-		<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
-			<div class="flex justify-between items-center mb-4">
-				<h2 class="text-lg font-bold {((!selectedTag && !loading && !loading && tags.length > 0 && !selectedTag) || (loading && !selectedTag)) ? 'opacity-50' : ''}">Recent Votes (Old)</h2>
-				<button type="button" class="chip-icon preset-tonal-surface" onclick={() => goto(`/tags/${selectedTag?.key}/votes`)} disabled={!selectedTag || selectedTag?.key === PREVIEW_TAG_KEY || loading || (selectedTag && Boolean(selectedTag) && loading && recentVotes.length === 0 && !selectedTag && tags.length > 0)} title="See More Votes">
-					<Expand size={16} />
-				</button>
-			</div>
-			{#if (loading && !selectedTag) || (loading && selectedTag && selectedTag.key && selectedTag.key !== PREVIEW_TAG_KEY && recentVotes.length === 0 && !selectedTag && tags.length > 0) }
-				<div class="space-y-2">
-					{#each Array(3) as _}
-						<div class="flex justify-between items-center placeholder animate-pulse h-8 rounded"></div>
-					{/each}
-				</div>
-			{:else if selectedTag && recentVotes.length > 0}
-				<div class="table-wrap">
-					<table class="table caption-bottom">
-						<thead><tr><th>From</th><th>To</th><th class="text-right">Value</th></tr></thead>
-						<tbody class="[&>tr]:hover:preset-tonal-primary">
-							{#each recentVotes as vote (vote.author + vote.target + (vote.date || Math.random()))}
-								<tr>
-									<td class="font-mono">{vote.author}</td>
-									<td class="font-mono">{vote.target}</td>
-									<td class="text-right"><span class="badge preset-filled-{vote.value > 0 ? 'success' : 'error'}-500">{vote.value > 0 ? '+1' : '-1'}</span></td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-			{:else if selectedTag && recentVotes.length === 0}
-				<p class="text-center opacity-70">No recent votes to display for this tag.</p>
-			{:else if !loading && tags.length > 0 && !selectedTag}
-				<p class="text-center opacity-70">Select a tag to see recent votes.</p>
-			{:else if !loading && tags.length === 0}
-				<p class="text-center opacity-70">No tags available.</p>
-			{/if}
-		</div>
+		<!-- Recent Votes -->
+		<RecentVotes 
+			selectedTag={selectedTag} 
+			cutoffTimestamp={cutoffTimestamp} 
+		/>
 
 		<!-- Top Users -->
 		<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
@@ -560,15 +528,6 @@ function onTagChange(event: Event) {
 				<p class="text-center opacity-70">No tags available.</p>
 			{/if}
 		</div>
-	</div>
-
-	<!-- New Implementation Section -->
-	<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-		<!-- Recent Votes (New Implementation) -->
-		<RecentVotes 
-			selectedTag={selectedTag} 
-			cutoffTimestamp={cutoffTimestamp} 
-		/>
 	</div>
 
 	<!-- Call to Action -->
