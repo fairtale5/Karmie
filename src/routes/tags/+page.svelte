@@ -70,7 +70,7 @@ let userReputation = $state<any>(JSON.parse(JSON.stringify(initialUserReputation
 let topUsers = $state<any[]>(JSON.parse(JSON.stringify(initialTopUsersPreview)));
 let recentVotes = $state<any[]>(JSON.parse(JSON.stringify(initialRecentVotesPreview)));
 let userRecentActivity = $state<any[]>(generateInitialUserActivityPreview());
-let cutoffTimestamp = $state(BigInt(Date.now() - 24 * 60 * 60 * 1000) * BigInt(1_000_000));
+let cutoffTimestamp = $state(BigInt(new Date('2025-01-01T00:00:00Z').getTime()) * BigInt(1_000_000));
 let activeTab = $state('about');
 let userActivityFilter = $state('all');
 
@@ -80,6 +80,32 @@ let stats = $state({
 	verifiedUsers: 567,
 	activeUsers: 89
 });
+
+// Define a cutoff far in the past for 'All' (2025-01-01T00:00:00Z)
+const ALL_TIME_CUTOFF = BigInt(new Date('2025-01-01T00:00:00Z').getTime()) * BigInt(1_000_000);
+
+// Define time periods, including "All"
+const timePeriods = [
+	{ label: '24h', ms: 24 * 60 * 60 * 1000 },
+	{ label: '7d', ms: 7 * 24 * 60 * 60 * 1000 },
+	{ label: '30d', ms: 30 * 24 * 60 * 60 * 1000 },
+	{ label: '90d', ms: 90 * 24 * 60 * 60 * 1000 },
+	{ label: '1y', ms: 365 * 24 * 60 * 60 * 1000 },
+	{ label: 'All', ms: null }
+];
+
+// Default to last period (e.g., 'All' if last)
+let selectedPeriod = $state(timePeriods[timePeriods.length - 1]);
+
+// Set cutoffTimestamp based on selection
+function setPeriod(period: { label: string; ms: number | null }) {
+	selectedPeriod = period;
+	if (period.label === 'All') {
+		cutoffTimestamp = ALL_TIME_CUTOFF;
+	} else if (period.ms !== null) {
+		cutoffTimestamp = BigInt(Date.now() - period.ms) * BigInt(1_000_000);
+	}
+}
 
 // --- Initialization ---
 onMount(async () => {
@@ -228,20 +254,10 @@ function onTagChange(event: Event) {
 
 		<!-- Right side: Global Time Filter -->
 		<div class="flex gap-2">
-			{#each [
-				{ label: '24h', ms: 24 * 60 * 60 * 1000 },
-				{ label: '7d', ms: 7 * 24 * 60 * 60 * 1000 },
-				{ label: '30d', ms: 30 * 24 * 60 * 60 * 1000 },
-				{ label: '90d', ms: 90 * 24 * 60 * 60 * 1000 },
-				{ label: '1y', ms: 365 * 24 * 60 * 60 * 1000 }
-			] as period}
-				<button 
-					class="btn preset-tonal-primary text-xs"
-					class:preset-filled-primary-500={cutoffTimestamp === BigInt(Date.now() - period.ms) * BigInt(1_000_000) && !loading && selectedTag}
-					class:bg-surface-500_10={loading || !selectedTag || (Boolean(selectedTag) && !selectedTag)} 
-					class:text-surface-500_50={loading || !selectedTag || (Boolean(selectedTag) && !selectedTag)} 
-					onclick={() => cutoffTimestamp = BigInt(Date.now() - period.ms) * BigInt(1_000_000)}
-					disabled={loading || !selectedTag || (Boolean(selectedTag) && !selectedTag)}
+			{#each timePeriods as period}
+				<button
+					class={`btn text-xs ${selectedPeriod.label === period.label ? 'preset-filled-primary-500' : 'preset-tonal-primary'}`}
+					onclick={() => setPeriod(period)}
 				>
 					{period.label}
 				</button>
