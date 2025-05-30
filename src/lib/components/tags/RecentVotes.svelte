@@ -2,9 +2,13 @@
     // Import core Juno functionality for document operations
     import { listDocs } from '@junobuild/core';
     // Import type definitions that enforce data structure compliance
-    import type { VoteDocument, TagDocument } from '$lib/types';
+    import type { VoteDocument, TagDocument, UserDocument, UserData } from '$lib/types';
     // Import Svelte's lifecycle hook for component initialization
     import { onMount } from 'svelte';
+    // Import query helper
+    import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
+    // Import Avatar component
+    import { Avatar } from '@skeletonlabs/skeleton-svelte';
 
     // --- Component Interface Definition ---
     // These props define the component's external interface and data requirements
@@ -19,6 +23,41 @@
     let votes = $state<VoteDocument[]>([]);             // Array of vote documents from Juno
     let loading = $state(true);                         // Loading state flag for UI feedback
     let error = $state<string | null>(null);            // Error state container
+    let userData = $state<Map<string, UserDocument>>(new Map());  // Cache for user documents
+
+    // Helper function to get user initials from handle
+    function getInitials(handle: string): string {
+        return handle.slice(0, 2).toUpperCase();
+    }
+
+    // Helper function to get avatar URL
+    function getAvatarUrl(ulid: string): string {
+        return `https://images.unsplash.com/photo-1617296538902-887900d9b592?ixid=M3w0Njc5ODF8MHwxfGFsbHx8fHx8fHx8fDE2ODc5NzExMDB8&ixlib=rb-4.0.3&w=128&h=128&auto=format&fit=crop`;
+    }
+
+    // Helper function to fetch user data
+    async function fetchUserData(ulid: string) {
+        if (userData.has(ulid)) return; // Skip if already cached
+        
+        try {
+            const keyPattern = `usr_${ulid}_`;
+            const results = await queryDocsByKey<UserData>('users', keyPattern);
+            
+            // Ensure we have exactly one result
+            if (results.items.length === 0) {
+                console.warn(`No user found for ULID: ${ulid}`);
+                return;
+            }
+            if (results.items.length > 1) {
+                throw new Error(`Multiple users found for ULID: ${ulid}`);
+            }
+            
+            // Store the user document
+            userData.set(ulid, results.items[0] as UserDocument);
+        } catch (e) {
+            console.error(`Failed to fetch user data for ${ulid}:`, e);
+        }
+    }
 
     // --- Data Fetching Logic ---
     // This function handles the asynchronous data retrieval from Juno
@@ -67,25 +106,27 @@
                 }
             });
             
-            // Log query results for debugging and monitoring
-            console.log('Query result:', {
-                itemsCount: result.items.length,
-                firstItem: result.items[0],
-                matchesLength: result.matches_length.toString()
-            });
-            
             // Type assertion to ensure data structure compliance
             votes = result.items as VoteDocument[];
+
+            // Fetch user data for all unique users in the votes
+            const uniqueUsers = new Set<string>();
+            votes.forEach(vote => {
+                if (vote.data.owner_ulid) uniqueUsers.add(vote.data.owner_ulid);
+                if (vote.data.target_ulid) uniqueUsers.add(vote.data.target_ulid);
+            });
+
+            // Fetch user data for all unique users
+            await Promise.all(Array.from(uniqueUsers).map(fetchUserData));
+            
         } catch (e) {
             // Error handling with type checking
-            // Converts unknown error to string message
             error = e instanceof Error ? e.message : 'Failed to fetch recent votes';
             console.error('Error fetching votes:', e);
         } finally {
             // Reset loading state regardless of success/failure
             loading = false;
         }
-
     }
 
     // --- Reactive Data Flow ---
@@ -129,8 +170,44 @@
                 <tbody class="[&>tr]:hover:preset-tonal-primary">
                     {#each votes as vote (vote.key)}
                         <tr>
-                            <td class="font-mono">{vote.data.owner_ulid}</td>
-                            <td class="font-mono">{vote.data.target_ulid}</td>
+                            <td>
+                                {#if vote.data.owner_ulid && userData.get(vote.data.owner_ulid)}
+                                    {@const user = userData.get(vote.data.owner_ulid)!}
+                                    <div class="flex items-center gap-2">
+                                        <Avatar 
+                                            name={user.data.user_handle}
+                                            src={user.data.avatar_url || getAvatarUrl(user.data.user_ulid)} 
+                                            size="w-6"
+                                            rounded="rounded-full"
+                                            background="bg-transparent"
+                                        >
+                                            {getInitials(user.data.user_handle)}
+                                        </Avatar>
+                                        <span>{user.data.user_handle}</span>
+                                    </div>
+                                {:else}
+                                    <span class="font-mono">{vote.data.owner_ulid}</span>
+                                {/if}
+                            </td>
+                            <td>
+                                {#if vote.data.target_ulid && userData.get(vote.data.target_ulid)}
+                                    {@const user = userData.get(vote.data.target_ulid)!}
+                                    <div class="flex items-center gap-2">
+                                        <Avatar 
+                                            name={user.data.user_handle}
+                                            src={user.data.avatar_url || getAvatarUrl(user.data.user_ulid)} 
+                                            size="w-6"
+                                            rounded="rounded-full"
+                                            background="bg-transparent"
+                                        >
+                                            {getInitials(user.data.user_handle)}
+                                        </Avatar>
+                                        <span>{user.data.user_handle}</span>
+                                    </div>
+                                {:else}
+                                    <span class="font-mono">{vote.data.target_ulid}</span>
+                                {/if}
+                            </td>
                             <td class="text-right">
                                 <span class="badge preset-filled-{(vote.data.value ?? 0) > 0 ? 'success' : 'error'}-500">
                                     {(vote.data.value ?? 0) > 0 ? '+1' : '-1'}
