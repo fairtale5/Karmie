@@ -12,6 +12,9 @@
   import { isValid } from 'ulid';
   import { goto } from '$app/navigation';
 
+  // Props
+  export let selectedTag: TagDocument | null = null;
+
   // Quick action buttons configuration
   const quickActions = [
     { name: 'Vote', icon: Vote },
@@ -22,7 +25,6 @@
 
   // Component state
   let activeAction: string | null = null;
-  let selectedTag: TagDocument | null = null;
   let selectedUser: UserDocument | null = null;
   let tags: TagDocument[] = [];
   let users: UserDocument[] = [];
@@ -44,6 +46,14 @@
   // Only load tags when auth is initialized
   $: if ($authUserDoneInitializing) {
     loadTags();
+  }
+
+  // Pre-fill tag when selectedTag prop changes
+  $: if (selectedTag) {
+    tagSearchQuery = selectedTag.data.tag_handle || '';
+    tagSearchStatus = 'found';
+    tagSearchResults = [];
+    currentFocus = 'user';
   }
 
   /**
@@ -112,14 +122,20 @@
     activeAction = activeAction === action ? null : action;
     if (!activeAction) {
       // Reset state when closing
-      selectedTag = null;
       selectedUser = null;
-      currentFocus = 'tag';
-      tagSearchQuery = '';
+      currentFocus = 'user';
       userSearchQuery = '';
-      tagSearchResults = [];
       userSearchResults = [];
     }
+  }
+
+  function handleTagSelect(tag: TagDocument) {
+    console.log('Tag selected:', tag);
+    selectedTag = tag;
+    tagSearchQuery = tag.data.tag_handle || '';
+    tagSearchStatus = 'found';
+    tagSearchResults = [];
+    currentFocus = 'user';
   }
 
   /**
@@ -199,15 +215,6 @@
       console.error('Error searching users:', e);
       userSearchStatus = 'error';
     }
-  }
-
-  function handleTagSelect(tag: TagDocument) {
-    console.log('Tag selected:', tag);
-    selectedTag = tag;
-    tagSearchQuery = tag.data.tag_handle || '';
-    tagSearchStatus = 'found';
-    tagSearchResults = [];
-    currentFocus = 'user';
   }
 
   function handleUserSelect(user: UserDocument) {
@@ -292,7 +299,7 @@
         selectedVoteValue = null;
         tagSearchQuery = '';
         userSearchQuery = '';
-        currentFocus = 'tag';
+        currentFocus = 'user';
     } catch (error) {
         console.error('Error creating vote:', error);
     }
@@ -337,42 +344,17 @@
                 <div class="grid grid-cols-2 gap-4">
                   <!-- Left Column: Input Fields -->
                   <div class="space-y-4">
-                    <!-- Tag Search -->
+                    <!-- Tag Display -->
                     <div>
-                      <div class="flex items-center gap-2 mb-2">
-                        <label class="label" for="tag-search">Select a Tag</label>
-                        {#if suggestedTags.length > 0}
-                          <div class="flex flex-wrap gap-2">
-                            {#each suggestedTags as tag}
-                              <button
-                                class="btn btn-sm preset-tonal-primary"
-                                on:click={() => handleTagSelect(tag)}
-                              >
-                                {tag.data.tag_handle}
-                              </button>
-                            {/each}
-                          </div>
-                        {/if}
-                      </div>
-                      <div class="relative">
-                        <input
-                          type="text"
-                          id="tag-search"
-                          bind:value={tagSearchQuery}
-                          on:input={(e) => searchTags(e.currentTarget.value)}
-                          class="input pr-10 border-primary-300-700 focus:border-primary-500 focus:ring-primary-500 bg-surface-50-950 w-full"
-                          placeholder="Search for a tag..."
-                        />
-                        <span class="absolute right-2 top-1/2 -translate-y-1/2" aria-live="polite">
-                          {#if tagSearchStatus === 'loading'}
-                            <LoaderCircle class="animate-spin text-gray-400" />
-                          {:else if tagSearchStatus === 'found'}
-                            <CheckCircle class="text-success-500" />
-                          {:else if tagSearchStatus === 'not_found'}
-                            <XCircle class="text-error-500" />
-                          {/if}
-                        </span>
-                      </div>
+                      <label class="label" for="tag-display">Selected Tag</label>
+                      <input
+                        type="text"
+                        id="tag-display"
+                        class="input pr-10 border-primary-300-700 bg-surface-50-950 w-full"
+                        bind:value={tagSearchQuery}
+                        on:input={(e) => searchTags(e.currentTarget.value)}
+                        placeholder="Search for a tag..."
+                      />
                       {#if tagSearchStatus === 'not_found'}
                         <span class="text-error-500 text-xs mt-1">No tags found matching "{tagSearchQuery}"</span>
                       {:else if tagSearchStatus === 'found' && !selectedTag}
@@ -518,8 +500,6 @@
                 </div>
               {/if}
             </div>
-          {:else if activeAction === 'Create Tag'}
-            <!-- Remove this section entirely as Create Tag now navigates directly -->
           {:else if activeAction === 'Invite User'}
             <div class="text-sm">
               Invite User content goes here

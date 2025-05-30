@@ -13,92 +13,160 @@ import { UserRoundPen, Expand, BookOpen, SlidersHorizontal, Orbit } from 'lucide
 import NotLoggedInAlert from '$lib/components/common/NotLoggedInAlert.svelte';
 import { authUserDoc } from '$lib/stores/authUserDoc';
 import { Tabs } from '@skeletonlabs/skeleton-svelte';
+import QuickActionsTags from '$lib/components/tags/QuickActionsTags.svelte';
+import RecentVotes from '$lib/components/tags/RecentVotes.svelte';
+import type { TagDocument } from '$lib/types';
 
-// --- State ---
-let pageLoading = $state(true); // True when initially loading tags list or when fetching specific tag data
-let initialTagsLoading = $state(true); // Specifically for the first load of the tags list
+// --- Preview Data Constants ---
+const PREVIEW_TAG_KEY = '___PREVIEW_DATA___';
+const previewTagForList: TagDocument = {
+	key: PREVIEW_TAG_KEY,
+	data: {
+		tag_handle: '✨ Preview Mode ✨',
+		description: 'Currently displaying sample data. Select or create a real tag to see live information and interact with the platform.',
+		reputation_threshold: 10,
+		vote_reward: 0.1,
+		min_users_for_threshold: 5,
+		time_periods: [
+			{ months: 1, multiplier: 0.95 },  // 5% decay after 1 month
+			{ months: 3, multiplier: 0.90 },  // 10% decay after 3 months
+			{ months: 6, multiplier: 0.80 }   // 20% decay after 6 months
+		]
+	}
+};
+
+const initialUserReputationPreview = { score: 123, rank: 5, badges: ['Active', 'Top Voter'] };
+const initialTopUsersPreview = [
+	{ username: 'alice', score: 200, bar: 1 },
+	{ username: 'bob', score: 180, bar: 0.9 },
+	{ username: 'carol', score: 150, bar: 0.75 }
+];
+const initialRecentVotesPreview = [
+	{ author: 'alice', target: 'bob', value: 1, date: new Date().toISOString() },
+	{ author: 'carol', target: 'alice', value: -1, date: new Date(Date.now() - 86400000).toISOString() } // 1 day ago
+];
+function generateInitialUserActivityPreview(): any[] {
+	const activities = [];
+	const peerNames = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel', 'india', 'juliet'];
+	for (let i = 0; i < 5; i++) { // Reduced count for brevity in preview
+		activities.push({
+			id: `cast-preview-${i}`, type: 'cast', peerName: peerNames[i % peerNames.length],
+			value: i < 3 ? 1 : -1, date: new Date(Date.now() - Math.random() * 1000000000).toISOString()
+		});
+		activities.push({
+			id: `received-preview-${i}`, type: 'received', peerName: peerNames[(i + 2) % peerNames.length], // different peers
+			value: i < 2 ? 1 : -1, date: new Date(Date.now() - Math.random() * 1000000000).toISOString()
+		});
+	}
+	return activities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+}
+
+// --- State Management ---
+let tags = $state<TagDocument[]>([]);
+let selectedTag = $state<TagDocument | null>(null);
+let loading = $state(true);
 let error = $state<string | null>(null);
-let tags: Doc<any>[] = $state([]); // Initialize as empty array, make reactive for #each
-let selectedTagKey = $state(''); // Make reactive
-let selectedTag = $state<Doc<any> | null>(null); // Make reactive
-let userReputation: any = $state(null); // Will be populated later, can add placeholders if complex
-let topUsers: any[] = $state([]); // Make reactive for #each
-let recentVotes: any[] = $state([]); // Make reactive for #each
-let userRecentActivity: any[] = $state([]); // Ensure reactivity if used with placeholders
-let selectedPeriod = '24h';
+let userReputation = $state<any>(JSON.parse(JSON.stringify(initialUserReputationPreview)));
+let topUsers = $state<any[]>(JSON.parse(JSON.stringify(initialTopUsersPreview)));
+let recentVotes = $state<any[]>(JSON.parse(JSON.stringify(initialRecentVotesPreview)));
+let userRecentActivity = $state<any[]>(generateInitialUserActivityPreview());
+let cutoffTimestamp = $state(BigInt(new Date('2025-01-01T00:00:00Z').getTime()) * BigInt(1_000_000));
 let activeTab = $state('about');
-let userActivityFilter = $state('all'); // 'all', 'in', 'out', 'positive', 'negative'
+let userActivityFilter = $state('all');
 
 // Dummy stats data (can be replaced with placeholders if fetched)
-let stats = {
+let stats = $state({
 	totalUsers: 1234,
 	verifiedUsers: 567,
 	activeUsers: 89
-};
+});
 
-// --- Fetch Data ---
+// Define a cutoff far in the past for 'All' (2025-01-01T00:00:00Z)
+const ALL_TIME_CUTOFF = BigInt(new Date('2025-01-01T00:00:00Z').getTime()) * BigInt(1_000_000);
+
+// Define time periods, including "All"
+const timePeriods = [
+	{ label: '24h', ms: 24 * 60 * 60 * 1000 },
+	{ label: '7d', ms: 7 * 24 * 60 * 60 * 1000 },
+	{ label: '30d', ms: 30 * 24 * 60 * 60 * 1000 },
+	{ label: '90d', ms: 90 * 24 * 60 * 60 * 1000 },
+	{ label: '1y', ms: 365 * 24 * 60 * 60 * 1000 },
+	{ label: 'All', ms: null }
+];
+
+// Default to last period (e.g., 'All' if last)
+let selectedPeriod = $state(timePeriods[timePeriods.length - 1]);
+
+// Set cutoffTimestamp based on selection
+function setPeriod(period: { label: string; ms: number | null }) {
+	selectedPeriod = period;
+	if (period.label === 'All') {
+		cutoffTimestamp = ALL_TIME_CUTOFF;
+	} else if (period.ms !== null) {
+		cutoffTimestamp = BigInt(Date.now() - period.ms) * BigInt(1_000_000);
+	}
+}
+
+// --- Initialization ---
 onMount(async () => {
-	await initJuno();
-	initialTagsLoading = true;
-	pageLoading = true;
-	error = null;
 	try {
-		const tagsList = await listDocs({ collection: 'tags' });
-		tags = tagsList.items;
-		if (tags.length > 0) {
-			selectedTagKey = tags[0].key;
-		} else {
-			// If no tags, no specific tag data to load, so pageLoading can be false
-			pageLoading = false; 
-		}
+		await initJuno();
+		const result = await listDocs({ collection: 'tags' });
+		const fetchedTags = result.items as TagDocument[];
+
+		// Set tags list based on auth state
+		tags = $authUserDoc 
+			? [...fetchedTags, previewTagForList as TagDocument]
+			: [previewTagForList as TagDocument, ...fetchedTags];
+
+		// Set initial selected tag - default to preview mode if not logged in
+		selectedTag = $authUserDoc 
+			? (fetchedTags.length > 0 ? fetchedTags[0] : previewTagForList as TagDocument)
+			: previewTagForList as TagDocument;
 	} catch (e) {
-		error = e instanceof Error ? e.message : 'Failed to load initial tag list.';
-		toaster.error({ title: error });
-		pageLoading = false; // Error occurred, nothing more to load for the page
+		console.error('Failed to load tags:', e);
+		error = e instanceof Error ? e.message : 'Failed to load tags';
+		tags = [previewTagForList as TagDocument];
+		selectedTag = previewTagForList as TagDocument;
 	} finally {
-		initialTagsLoading = false;
+		loading = false;
 	}
 });
 
-// Reactive effect to fetch tag data when selectedTagKey changes or tags list gets populated
+// --- Tag Selection Effect ---
 $effect(() => {
-	const keyToFetch = selectedTagKey;
-	const currentTags = tags; // $state vars are reactive by themselves
-
-	if (keyToFetch && currentTags.length > 0) {
-		fetchTagData(keyToFetch);
-	} else {
-		// This handles deselection or if no tags were loaded initially and selectedTagKey remains empty
-		selectedTag = null;
-		userReputation = null;
-		topUsers = [];
-		recentVotes = [];
-		userRecentActivity = [];
-		// Only set pageLoading to false if we are not in the initial tags loading phase.
-		// If initialTagsLoading is true, onMount's logic will handle pageLoading.
-		if (!initialTagsLoading) {
-			pageLoading = false;
-		}
+	if (!selectedTag) return;
+	
+	if (selectedTag.key === PREVIEW_TAG_KEY) {
+		userReputation = JSON.parse(JSON.stringify(initialUserReputationPreview));
+		topUsers = JSON.parse(JSON.stringify(initialTopUsersPreview));
+		recentVotes = JSON.parse(JSON.stringify(initialRecentVotesPreview));
+		userRecentActivity = generateInitialUserActivityPreview();
+		return;
 	}
+
+	fetchTagData(selectedTag.key);
 });
 
 async function fetchTagData(tagKey: string) {
-	pageLoading = true;
+	loading = true;
 	error = null;
-	selectedTag = null; // Clear previous selected tag
+	// Don't reset selectedTag - we already have the correct one
 	userReputation = null;
 	topUsers = [];
 	recentVotes = [];
 	userRecentActivity = [];
+	
 	try {
 		const foundTag = tags.find((t) => t.key === tagKey);
 		if (!foundTag) {
 			throw new Error(`Tag with key ${tagKey} not found.`);
 		}
-		selectedTag = foundTag;
-
-		// Simulate fetching other data for this tag for now
-		// In a real app, these would be actual async calls based on selectedTag.key
+		// No need to set selectedTag again - it's already set correctly
+		// Just verify it matches what we expect
+		if (foundTag.key !== selectedTag?.key) {
+			throw new Error('Tag mismatch - this should never happen');
+		}
 
 		// Only fetch user-specific data if logged in
 		if ($authUserDoc) {
@@ -125,8 +193,6 @@ async function fetchTagData(tagKey: string) {
 				});
 			}
 			userRecentActivity = activities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-		} else {
-			// Already nullified above
 		}
 		topUsers = [ { username: 'alice', score: 200, bar: 1 }, { username: 'bob', score: 180, bar: 0.9 }, { username: 'carol', score: 150, bar: 0.75 } ];
 		recentVotes = [ { author: 'alice', target: 'bob', value: 1 }, { author: 'carol', target: 'alice', value: -1 } ];
@@ -134,16 +200,15 @@ async function fetchTagData(tagKey: string) {
 	} catch (e) {
 		error = e instanceof Error ? e.message : 'Failed to load data for the selected tag.';
 		toaster.error({ title: error });
-		// selectedTag is already nullified at the start of this function
 	} finally {
-		pageLoading = false;
+		loading = false;
 	}
 }
 
 function onTagChange(event: Event) {
 	const newKey = (event.target as HTMLSelectElement).value;
-	// The $effect will pick up the change to selectedTagKey
-	selectedTagKey = newKey; 
+	// The $effect will pick up the change to selectedTag
+	selectedTag = tags.find(t => t.key === newKey) || null; 
 }
 // Removed console.log statements from Tabs onValueChange for cleaner code
 </script>
@@ -152,7 +217,7 @@ function onTagChange(event: Event) {
 
 <!-- Main Container -->
 <div class="p-4">
-	{#if error && !pageLoading } <!-- Show general error if not also loading -->
+	{#if error && !loading } <!-- Show general error if not also loading -->
 		<div class="alert alert-error mb-6">{error}</div>
 	{/if}
 
@@ -163,39 +228,38 @@ function onTagChange(event: Event) {
 			<span class="text-lg text-surface-500 whitespace-nowrap">You are exploring:</span>
 			<select 
 				class="input input-lg"
-				bind:value={selectedTagKey} 
+				value={selectedTag?.key ?? ''}
 				onchange={onTagChange}
-				disabled={initialTagsLoading || tags.length === 0}
+				disabled={loading || tags.length === 0}
 			>
-				{#if initialTagsLoading}
+				{#if loading}
 					<option value="" disabled selected>Loading tags...</option>
 				{:else if tags.length === 0}
 					<option value="" disabled selected>No tags available</option>
+				{:else if tags.length === 1 && tags[0].key === PREVIEW_TAG_KEY && !$authUserDoc}
+					<option value={PREVIEW_TAG_KEY} selected>✨ Preview Mode ✨</option>
+					<option value="" disabled>No other tags found. Create one to get started!</option>
 				{:else}
-					<option value="" disabled={selectedTagKey !== ''}>Select a tag...</option>
+					<option value="" disabled={selectedTag?.key !== ''}>Select a tag...</option>
 					{#each tags as tag (tag.key)}
 						<option value={tag.key}>{tag.data.tag_handle}</option>
 					{/each}
 				{/if}
 			</select>
 			
-			{#if !initialTagsLoading && tags.length > 0 && !selectedTagKey && !pageLoading} 
+			{#if !loading && tags.length > 0 && !selectedTag && !loading} 
 				<h1 class="text-2xl font-bold text-error-500 ml-4">Select a tag</h1>
 			{/if}
 		</div>
 
 		<!-- Right side: Global Time Filter -->
 		<div class="flex gap-2">
-			{#each ['24h', '7d', '30d', '90d', '1y'] as period}
-				<button 
-					class="btn preset-tonal-primary text-xs"
-					class:preset-filled-primary-500={selectedPeriod === period && !pageLoading && selectedTag}
-					class:bg-surface-500_10={pageLoading || !selectedTagKey || (Boolean(selectedTagKey) && !selectedTag)} 
-					class:text-surface-500_50={pageLoading || !selectedTagKey || (Boolean(selectedTagKey) && !selectedTag)} 
-					onclick={() => selectedPeriod = period}
-					disabled={pageLoading || !selectedTagKey || (Boolean(selectedTagKey) && !selectedTag)}
+			{#each timePeriods as period}
+				<button
+					class={`btn text-xs ${selectedPeriod.label === period.label ? 'preset-filled-primary-500' : 'preset-tonal-primary'}`}
+					onclick={() => setPeriod(period)}
 				>
-					{period}
+					{period.label}
 				</button>
 			{/each}
 		</div>
@@ -203,95 +267,115 @@ function onTagChange(event: Event) {
 
 	<!-- Main Grid Layout -->
 	<div class="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
-		<!-- About & Settings -->
-		<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6 col-span-1 h-[400px]">
-			<div class="h-full flex flex-col">
-				<Tabs value={activeTab} onValueChange={async (e) => { activeTab = e.value; await tick();}}>
-					{#snippet list()}
-						<Tabs.Control value="about" disabled={(initialTagsLoading && !selectedTagKey) || (Boolean(selectedTagKey) && pageLoading && !selectedTag?.data?.description)}>
-							{#snippet lead()}<Orbit size={20} />{/snippet}
-							{#if selectedTag}#{selectedTag.data.tag_handle}{:else}About{/if}
-						</Tabs.Control>
-						<Tabs.Control value="settings" disabled={(initialTagsLoading && !selectedTagKey) || (Boolean(selectedTagKey) && pageLoading && !selectedTag?.data)}>
-							{#snippet lead()}<SlidersHorizontal size={20} />{/snippet}
-							Settings
-						</Tabs.Control>
-					{/snippet}
-					{#snippet content()}
-						<div class="h-[288px] overflow-y-auto">
-							<Tabs.Panel value="about">
-								{#if (initialTagsLoading && !selectedTagKey) || (Boolean(selectedTagKey) && pageLoading && !selectedTag?.data?.description) }
-									<div class="placeholder animate-pulse w-full h-24 rounded"></div>
-								{:else if selectedTag?.data?.description}
-									<p class="whitespace-pre-line opacity-80">{selectedTag.data.description}</p>
-								{:else if selectedTag && !selectedTag.data?.description}
-									<p class="opacity-50 text-sm">No description available for this tag.</p>
-								{:else if !initialTagsLoading && tags.length > 0 && !selectedTagKey}
-									<p class="text-center opacity-70">Select a tag to see its details.</p>
-								{:else if !initialTagsLoading && tags.length === 0}
-									<p class="text-center opacity-70">No tags found to display.</p>
-								{/if}
-							</Tabs.Panel>
-							<Tabs.Panel value="settings">
-								{#if (initialTagsLoading && !selectedTagKey) || (Boolean(selectedTagKey) && pageLoading && !selectedTag?.data)}
-									<div class="placeholder animate-pulse w-1/2 h-8 rounded mb-4"></div>
-									<div class="grid grid-cols-2 gap-4">
-										<div class="p-3 bg-surface-200-800 rounded placeholder animate-pulse h-16"></div>
-										<div class="p-3 bg-surface-200-800 rounded placeholder animate-pulse h-16"></div>
-										<div class="p-3 bg-surface-200-800 rounded placeholder animate-pulse h-16"></div>
-									</div>
-								{:else if selectedTag?.data}
-									<div class="flex justify-between items-center mb-0">
-										{#if $authUserDoc?.data.user_ulid === selectedTag.data.user_key}
-											<button class="btn preset-tonal-primary" onclick={() => goto(`/tag/edit/${selectedTagKey}`)}>
-												Edit Settings
-											</button>
-										{/if}
-									</div>
-									<div class="grid grid-cols-2 gap-4">
-										<div class="p-3 bg-surface-200-800 rounded">
-											<span class="text-sm opacity-70">Reputation Threshold</span>
-											<p class="font-mono text-lg">{selectedTag.data.reputation_threshold ?? 'N/A'}</p>
+		<!-- Left Column: About/Settings and Quick Actions -->
+		<div class="flex flex-col gap-6">
+			<!-- About & Settings -->
+			<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6 h-[400px]">
+				<div class="h-full flex flex-col">
+					<Tabs value={activeTab} onValueChange={async (e) => { activeTab = e.value; await tick();}}>
+						{#snippet list()}
+							<Tabs.Control value="about" disabled={Boolean(loading && !selectedTag) || Boolean(selectedTag && loading && !selectedTag?.data?.description)}>
+								{#snippet lead()}<Orbit size={20} />{/snippet}
+								{#if selectedTag}#{selectedTag.data.tag_handle}{:else}About{/if}
+							</Tabs.Control>
+							<Tabs.Control value="settings" disabled={Boolean(loading && !selectedTag) || Boolean(selectedTag && loading && !selectedTag?.data)}>
+								{#snippet lead()}<SlidersHorizontal size={20} />{/snippet}
+								Settings
+							</Tabs.Control>
+						{/snippet}
+						{#snippet content()}
+							<div class="h-[288px] overflow-y-auto">
+								<Tabs.Panel value="about">
+									{#if (loading && !selectedTag) || (selectedTag && Boolean(selectedTag) && loading && !selectedTag?.data?.description) }
+										<div class="placeholder animate-pulse w-full h-24 rounded"></div>
+									{:else if selectedTag?.data?.description}
+										<p class="whitespace-pre-line opacity-80">{selectedTag.data.description}</p>
+									{:else if selectedTag && !selectedTag?.data?.description && selectedTag && !selectedTag?.key}
+										<p class="opacity-50 text-sm">No description available for this tag.</p>
+									{:else if !loading && tags.length > 0 && !selectedTag}
+										<p class="text-center opacity-70">Select a tag to see its details.</p>
+									{:else if !loading && tags.length === 0}
+										<p class="text-center opacity-70">No tags found to display.</p>
+									{/if}
+								</Tabs.Panel>
+								<Tabs.Panel value="settings">
+									{#if (loading && !selectedTag) || (selectedTag && Boolean(selectedTag) && loading && !selectedTag?.data)}
+										<div class="placeholder animate-pulse w-1/2 h-8 rounded mb-4"></div>
+										<div class="grid grid-cols-2 gap-4">
+											<div class="p-3 bg-surface-200-800 rounded placeholder animate-pulse h-16"></div>
+											<div class="p-3 bg-surface-200-800 rounded placeholder animate-pulse h-16"></div>
+											<div class="p-3 bg-surface-200-800 rounded placeholder animate-pulse h-16"></div>
 										</div>
-										<div class="p-3 bg-surface-200-800 rounded">
-											<span class="text-sm opacity-70">Vote Reward</span>
-											<p class="font-mono text-lg">{selectedTag.data.vote_reward ?? 'N/A'}</p>
+									{:else if selectedTag?.data}
+										<div class="flex justify-between items-center mb-0">
+											{#if $authUserDoc?.data.user_ulid === selectedTag?.data?.owner_ulid && selectedTag && !selectedTag?.key}
+												<button class="btn preset-tonal-primary" onclick={() => goto(`/tag/edit/${selectedTag?.key}`)}>
+													Edit Settings
+												</button>
+											{/if}
 										</div>
-										<div class="p-3 bg-surface-200-800 rounded">
-											<span class="text-sm opacity-70">Min Users</span>
-											<p class="font-mono text-lg">{selectedTag.data.min_users_for_threshold ?? 'N/A'}</p>
-										</div>
-									</div>
-									<hr class="my-4 border-surface-300-700" />
-									<div>
-										<h4 class="text-md font-semibold mb-2">Decay Rules</h4>
-										<p class="text-sm opacity-70">
-											{selectedTag.data.decay_rules_description || 'Decay rules for this tag are not currently specified. Reputation may be subject to periodic adjustments based on overall network activity or specific tag settings that are not detailed here.'}
-										</p>
-										{#if selectedTag.data.decay_percentage && selectedTag.data.decay_period_days}
-											<div class="mt-2 p-2 bg-surface-200-800 rounded text-xs">
-												Reputation score decays by <span class="font-semibold">{selectedTag.data.decay_percentage}%</span> every <span class="font-semibold">{selectedTag.data.decay_period_days} days</span> if no new positive reputation is gained.
+										<div class="grid grid-cols-2 gap-4">
+											<div class="p-3 bg-surface-200-800 rounded">
+												<span class="text-sm opacity-70">Reputation Threshold</span>
+												<p class="font-mono text-lg">{selectedTag?.data?.reputation_threshold ?? 'N/A'}</p>
 											</div>
-										{/if}
-									</div>
-								{:else if !initialTagsLoading && tags.length > 0 && !selectedTagKey}
-									<p class="text-center opacity-70">Select a tag to see its settings.</p>
-								{:else if !initialTagsLoading && tags.length === 0}
-									<p class="text-center opacity-70">No tags found to display settings for.</p>
-								{/if}
-							</Tabs.Panel>
-						</div>
-					{/snippet}
-				</Tabs>
+											<div class="p-3 bg-surface-200-800 rounded">
+												<span class="text-sm opacity-70">Vote Reward</span>
+												<p class="font-mono text-lg">{selectedTag?.data?.vote_reward ?? 'N/A'}</p>
+											</div>
+											<div class="p-3 bg-surface-200-800 rounded">
+												<span class="text-sm opacity-70">Min Users</span>
+												<p class="font-mono text-lg">{selectedTag?.data?.min_users_for_threshold ?? 'N/A'}</p>
+											</div>
+										</div>
+										<hr class="my-4 border-surface-300-700" />
+										<div>
+											<h4 class="text-md font-semibold mb-2">Decay Rules</h4>
+											{#if selectedTag?.data?.time_periods?.length > 0}
+												<div class="space-y-2">
+													{#each selectedTag.data.time_periods as period}
+														<div class="p-2 bg-surface-200-800 rounded text-xs">
+															After <span class="font-semibold">{period.months} months</span>:
+															{#if period.multiplier < 1}
+																Reputation decays by <span class="font-semibold text-error-500">{((1 - period.multiplier) * 100).toFixed(1)}%</span>
+															{:else if period.multiplier === 1}
+																<span class="font-semibold text-surface-500">No change</span> to reputation
+															{:else}
+																Reputation increases by <span class="font-semibold text-success-500">{((period.multiplier - 1) * 100).toFixed(1)}%</span>
+															{/if}
+														</div>
+													{/each}
+												</div>
+											{:else if selectedTag && !selectedTag?.key}
+												<p class="text-sm opacity-70">Preview decay rules description.</p>
+											{:else}
+												<p class="text-sm opacity-70">No decay rules specified for this tag. Reputation scores will remain constant over time.</p>
+											{/if}
+										</div>
+									{:else if !loading && tags.length > 0 && !selectedTag}
+										<p class="text-center opacity-70">Select a tag to see its settings.</p>
+									{:else if !loading && tags.length === 0}
+										<p class="text-center opacity-70">No tags found to display settings for.</p>
+									{/if}
+								</Tabs.Panel>
+							</div>
+						{/snippet}
+					</Tabs>
+				</div>
+			</div>
+
+			<!-- Quick Actions -->
+			<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
+				<QuickActionsTags selectedTag={selectedTag} />
 			</div>
 		</div>
 
 		<!-- User Activity -->
-		<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6 col-span-1 h-[400px] flex flex-col">
+		<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6 h-[400px] flex flex-col">
 			<div class="flex justify-between items-center mb-4">
-				<h2 class="text-lg font-bold {((!selectedTag && !initialTagsLoading && !pageLoading && tags.length > 0 && !selectedTagKey) || (initialTagsLoading && !selectedTagKey) || !$authUserDoc) ? 'opacity-50' : ''}">Your Reputation in {selectedTag?.data.tag_handle}</h2>
+				<h2 class="text-lg font-bold {((!selectedTag && !loading && !loading && tags.length > 0 && !selectedTag) || (loading && !selectedTag) || !$authUserDoc) ? 'opacity-50' : ''}">Your Reputation in {selectedTag?.data.tag_handle || '...'}</h2>
 				{#if $authUserDoc && selectedTag}
-					<button type="button" class="chip-icon preset-tonal-surface" onclick={() => goto(`/tags/${selectedTagKey}/reputation`)} disabled={!selectedTagKey || !$authUserDoc || initialTagsLoading || (Boolean(selectedTagKey) && pageLoading && !userReputation)} title="View Full Details">
+					<button type="button" class="chip-icon preset-tonal-surface" onclick={() => goto(`/tags/${selectedTag?.key}/reputation`)} disabled={!selectedTag || selectedTag?.key === PREVIEW_TAG_KEY || !$authUserDoc || loading || (selectedTag && Boolean(selectedTag) && loading && !userReputation)} title="View Full Details">
 						<Expand size={16} />
 					</button>
 				{/if}
@@ -299,7 +383,7 @@ function onTagChange(event: Event) {
 
 			{#if !$authUserDoc}
 				<p class="text-center opacity-60 py-10">Log in to see your activity and reputation for this tag.</p>
-			{:else if (initialTagsLoading && !selectedTagKey) || (Boolean(selectedTagKey) && pageLoading && !userReputation)}
+			{:else if (loading && !selectedTag) || (selectedTag && Boolean(selectedTag) && loading && !userReputation)}
 				<div class="placeholder animate-pulse w-full h-40 rounded"></div>
 			{:else if selectedTag && userReputation}
 				<div class="grid grid-cols-2 gap-4 mb-4">
@@ -348,9 +432,9 @@ function onTagChange(event: Event) {
 						{/if}
 					</div>
 				</div>
-			{:else if !initialTagsLoading && tags.length > 0 && !selectedTagKey}
+			{:else if !loading && tags.length > 0 && !selectedTag}
 				<p class="text-center opacity-70 py-10">Select a tag to see your activity.</p>
-			{:else if !initialTagsLoading && tags.length === 0}
+			{:else if !loading && tags.length === 0}
 				<p class="text-center opacity-70 py-10">No tags available to show activity for.</p>
 			{/if}
 		</div>
@@ -358,19 +442,21 @@ function onTagChange(event: Event) {
 		<!-- Graph Preview -->
 		<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6 2xl:col-span-1 lg:col-span-2">
 			<div class="flex justify-between items-center mb-4">
-				<h2 class="text-lg font-bold {((!selectedTag && !initialTagsLoading && !pageLoading && tags.length > 0 && !selectedTagKey) || (initialTagsLoading && !selectedTagKey)) ? 'opacity-50' : ''}">Graph Overview</h2>
-				<button type="button" class="chip-icon preset-tonal-surface" onclick={() => goto(`/tags/${selectedTagKey}/graph`)} disabled={!selectedTagKey || initialTagsLoading || (Boolean(selectedTagKey) && pageLoading && !selectedTag)} title="View Full Graph">
+				<h2 class="text-lg font-bold {((!selectedTag && !loading && !loading && tags.length > 0 && !selectedTag) || (loading && !selectedTag)) ? 'opacity-50' : ''}">Graph Overview</h2>
+				<button type="button" class="chip-icon preset-tonal-surface" onclick={() => goto(`/tags/${selectedTag?.key}/graph`)} disabled={!selectedTag || selectedTag?.key === PREVIEW_TAG_KEY || loading || (selectedTag && Boolean(selectedTag) && loading && !selectedTag)} title="View Full Graph">
 					<Expand size={16} />
 				</button>
 			</div>
 			<div class="w-full h-64 bg-surface-200-800 rounded flex items-center justify-center">
-				{#if (initialTagsLoading && !selectedTagKey) || (pageLoading && selectedTagKey && !selectedTag) }
+				{#if (loading && !selectedTag) || (loading && selectedTag && selectedTag.key && selectedTag.key !== PREVIEW_TAG_KEY && !selectedTag)}
 					<div class="placeholder animate-pulse w-3/4 h-8 rounded"></div>
+				{:else if selectedTag && selectedTag.key === PREVIEW_TAG_KEY}
+					<span class="opacity-50">Graph visualization for Preview Mode.</span>
 				{:else if selectedTag}
 					<span class="opacity-50">Graph visualization coming soon…</span>
-				{:else if !initialTagsLoading && tags.length > 0 && !selectedTagKey}
+				{:else if !loading && tags.length > 0 && !selectedTag}
 					<span class="opacity-50">Select a tag to see graph overview.</span>
-				{:else if !initialTagsLoading && tags.length === 0}
+				{:else if !loading && tags.length === 0}
 					<span class="opacity-50">No tags available for graph.</span>
 				{/if}
 			</div>
@@ -381,7 +467,7 @@ function onTagChange(event: Event) {
 	<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
 		{#each ['Total Users', 'Verified Users', 'Active Users'] as statItem, i}
 			<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6" 
-				 class:opacity-50={ (initialTagsLoading && !selectedTagKey) || (pageLoading && selectedTagKey && !selectedTag) } >
+				 class:opacity-50={ (loading && !selectedTag) || (loading && selectedTag && !selectedTag) } >
 				<h3 class="text-sm opacity-70">{statItem}</h3>
 				<p class="text-2xl font-bold">
 					{#if statItem === 'Total Users'}{stats.totalUsers}{/if}
@@ -400,15 +486,15 @@ function onTagChange(event: Event) {
 
 	<!-- Activity Sections -->
 	<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-		<!-- Recent Votes -->
+		<!-- Recent Votes (Old Implementation) -->
 		<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
 			<div class="flex justify-between items-center mb-4">
-				<h2 class="text-lg font-bold {((!selectedTag && !initialTagsLoading && !pageLoading && tags.length > 0 && !selectedTagKey) || (initialTagsLoading && !selectedTagKey)) ? 'opacity-50' : ''}">Recent Votes</h2>
-				<button type="button" class="chip-icon preset-tonal-surface" onclick={() => goto(`/tags/${selectedTagKey}/votes`)} disabled={!selectedTagKey || initialTagsLoading || (Boolean(selectedTagKey) && pageLoading && recentVotes.length === 0 && !selectedTag && tags.length > 0)} title="See More Votes">
+				<h2 class="text-lg font-bold {((!selectedTag && !loading && !loading && tags.length > 0 && !selectedTag) || (loading && !selectedTag)) ? 'opacity-50' : ''}">Recent Votes (Old)</h2>
+				<button type="button" class="chip-icon preset-tonal-surface" onclick={() => goto(`/tags/${selectedTag?.key}/votes`)} disabled={!selectedTag || selectedTag?.key === PREVIEW_TAG_KEY || loading || (selectedTag && Boolean(selectedTag) && loading && recentVotes.length === 0 && !selectedTag && tags.length > 0)} title="See More Votes">
 					<Expand size={16} />
 				</button>
 			</div>
-			{#if (initialTagsLoading && !selectedTagKey) || (pageLoading && selectedTagKey && recentVotes.length === 0 && !selectedTag && tags.length > 0) }
+			{#if (loading && !selectedTag) || (loading && selectedTag && selectedTag.key && selectedTag.key !== PREVIEW_TAG_KEY && recentVotes.length === 0 && !selectedTag && tags.length > 0) }
 				<div class="space-y-2">
 					{#each Array(3) as _}
 						<div class="flex justify-between items-center placeholder animate-pulse h-8 rounded"></div>
@@ -431,9 +517,9 @@ function onTagChange(event: Event) {
 				</div>
 			{:else if selectedTag && recentVotes.length === 0}
 				<p class="text-center opacity-70">No recent votes to display for this tag.</p>
-			{:else if !initialTagsLoading && tags.length > 0 && !selectedTagKey}
+			{:else if !loading && tags.length > 0 && !selectedTag}
 				<p class="text-center opacity-70">Select a tag to see recent votes.</p>
-			{:else if !initialTagsLoading && tags.length === 0}
+			{:else if !loading && tags.length === 0}
 				<p class="text-center opacity-70">No tags available.</p>
 			{/if}
 		</div>
@@ -441,12 +527,12 @@ function onTagChange(event: Event) {
 		<!-- Top Users -->
 		<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
 			<div class="flex justify-between items-center mb-4">
-				<h2 class="text-lg font-bold {((!selectedTag && !initialTagsLoading && !pageLoading && tags.length > 0 && !selectedTagKey) || (initialTagsLoading && !selectedTagKey)) ? 'opacity-50' : ''}">Top Users</h2>
-				<button type="button" class="chip-icon preset-tonal-surface" onclick={() => goto(`/tags/${selectedTagKey}/users`)} disabled={!selectedTagKey || initialTagsLoading || (Boolean(selectedTagKey) && pageLoading && topUsers.length === 0 && !selectedTag && tags.length > 0)} title="See More Users">
+				<h2 class="text-lg font-bold {((!selectedTag && !loading && !loading && tags.length > 0 && !selectedTag) || (loading && !selectedTag)) ? 'opacity-50' : ''}">Top Users</h2>
+				<button type="button" class="chip-icon preset-tonal-surface" onclick={() => goto(`/tags/${selectedTag?.key}/users`)} disabled={!selectedTag || selectedTag?.key === PREVIEW_TAG_KEY || loading || (selectedTag && Boolean(selectedTag) && loading && topUsers.length === 0 && !selectedTag && tags.length > 0)} title="See More Users">
 					<Expand size={16} />
 				</button>
 			</div>
-			{#if (initialTagsLoading && !selectedTagKey) || (pageLoading && selectedTagKey && topUsers.length === 0 && !selectedTag && tags.length > 0) }
+			{#if (loading && !selectedTag) || (loading && selectedTag && selectedTag.key && selectedTag.key !== PREVIEW_TAG_KEY && topUsers.length === 0 && !selectedTag && tags.length > 0) }
 				<div class="space-y-2">
 					{#each Array(3) as _}
 						<div class="flex items-center gap-2 placeholder animate-pulse h-10 rounded"></div>
@@ -468,27 +554,40 @@ function onTagChange(event: Event) {
 				</div>
 			{:else if selectedTag && topUsers.length === 0}
 				<p class="text-center opacity-70">No top users to display for this tag.</p>
-			{:else if !initialTagsLoading && tags.length > 0 && !selectedTagKey}
+			{:else if !loading && tags.length > 0 && !selectedTag}
 				<p class="text-center opacity-70">Select a tag to see top users.</p>
-			{:else if !initialTagsLoading && tags.length === 0}
+			{:else if !loading && tags.length === 0}
 				<p class="text-center opacity-70">No tags available.</p>
 			{/if}
 		</div>
 	</div>
 
+	<!-- New Implementation Section -->
+	<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+		<!-- Recent Votes (New Implementation) -->
+		<RecentVotes 
+			selectedTag={selectedTag} 
+			cutoffTimestamp={cutoffTimestamp} 
+		/>
+	</div>
+
 	<!-- Call to Action -->
 	<div class="mt-6">
-		{#if (initialTagsLoading && !selectedTagKey) || (pageLoading && selectedTagKey && !selectedTag) }
+		{#if (loading && !selectedTag) || (loading && selectedTag && selectedTag.key && selectedTag.key !== PREVIEW_TAG_KEY && !selectedTag)}
 			<div class="placeholder animate-pulse w-full h-12 rounded"></div>
+		{:else if selectedTag && selectedTag.key === PREVIEW_TAG_KEY}
+			<button class="btn preset-filled-primary-500 w-full" disabled>
+				Currently in Preview Mode
+			</button>
 		{:else if selectedTag}
 			<button class="btn preset-filled-primary-500 w-full">
 				{userReputation && userReputation.score > 0 ? 'Contribute' : 'Join Community'}
 			</button>
-		{:else if !initialTagsLoading && tags.length > 0 && !selectedTagKey}
+		{:else if !loading && tags.length > 0 && !selectedTag}
 			<button class="btn preset-filled-primary-500 w-full" disabled>
 				Select a Tag
 			</button>
-		{:else if !initialTagsLoading && tags.length === 0}
+		{:else if !loading && tags.length === 0}
 			<button class="btn preset-filled-primary-500 w-full" disabled>
 				No Tags Available
 			</button>

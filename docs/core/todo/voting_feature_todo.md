@@ -7,21 +7,20 @@ This will involve using `src/lib/docs-crud/vote_create.ts` for creating vote doc
 ## Proposed Implementation Order
 
 **Phase 1: Dashboard Quick Actions Menu**
-[ ] **Dashboard "Quick Actions" - Voting Tab:**
+[x] **Dashboard "Quick Actions" - Voting Tab:**
     *   Refactor "Quick Actions" to use Skeleton UI Tabs.
     *   "Vote on Users" tab:
         *   Tag Selection: Input field (e.g., Skeleton Input Chips - investigate suggestion support). Suggest top 3 tags.
         *   User Search: Input field. Suggest last 5 voted/top 5 most voted users.
         *   Reuse/adapt User-ID-Card modal (needs to handle tag selection within modal).
-[ ]Voting & 
 
 **Phase 2: Core Voting on Tags Page**
-
-[ ] **Quick Action Menu with Tabs (Reputation Page):**
-    *   Update the quick action menu on the Reputation page to use 
-[ ] **Quick Action Menu with Tabs (Tags Page):**
+[x] **Quick Action Menu with Tabs (Tags Page):**
     *   Implement a quick action menu with tabs on the Tags page.
     *   Add a "Vote" action that allows users to vote on other users.
+    *   Pre-fill tag selection when opened from tags page.
+    *   Maintain consistent layout across mobile, tablet, and desktop views.
+
 [ ] **User Profiles:**
     *   Create user profiles to display user information and allow voting.
 [ ] **Quick Action on Dashboard:**

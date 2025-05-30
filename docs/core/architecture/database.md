@@ -43,7 +43,7 @@ interface UserDocument {
     updated_at: bigint;         // Last update timestamp in nanoseconds
     version: bigint;            // Document version for concurrency control
     data: {                     // User-specific data
-        user_key: ULID;         // Pure ULID for references
+        user_ulid: ULID;         // Pure ULID for references
         username: string;       // Unique username (must be unique across all users)
         display_name: string;   // Display name (not required to be unique)
     }
@@ -87,14 +87,14 @@ interface UserDocument {
 Example User Document:
 ```typescript
 {
-    key: "usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_hdl_johndoe_",
+    key: "_prn_4b6yz-27lqln-vbp7x-adzix-434ze-kdjoo-algha-ab7sf-xu4kc-k4bgm-vae_usr_01ARZ3NDEKTSV4RRFFQ69G5FAV_hdl_johndoe_",
     description: "",
     owner: Principal.fromText("..."),
     created_at: 1234567890n,
     updated_at: 1234567890n,
     version: 1n,
     data: {
-        user_key: "01ARZ3NDEKTSV4RRFFQ69G5FAV", // Pure ULID for user reference
+        user_ulid: "01ARZ3NDEKTSV4RRFFQ69G5FAV", // Pure ULID for user reference
         username: "johndoe", // Lowercase, sanitized username
         display_name: "John Doe" // Display name in original case
     }
@@ -124,8 +124,8 @@ interface TagDocument {
     data: {                     // Tag-specific data
         name: string;           // Display name of the tag (original case preserved)
         description: string;    // Longer description of the tag's purpose
-        user_key: ULID;         // Pure ULID of the user who created the tag
-        tag_key: ULID;          // Pure ULID of this tag
+        owner_ulid: ULID;         // Pure ULID of the user who created the tag
+        tag_ulid: ULID;          // Pure ULID of this tag
         time_periods: Array<{   // Time periods for vote decay multipliers
             months: number;     // Duration in months (1-999)
             multiplier: number; // Weight multiplier (0.05-1.5)
@@ -149,8 +149,8 @@ Example Tag Document:
     data: {
         name: "Technical-Skills",               // Display name of the tag (original case preserved, no spaces or special characters, just alphanumeric and dashes)	
         description: "Technical expertise and knowledge",   // Description of the tag's purpose, created by the author user.
-        user_key: "01ARZ3NDEKTSV4RRFFQ69G5FAV",  // Pure ULID of the user who created the tag
-        tag_key: "01ARZ3NDEKTSV4RRFFQ69G5FAW",  // Pure ULID of this tag
+        owner_ulid: "01ARZ3NDEKTSV4RRFFQ69G5FAV",  // Pure ULID of the user who created the tag
+        tag_ulid: "01ARZ3NDEKTSV4RRFFQ69G5FAW",  // Pure ULID of this tag
         time_periods: [
             { months: 1, multiplier: 1.5 },     // Period 1: First month
             { months: 2, multiplier: 1.2 },     // Period 2: Months 2-3
@@ -210,17 +210,17 @@ Collection name: `votes`
 interface VoteDocument {
     // Standard Juno fields (automatically managed)
     key: string;                // Format: usr_{ulid}_tag_{ulid}_tar_{ulid}_key_{ulid}_ generated with src/satellite/src/processors/document_keys.rs
-    description: string;        // currently not used
-    owner: Principal;           // Automatically set to document creator's Principal
-    created_at: bigint;         // Creation timestamp in nanoseconds
-    updated_at: bigint;         // Last update timestamp in nanoseconds
-    version: bigint;            // Document version for concurrency control
-    data: {                     // Vote-specific data
-        user_key: ULID;         // Pure ULID of the user casting the vote
-        tag_key: ULID;          // Pure ULID of the tag being voted on
-        target_key: ULID;       // Pure ULID of the target user receiving the vote
-        vote_key: ULID;         // Pure ULID for this specific vote
-        value: number;          // Vote value (+1 for upvote, -1 for downvote, some tags may allow other values)
+    description: string;         // currently not used
+    owner: Principal;            // Automatically set to document creator's Principal
+    created_at: bigint;          // Creation timestamp in nanoseconds
+    updated_at: bigint;          // Last update timestamp in nanoseconds
+    version: bigint;             // Document version for concurrency control
+    data: {                      // Vote-specific data
+        owner_ulid: ULID;        // Pure ULID of the user casting the vote (uppercase)
+        tag_ulid: ULID;          // Pure ULID of the tag being voted on (uppercase)
+        target_ulid: ULID;       // Pure ULID of the target user receiving the vote (uppercase)
+        vote_ulid: ULID;         // Pure ULID for this specific vote (uppercase)
+        value: number;           // Vote value (+1 for upvote, -1 for downvote, some tags may allow other values)
         weight: number;         // Vote weight (default: 1.0)
     }
 }
@@ -235,7 +235,7 @@ interface VoteDocument {
    - Value must be an integer
 
 2. **Document Key Format**
-   - Format: `usr_{ulid}_tag_{ulid}_tar_{ulid}_key_{ulid}_`
+   - Format: `usr_{userUlid}_tag_{tagUlid}_tar_{targetUlid}_key_{voteUlid}_`
    - First ULID: Voter's identifier (must be uppercase)
    - Second ULID: Tag identifier (must be uppercase)
    - Third ULID: Target user identifier (must be uppercase)
@@ -262,10 +262,10 @@ Example Vote Document:
     updated_at: 1234567890n,
     version: 1n,
     data: {
-        user_key: "01ARZ3NDEKTSV4RRFFQ69G5FAV",      // Pure ULID of the user casting the vote
-        tag_key: "01ARZ3NDEKTSV4RRFFQ69G5FAW",      // Pure ULID of the tag being voted on
-        target_key: "01ARZ3NDEKTSV4RRFFQ69G5FAX",      // Pure ULID of the target user receiving the vote
-        vote_key: "01ARZ3NDEKTSV4RRFFQ69G5FAY",     // Pure ULID for this specific vote
+        owner_ulid: "01ARZ3NDEKTSV4RRFFQ69G5FAV",      // Pure ULID of the user casting the vote
+        tag_ulid: "01ARZ3NDEKTSV4RRFFQ69G5FAW",      // Pure ULID of the tag being voted on
+        target_ulid: "01ARZ3NDEKTSV4RRFFQ69G5FAX",      // Pure ULID of the target user receiving the vote
+        vote_ulid: "01ARZ3NDEKTSV4RRFFQ69G5FAY",     // Pure ULID for this specific vote
         value: 1,                                   // Vote value (usually +1 for upvote, -1 for downvote)
         weight: 1.0                                 // Vote weight (default: 1.0)
     }
@@ -294,8 +294,8 @@ interface ReputationDocument {
     updated_at: bigint;         // Last update timestamp in nanoseconds
     version: bigint;            // Document version for concurrency control
     data: {                     // Reputation-specific data (see below)
-        user_key: string;                     // ULID of the user this reputation is for
-        tag_key: string;                     // ULID of the tag this reputation is for
+        owner_ulid: string;                     // ULID of the user this reputation is for
+        tag_ulid: string;                     // ULID of the tag this reputation is for
         basis_reputation: number;            // Reputation from received votes
         voting_rewards_reputation: number;   // Reputation from casting votes
         effective_reputation: number;        // Final/cached reputation score (used as the user's reputation in this tag)
@@ -309,8 +309,8 @@ interface ReputationDocument {
 
 #### Field Descriptions
 
-- **user_key**: ULID of the user this reputation is for (uppercase, no prefix)
-- **tag_key**: ULID of the tag this reputation is for (uppercase, no prefix)
+- **owner_ulid**: ULID of the user this reputation is for (uppercase, no prefix)
+- **tag_ulid**: ULID of the tag this reputation is for (uppercase, no prefix)
 - **basis_reputation**: Reputation points earned from received votes
 - **voting_rewards_reputation**: Reputation points earned from casting votes (vote rewards)
 - **effective_reputation**: The final, cached reputation score for this user in this tag (used for all calculations and display)
@@ -338,8 +338,8 @@ interface ReputationDocument {
     updated_at: 1234567890n,
     version: 1n,
     data: {
-        user_key: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
-        tag_key: "01ARZ3NDEKTSV4RRFFQ69G5FAW",
+        owner_ulid: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        tag_ulid: "01ARZ3NDEKTSV4RRFFQ69G5FAW",
         basis_reputation: 10.0,
         voting_rewards_reputation: 2.5,
         effective_reputation: 12.5,
@@ -548,9 +548,9 @@ Benefits of `query_doc`:
    - Use consistent separators (underscores)
    - Follow the standard patterns:
      ```
-     Users:  usr_{ulid}_hdl_{handle}_
-     Tags:   usr_{ulid}_tag_{ulid}_hdl_{handle}_
-     Votes:  usr_{ulid}_tag_{ulid}_tar_{ulid}_key_{ulid}_
+     Users:  _prn_{principal}_usr_{ulid}_hdl_{handle}_
+     Tags:   _usr_{ownerUlid}_tag_{tagUlid}_hdl_{handle}_
+     Votes:  _usr_{ownerUlid}_tag_{tagUlid}_tar_{targetUlid}_key_{voteUlid}_
      ```
    - Use the `query_doc` function for type-safe queries with partial key matching
 
