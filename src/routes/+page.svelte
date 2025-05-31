@@ -29,14 +29,14 @@
 		{
 			title: 'Disencourages Spamming',
 			text: `An author's reputation is split across all votes they cast. If a user with 100 reputation casts one vote, that vote will have 100 weight, but if they cast 5 votes, those 100 will be divided by 5, carrying 20 each. This ensures spamming doesn't give anyone an unfair advantage.`,
-			img: '/img/landing_page/vecteezy_3d-abstract-digital-technology-yellow-orange-light-particles_26914816.png',
-			imgAlt: 'Abstract digital technology',
+			img: '/img/landing_page/—Pngtree—orange technology data ring_4863566.png',
+			imgAlt: 'Orange technology data ring',
 		},
 		{
 			title: 'Flexible #Tags and Use Cases',
 			text: `Each community, app, developer, or game can create one or many #tags to track reputations. Each tag works as an independent reputation community. Use cases include games (e.g., #skill, #fun, #friendly), online stores (like eBay/Amazon reviews, but immune to bots), and even "reputation unions" for cross-community trust.`,
-			img: '/img/landing_page/—Pngtree—orange technology data ring_4863566.png',
-			imgAlt: 'Orange technology data ring',
+			img: '/img/landing_page/vecteezy_3d-abstract-digital-technology-yellow-orange-light-particles_26914816.png',
+			imgAlt: 'Abstract digital technology',
 		},
 	];
 	

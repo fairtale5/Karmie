@@ -9,6 +9,13 @@
     import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
     // Import Avatar component
     import { Avatar } from '@skeletonlabs/skeleton-svelte';
+    // Import Expand icon
+    import { Expand } from 'lucide-svelte';
+    // Import goto for navigation
+    import { goto } from '$app/navigation';
+
+    // --- Preview Data Constants ---
+    const PREVIEW_TAG_KEY = '___PREVIEW_DATA___';
 
     // --- Component Interface Definition ---
     // These props define the component's external interface and data requirements
@@ -143,6 +150,9 @@
     <!-- Header Section -->
     <div class="flex justify-between items-center mb-4">
         <h2 class="text-lg font-bold {((!selectedTag) ? 'opacity-50' : '')}">Recent Votes</h2>
+        <button type="button" class="chip-icon preset-tonal-surface" onclick={() => goto(`/tags/${selectedTag?.key}/votes`)} disabled={!selectedTag || selectedTag?.key === PREVIEW_TAG_KEY || loading || (selectedTag && Boolean(selectedTag) && loading && votes.length === 0)} title="See More Votes">
+            <Expand size={16} />
+        </button>
     </div>
 
     <!-- Content Section -->
