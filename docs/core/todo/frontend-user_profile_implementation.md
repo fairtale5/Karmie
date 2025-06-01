@@ -13,6 +13,7 @@
 - [x] Add active reputations list
 - [x] Update navigation to use user handle
 - [x] Fix TypeScript errors in Avatar components
+- [x] Configure dynamic route prerendering
 
 ## 🚧 In Progress
 - [ ] Connect to real data using `query_by_key.ts`
