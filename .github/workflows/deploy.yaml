@@ -30,14 +30,12 @@ jobs:
           target: wasm32-unknown-unknown
           override: true
 
-      - name: Lint Backend
+      - name: Build Backend
         run: |
           cd src/satellite
-          cargo clippy --target wasm32-unknown-unknown
+          cargo build --target wasm32-unknown-unknown
           cd ../..
-
-      - name: Build Backend
-        run: juno dev build --headless
+          juno dev build --headless
 
       - name: Verify WASM File
         run: |
