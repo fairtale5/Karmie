@@ -13,6 +13,7 @@
 		MessageCircleQuestion
 	} from 'lucide-svelte';
 	import { GITHUB_URL } from '$lib/config';
+	import { authUserDoc } from '$lib/stores/authUserDoc';
 
 	/**
 	 * Sidebar component for desktop navigation.
@@ -23,6 +24,8 @@
 	export let isExpanded: boolean;
 	export let toggleExpanded: () => void;
 	export let currentPath: string;
+
+	$: profilePath = $authUserDoc ? `/u/${$authUserDoc.data.user_handle}` : '/u/me';
 </script>
 
 <aside class="hidden md:block h-screen bg-transparent">
@@ -53,8 +56,8 @@
 			<Navigation.Tile id="/tag/new" href="/tag/new" labelExpanded="Create Tag" label="" selected={currentPath === '/tag/new'} labelClasses={currentPath === '/tag/new' ? 'text-primary-600-300' : ''}>
 				<SquarePen class={currentPath === '/tag/new' ? 'text-primary-600-300' : ''} />
 			</Navigation.Tile>
-			<Navigation.Tile id="/user/me" href="/user/me" labelExpanded="Profile" label="" selected={currentPath === '/user/me'} labelClasses={currentPath === '/user/me' ? 'text-primary-600-300' : ''}>
-				<User class={currentPath === '/user/me' ? 'text-primary-600-300' : ''} />
+			<Navigation.Tile id={profilePath} href={profilePath} labelExpanded="Profile" label="" selected={currentPath === profilePath} labelClasses={currentPath === profilePath ? 'text-primary-600-300' : ''}>
+				<User class={currentPath === profilePath ? 'text-primary-600-300' : ''} />
 			</Navigation.Tile>
 			<Navigation.Tile id="/user" href="/user" labelExpanded="Users" label="" selected={currentPath === '/user'} labelClasses={currentPath === '/user' ? 'text-primary-600-300' : ''}>
 				<UserRoundSearch class={currentPath === '/user' ? 'text-primary-600-300' : ''} />
