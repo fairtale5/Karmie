@@ -31,7 +31,18 @@ jobs:
           override: true
 
       - name: Build Backend
-        run: juno dev build --headless
+        run: |
+          cd src/satellite
+          cargo build --target wasm32-unknown-unknown
+          cd ../..
+          juno dev build --headless
+
+      - name: Verify WASM File
+        run: |
+          if [ ! -f "./target/deploy/satellite.wasm.gz" ]; then
+            echo "WASM file not found at ./target/deploy/satellite.wasm.gz"
+            exit 1
+          fi
 
       - name: Deploy Backend
         uses: junobuild/juno-action@main
