@@ -20,9 +20,6 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Install Juno CLI
-        run: npm install -g @junobuild/cli
-
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
