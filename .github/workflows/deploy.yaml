@@ -20,9 +20,29 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Deploy to Juno
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+          override: true
+
+      - name: Build Backend
+        run: juno dev build --headless
+
+      - name: Deploy Backend
         uses: junobuild/juno-action@main
         with:
-          args: deploy
+          args: upgrade -t s -s ./target/deploy/satellite.wasm.gz --headless
+        env:
+          JUNO_TOKEN: ${{ secrets.JUNO_TOKEN }}
+
+      - name: Build Frontend
+        run: npm run build
+
+      - name: Deploy Frontend
+        uses: junobuild/juno-action@main
+        with:
+          args: deploy --headless
         env:
           JUNO_TOKEN: ${{ secrets.JUNO_TOKEN }}
