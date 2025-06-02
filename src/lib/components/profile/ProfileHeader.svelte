@@ -17,11 +17,12 @@ export let stats: CommunityStats;
 
 <BaseCard>
   <div class="flex flex-col items-center">
-    <div class="mb-4">
+    <div class="mb-4 w-24 h-24">
       <Avatar 
         src={user.data.avatar_url} 
         size="xl" 
-        name={user.data.display_name} 
+        name={user.data.display_name}
+        classes="w-full h-full object-cover"
       />
     </div>
     <h1 class="text-2xl font-bold">{user.data.display_name}</h1>

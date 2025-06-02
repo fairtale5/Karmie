@@ -15,6 +15,17 @@
 - [x] Fix TypeScript errors in Avatar components
 - [x] Configure dynamic route prerendering
 - [x] Implement `BaseCard.svelte` on a test component (Active Reputations on profile page) and verify it works.
+- [x] Implement proper data loading with Juno initialization
+- [x] Add loading states and error handling
+- [x] Set up data flow for demo, current user, and other user cases
+- [x] Fix avatar sizing and styling consistency
+- [x] Create and implement core profile components:
+  - [x] ProfileHeader.svelte (avatar, name, handle, stats)
+  - [x] TrustedCommunities.svelte (community list)
+  - [x] ReputationOverview.svelte (reputation stats)
+  - [x] ActiveReputations.svelte (active reputation list)
+  - [x] RecentActivity.svelte (activity feed)
+  - [x] BaseCard.svelte (shared card component)
 
 ## 🚧 In Progress
 - [ ] Connect to real data using `query_by_key.ts`
@@ -27,6 +38,14 @@
 - [ ] Duplicate route `/u/demo_user` with same component tree but `demo: true` flag.
 - [ ] Update sidebar to use `profileLink` derived store.
 - [ ] QA for dark/light themes, responsiveness, and focus states.
+- [ ] Replace old profile page with new implementation
+- [ ] Mark components with dummy data as "under construction"
+- [ ] Update component status:
+  - [ ] ProfileHeader.svelte - needs real data integration
+  - [ ] TrustedCommunities.svelte - needs real data integration
+  - [ ] ReputationOverview.svelte - needs real data integration
+  - [ ] ActiveReputations.svelte - needs real data integration
+  - [ ] RecentActivity.svelte - needs real data integration
 
 ## 📋 Todo
 - [ ] Implement profile editing functionality
