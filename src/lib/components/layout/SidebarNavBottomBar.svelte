@@ -18,6 +18,6 @@ $: profilePath = $authUserDoc ? `/u/${$authUserDoc.data.user_handle}` : '/u/me';
 		<Navigation.Tile label="Dashboard" href="/dashboard"><LayoutDashboard class="h-6 w-6" /></Navigation.Tile>
 		<Navigation.Tile label="Tags" href="/tags"><Orbit class="h-6 w-6" /></Navigation.Tile>
 		<Navigation.Tile label="Profile" href={profilePath}><User class="h-6 w-6" /></Navigation.Tile>
-		<Navigation.Tile label="Users" href="/user"><UserRoundSearch class="h-6 w-6" /></Navigation.Tile>
+		<Navigation.Tile label="Users" href="/newuser/demo_user"><UserRoundSearch class="h-6 w-6" /></Navigation.Tile>
 	</Navigation.Bar>
 </aside> 

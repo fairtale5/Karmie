@@ -14,6 +14,18 @@
 - [x] Update navigation to use user handle
 - [x] Fix TypeScript errors in Avatar components
 - [x] Configure dynamic route prerendering
+- [x] Implement `BaseCard.svelte` on a test component (Active Reputations on profile page) and verify it works.
+- [x] Implement proper data loading with Juno initialization
+- [x] Add loading states and error handling
+- [x] Set up data flow for demo, current user, and other user cases
+- [x] Fix avatar sizing and styling consistency
+- [x] Create and implement core profile components:
+  - [x] ProfileHeader.svelte (avatar, name, handle, stats)
+  - [x] TrustedCommunities.svelte (community list)
+  - [x] ReputationOverview.svelte (reputation stats)
+  - [x] ActiveReputations.svelte (active reputation list)
+  - [x] RecentActivity.svelte (activity feed)
+  - [x] BaseCard.svelte (shared card component)
 
 ## 🚧 In Progress
 - [ ] Connect to real data using `query_by_key.ts`
@@ -21,6 +33,19 @@
 - [ ] Add reputation calculations
 - [ ] Set up vote history display
 - [ ] Plan reputation graph visualization using Sigma.js
+- [ ] Refactor existing modules into the shared card; add Construction icon & popup where `outlined` is true.
+- [ ] Create `/src/routes/u/[handle]/+page.svelte` that consumes the loader above and renders cards.
+- [ ] Duplicate route `/u/demo_user` with same component tree but `demo: true` flag.
+- [ ] Update sidebar to use `profileLink` derived store.
+- [ ] QA for dark/light themes, responsiveness, and focus states.
+- [ ] Replace old profile page with new implementation
+- [ ] Mark components with dummy data as "under construction"
+- [ ] Update component status:
+  - [ ] ProfileHeader.svelte - needs real data integration
+  - [ ] TrustedCommunities.svelte - needs real data integration
+  - [ ] ReputationOverview.svelte - needs real data integration
+  - [ ] ActiveReputations.svelte - needs real data integration
+  - [ ] RecentActivity.svelte - needs real data integration
 
 ## 📋 Todo
 - [ ] Implement profile editing functionality
@@ -42,6 +67,17 @@
 - [ ] Add reputation badges/achievements
 - [ ] Implement user statistics
 - [ ] Add social sharing features
+- [ ] Implement `BaseCard` across all pages:
+  - [ ] Dashboard components (user stats, recent activities)
+  - [ ] Tag-related components
+  - [ ] Onboarding components
+  - [ ] Home page components
+  - [ ] Tag creation and management
+  - [ ] All user profile sections
+  - [ ] Settings and preferences
+  - [ ] Notification components
+  - [ ] Search result components
+  - [ ] Help and support sections
 
 ## 🔍 Future Considerations
 - [ ] Profile customization options
@@ -73,3 +109,320 @@
 - Graph visualization will use Sigma.js for interactive reputation networks
 - Reputation calculations will be based on vote history and community trust
 - Profile editing will reuse components from onboarding flow 
+
+
+---
+
+# Profile & Component Implementation — Comprehensive Plan
+
+## 1 · Core Requirements
+1. Single-page architecture with dynamic data sources
+2. Efficient, state-aware data fetching (dummy vs. real)
+3. **Consistent Skeleton-UI design** across all cards
+4. Clear, standardized visual indicator for *under-construction* modules
+5. Zero redundant network calls (use `$authUserDoc` whenever possible)
+
+---
+
+## 2 · Routing & Data Flow
+
+| Route | Login State | Data Source | Notes |
+|-------|-------------|-------------|-------|
+| `/u/demo_user` | any | static dummy JSON | Never queries backend |
+| `/u/[handle]`  | logged-out | `queryDocsByKey('users', 'hdl_${handle}_')` | Partial key match; see `src/lib/docs-crud/query_by_key.ts` |
+| `/u/[handle]`  | logged-in & **handle == `$authUserDoc.data.user_handle`** | `$authUserDoc` (already in store) | Zero extra latency |
+
+*Fallback:* If logged-in user visits another user's page, we still hit `queryDocsByKey`.
+
+---
+
+## 3 · Shared Card Component Styles
+
+All profile modules (cards) inherit a common "base card" class so that color tokens, shadows, spacing, and borders stay perfectly aligned with existing pages (`QuickActionsTags.svelte`, onboarding `+page.svelte`, etc.).
+
+```svelte
+<!-- src/lib/components/common/BaseCard.svelte -->
+<script lang="ts">
+  export let classes = '';          // extra Tailwind / Skeleton classes
+  export let underConstruction = false; // true = under construction variant
+  let showPopup = false;
+</script>
+
+<div class={`card shadow bg-surface-100-900 border border-surface-200-800 p-4 ${underConstruction ? 'preset-outlined-error-500' : ''} ${classes}`}>
+  <div class="flex justify-between items-center mb-4">
+    <slot />
+    {#if underConstruction}
+      <div class="flex items-center gap-2">
+        <button
+          class="chip-icon preset-tonal-surface"
+          title="Under Construction"
+          on:click={() => showPopup = true}
+        >
+          <Construction class="text-error-500" size={16}/>
+        </button>
+      </div>
+    {/if}
+  </div>
+  {#if showPopup}
+    <HelperPopup on:close={() => (showPopup = false)}>
+      Under Construction
+    </HelperPopup>
+  {/if}
+</div>
+```
+
+### Under-Construction Variant
+```svelte
+<BaseCard outlined>
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-lg font-bold">Component Title</h2>
+
+    <div class="flex items-center gap-2">
+      <!-- Expand button exactly like existing pages -->
+      <button class="chip-icon preset-tonal-surface" title="View All">
+        <Expand size={16}/>
+      </button>
+
+      <!-- Construction icon (error color) -->
+      <button
+        class="chip-icon preset-tonal-surface"
+        title="Under Construction"
+        on:click={() => showPopup = true}
+      >
+        <Construction class="text-error-500" size={16}/>
+      </button>
+    </div>
+  </div>
+
+  <!-- Existing content / placeholders here -->
+
+  {#if showPopup}
+    <HelperPopup on:close={() => (showPopup = false)}>
+      Under Construction
+    </HelperPopup>
+  {/if}
+</BaseCard>
+```
+
+* Keys:
+  - Icon uses `text-error-500`
+  - Error outline comes from `preset-outlined-error-500`
+  - No other color/spacing changes, so cards still blend into overall theme
+
+---
+
+## 4 · Component Inventory & Status
+
+| Module | Real Data Source | Under-Construction Flag |
+|--------|-----------------|-------------------------|
+| User Header (avatar, handle, display name) | `$authUserDoc` **or** fetched doc | ❌ (already real) |
+| Active Reputations list | 🚧 placeholder | ✅ |
+| Recent Votes | 🚧 placeholder | ✅ |
+| Tag Creation Stats | 🚧 placeholder | ✅ |
+| Quick Actions (already working) | `QuickActionsTags.svelte` | ❌ |
+| …add more rows as modules are planned |
+
+Each ✅ entry imports `Construction` icon & uses `outlined` variant.
+
+---
+
+## 5 · Sidebar Navigation Logic
+
+```ts
+// src/lib/navigation/userLink.ts
+import { derived } from 'svelte/store';
+import { authUserDoc } from '$lib/stores/authUserDoc';
+
+export const profileLink = derived(authUserDoc, ($doc) =>
+  $doc ? `/u/${$doc.data.user_handle}` : '/u/demo_user'
+);
+```
+Sidebar components simply bind to `profileLink`.
+
+---
+
+## 6 · Page-Level Data Fetching (+page.ts)
+
+Pseudo-code outline:
+
+```ts
+export async function load({ params, fetch, depends }) {
+  const handle = params.handle;          // undefined on /u/demo_user
+  const { authUserDoc } = await getStores();
+
+  if (handle === 'demo_user') {
+    return { demo: true };
+  }
+
+  if ($authUserDoc && handle === $authUserDoc.data.user_handle) {
+    return { userDoc: $authUserDoc };
+  }
+
+  // fallback: fetch user by handle
+  const res = await queryDocsByKey<UserData>('users', `hdl_${handle.toLowerCase()}_`);
+  if (!res.items.length) throw error(404, 'User not found');
+  return { userDoc: res.items[0] };
+}
+```
+
+---
+
+## 7 · Loading & Error States
+
+* **Skeleton placeholders** identical to onboarding page while data loads
+* 404 card if handle not found (styled with `preset-outlined-error-500`)
+* No "flash-from-dummy-to-real" because data source is selected *before* render
+
+---
+
+## 8 · Reference Checklist
+
+1. Color tokens: `repu-crimson.css`
+2. Type safety: `src/lib/types.ts`
+3. Store single source: `src/lib/stores/authUserDoc.ts`
+4. Query helper: `src/lib/docs-crud/query_by_key.ts`
+5. Example patterns:  
+   • `QuickActionsTags.svelte` (card style & internal layout)  
+   • Onboarding `+page.svelte` (helper popup / helper icon pattern)
+
+---
+
+## 9 · Next Steps
+
+1. **Implement `BaseCard.svelte`** and replace hard-coded card wrappers in profile modules.
+2. Refactor existing modules into the shared card; add Construction icon & popup where `outlined` is true.
+3. Create `/src/routes/u/[handle]/+page.svelte` that consumes the loader above and renders cards.
+4. Duplicate route `/u/demo_user` with same component tree but `demo: true` flag.
+5. Update sidebar to use `profileLink` derived store.
+6. QA for dark/light themes, responsiveness, and focus states.
+
+---
+
+### Outcome
+
+A seamless profile experience:
+• Logged-out visitors jump directly to the dummy profile.  
+• Logged-in users see real data instantly with no double-render.  
+• In-progress modules are clearly marked yet visually consistent with the rest of the UI.
+
+## Shared Card Component for Consistent Styling
+
+To ensure consistent card styles across all pages like `@+page.svelte`, `@tags.svelte`, and others, we should establish a shared component or style that can be reused.
+
+### Proposed Solution
+1. **Create a BaseCard Component**: We can create a `BaseCard.svelte` component that encapsulates the common styles and structure for cards. This component can then be used across different pages to ensure consistency.
+
+2. **Component Structure**:
+   - **Props for Customization**: Allow props for additional classes, outlined styles, and other customizations.
+   - **Slot for Content**: Use a slot to allow different content to be injected into the card.
+
+3. **Styling**:
+   - **Use Tailwind/Skeleton Classes**: Apply consistent Tailwind or Skeleton UI classes for shadows, borders, and padding.
+   - **Error Variant**: Include a variant for "under construction" or error states using a specific class like `preset-outlined-error-500`.
+
+### Implementation Steps
+1. **Define the BaseCard Component**:
+   - Create a new file `BaseCard.svelte` in a common components directory.
+   - Implement the component with props for customization and a slot for content.
+
+2. **Refactor Existing Pages**:
+   - Replace hard-coded card styles in existing pages with the `BaseCard` component.
+   - Ensure that all pages import and use this component for card elements.
+
+3. **Test Across Pages**:
+   - Verify that the card styles are consistent across all pages.
+   - Check for responsiveness and theme compatibility (light/dark modes).
+
+### Example Implementation
+Here's a basic structure for the `BaseCard.svelte` component:
+
+```svelte
+<!-- src/lib/components/common/BaseCard.svelte -->
+<script lang="ts">
+  export let classes = '';          // extra Tailwind / Skeleton classes
+  export let underConstruction = false; // true = under construction variant
+  let showPopup = false;
+</script>
+
+<div class={`card shadow bg-surface-100-900 border border-surface-200-800 p-4 ${underConstruction ? 'preset-outlined-error-500' : ''} ${classes}`}>
+  <div class="flex justify-between items-center mb-4">
+    <slot />
+    {#if underConstruction}
+      <div class="flex items-center gap-2">
+        <button
+          class="chip-icon preset-tonal-surface"
+          title="Under Construction"
+          on:click={() => showPopup = true}
+        >
+          <Construction class="text-error-500" size={16}/>
+        </button>
+      </div>
+    {/if}
+  </div>
+  {#if showPopup}
+    <HelperPopup on:close={() => (showPopup = false)}>
+      Under Construction
+    </HelperPopup>
+  {/if}
+</div>
+```
+
+### Next Steps
+- **Create the `BaseCard.svelte` component**.
+- **Refactor existing pages** to use this component.
+- **Test and validate** the design consistency across different pages.
+
+## Integration of Under Construction Indicator
+
+To ensure that the "under construction" indicator is consistently applied whenever a card is in this state, we will integrate the Lucide icon and the on-click "helper text" directly into the `BaseCard` component. This approach will streamline the process and ensure uniformity across all instances where the card is marked as "under construction."
+
+### Changes to BaseCard Component:
+
+1. **Rename the `outlined` Prop**: 
+   - Change the `outlined` prop to `underConstruction` to better reflect its purpose.
+
+2. **Integrate the Lucide Icon and Helper Text**:
+   - Add the Lucide icon and the on-click "helper text" directly into the `BaseCard` component.
+   - Use conditional rendering to display these elements only when the `underConstruction` prop is true.
+
+### Example Implementation:
+
+```svelte
+<!-- src/lib/components/common/BaseCard.svelte -->
+<script lang="ts">
+  export let classes = '';          // extra Tailwind / Skeleton classes
+  export let underConstruction = false; // true = under construction variant
+  let showPopup = false;
+</script>
+
+<div class={`card shadow bg-surface-100-900 border border-surface-200-800 p-4 ${underConstruction ? 'preset-outlined-error-500' : ''} ${classes}`}>
+  <div class="flex justify-between items-center mb-4">
+    <slot />
+    {#if underConstruction}
+      <div class="flex items-center gap-2">
+        <button
+          class="chip-icon preset-tonal-surface"
+          title="Under Construction"
+          on:click={() => showPopup = true}
+        >
+          <Construction class="text-error-500" size={16}/>
+        </button>
+      </div>
+    {/if}
+  </div>
+  {#if showPopup}
+    <HelperPopup on:close={() => (showPopup = false)}>
+      Under Construction
+    </HelperPopup>
+  {/if}
+</div>
+```
+
+### Next Steps:
+- Implement these changes in the `BaseCard.svelte` component.
+- Refactor existing modules to use the updated `BaseCard` with the `underConstruction` prop.
+
+## Objective
+- Create a base style using `BaseCard` to ensure consistent styling across all components.
+- Successfully tested `BaseCard` in the 'Active Reputations' section.
+- Next steps include applying `BaseCard` to new profile pages and eventually to all components on all pages, including dashboard, tags, profiles, onboarding, and more.
