@@ -59,8 +59,8 @@
 			<Navigation.Tile id={profilePath} href={profilePath} labelExpanded="Profile" label="" selected={currentPath === profilePath} labelClasses={currentPath === profilePath ? 'text-primary-600-300' : ''}>
 				<User class={currentPath === profilePath ? 'text-primary-600-300' : ''} />
 			</Navigation.Tile>
-			<Navigation.Tile id="/user" href="/user" labelExpanded="Users" label="" selected={currentPath === '/user'} labelClasses={currentPath === '/user' ? 'text-primary-600-300' : ''}>
-				<UserRoundSearch class={currentPath === '/user' ? 'text-primary-600-300' : ''} />
+			<Navigation.Tile id="/newuser/demo_user" href="/newuser/demo_user" labelExpanded="Users" label="" selected={currentPath === '/newuser/demo_user'} labelClasses={currentPath === '/newuser/demo_user' ? 'text-primary-600-300' : ''}>
+				<UserRoundSearch class={currentPath === '/newuser/demo_user' ? 'text-primary-600-300' : ''} />
 			</Navigation.Tile>
 			<!-- Separator -->
 			<div
