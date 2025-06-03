@@ -6,6 +6,9 @@ import { authUserDoc } from '$lib/stores/authUserDoc';
 import { dummyProfileData } from '$lib/data/dummyProfileData';
 import type { UserDocument } from '$lib/types';
 
+// Disable prerendering for this dynamic route
+export const prerender = false;
+
 export const load: PageLoad = async ({ params }) => {
   const handle = params.handle;
   const currentUserDoc = get(authUserDoc);
