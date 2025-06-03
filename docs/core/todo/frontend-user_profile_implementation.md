@@ -26,6 +26,9 @@
   - [x] ActiveReputations.svelte (active reputation list)
   - [x] RecentActivity.svelte (activity feed)
   - [x] BaseCard.svelte (shared card component)
+- [x] Remove redundant "Users" navigation option
+- [x] Update profile paths to use /u/demo_user for logged-out state
+- [x] Delete old profile components and routes
 
 ## 🚧 In Progress
 - [ ] Connect to real data using `query_by_key.ts`
@@ -34,11 +37,8 @@
 - [ ] Set up vote history display
 - [ ] Plan reputation graph visualization using Sigma.js
 - [ ] Refactor existing modules into the shared card; add Construction icon & popup where `outlined` is true.
-- [ ] Create `/src/routes/u/[handle]/+page.svelte` that consumes the loader above and renders cards.
-- [ ] Duplicate route `/u/demo_user` with same component tree but `demo: true` flag.
 - [ ] Update sidebar to use `profileLink` derived store.
 - [ ] QA for dark/light themes, responsiveness, and focus states.
-- [ ] Replace old profile page with new implementation
 - [ ] Mark components with dummy data as "under construction"
 - [ ] Update component status:
   - [ ] ProfileHeader.svelte - needs real data integration
