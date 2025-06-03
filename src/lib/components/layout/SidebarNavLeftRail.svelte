@@ -5,7 +5,6 @@
 		LayoutDashboard,
 		Orbit,
 		SquarePen,
-		UserRoundSearch,
 		User,
 		ShieldMinus,
 		Github,
@@ -25,7 +24,7 @@
 	export let toggleExpanded: () => void;
 	export let currentPath: string;
 
-	$: profilePath = $authUserDoc ? `/u/${$authUserDoc.data.user_handle}` : '/u/me';
+	$: profilePath = $authUserDoc ? `/u/${$authUserDoc.data.user_handle}` : '/u/demo_user';
 </script>
 
 <aside class="hidden md:block h-screen bg-transparent">
@@ -58,9 +57,6 @@
 			</Navigation.Tile>
 			<Navigation.Tile id={profilePath} href={profilePath} labelExpanded="Profile" label="" selected={currentPath === profilePath} labelClasses={currentPath === profilePath ? 'text-primary-600-300' : ''}>
 				<User class={currentPath === profilePath ? 'text-primary-600-300' : ''} />
-			</Navigation.Tile>
-			<Navigation.Tile id="/newuser/demo_user" href="/newuser/demo_user" labelExpanded="Users" label="" selected={currentPath === '/newuser/demo_user'} labelClasses={currentPath === '/newuser/demo_user' ? 'text-primary-600-300' : ''}>
-				<UserRoundSearch class={currentPath === '/newuser/demo_user' ? 'text-primary-600-300' : ''} />
 			</Navigation.Tile>
 			<!-- Separator -->
 			<div
