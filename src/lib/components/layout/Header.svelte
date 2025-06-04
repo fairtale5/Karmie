@@ -1,58 +1,44 @@
 <script lang="ts">
 	import { Switch } from '@skeletonlabs/skeleton-svelte';
 	import { Sun, Moon } from 'lucide-svelte';
-	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { authUser } from '$lib/stores/authUser';
-	import { signIn, signOut } from '@junobuild/core';
-	import { goto } from '$app/navigation';
-	import { LOGIN_REDIRECT_URL, LOGOUT_REDIRECT_URL } from '$lib/settings';
-	import { toaster } from '$lib/skeletonui/toaster-skeleton';
-	import type { UserData } from '$lib/types';
 	import { page as pageStore, type PageMeta } from '$lib/stores/page';
 	import { handleLogin, handleLogout } from '$lib/login';
+	import { themeStore } from '$lib/stores/theme';
 
-	let checked = false;
+	/**
+	 * Theme Toggle UI Component
+	 * 
+	 * HOW IT WORKS:
+	 * - Reads current theme from central theme store
+	 * - Converts theme state to toggle switch position
+	 * - Delegates theme changes to theme store
+	 * - No localStorage logic - all handled by theme store
+	 */
+
 	$: currentPath = $page.url.pathname;
-	let error: string | null = null;
 	let meta: PageMeta = {};
 	$: meta = $pageStore;
 	
-	onMount(() => {
-		// Handle theme dark vs light mode:
-		// 1. Check if user has a stored preference ("last used on last visit")
-		const stored = localStorage.getItem('mode');
-		if (stored) {
-			// 1.1 Use stored preference
-			checked = stored === 'light';
-			document.documentElement.setAttribute('data-mode', stored);
-		} else {
-			// 1.2 Use system preference
-			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-			checked = !prefersDark;
-			document.documentElement.setAttribute('data-mode', prefersDark ? 'dark' : 'light');
-		}
-	});
+	// HOW: Convert theme store state to toggle switch position
+	// Theme store uses 'light'/'dark', switch uses boolean (true = light, false = dark)
+	$: themeToggleChecked = $themeStore === 'light';
 
-	function onCheckedChange(event: { checked: boolean }) {
-		const mode = event.checked ? 'light' : 'dark';
-		document.documentElement.setAttribute('data-mode', mode);
-		localStorage.setItem('mode', mode);
-		checked = event.checked;
+	/**
+	 * Handle theme toggle switch changes
+	 * 
+	 * HOW:
+	 * - Switch component calls this when user clicks toggle
+	 * - Delegates actual theme change to theme store
+	 * - Theme store handles localStorage persistence and document updates
+	 */
+	function onThemeToggleChange(event: { checked: boolean }) {
+		// HOW: Let theme store handle the toggle logic and persistence
+		// This keeps UI component focused only on UI interaction
+		themeStore.toggle();
 	}
 </script>
-
-<svelte:head>
-	<script>
-		const stored = localStorage.getItem('mode');
-		if (stored) {
-			document.documentElement.setAttribute('data-mode', stored);
-		} else {
-			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-			document.documentElement.setAttribute('data-mode', prefersDark ? 'dark' : 'light');
-		}
-	</script>
-</svelte:head>
 
 <header class="bg-surface-50-950 border-b border-surface-200-800/80">
 	<div class="p-4">
@@ -61,11 +47,12 @@
 				<span class="text-xl font-semibold text-primary-700-300">{meta.title ?? ''}</span>
 			</div>
 			<div class="flex items-center gap-4">
+				<!-- Theme Toggle Switch -->
 				<Switch 
-					name="mode" 
+					name="themeToggle" 
 					controlActive="bg-[var(--color-surface-200-800)]" 
-					checked={checked} 
-					{onCheckedChange}
+					checked={themeToggleChecked} 
+					onCheckedChange={onThemeToggleChange}
 				>
 					{#snippet inactiveChild()}<Moon size={14} />{/snippet}
 					{#snippet activeChild()}<Sun size={14} />{/snippet}

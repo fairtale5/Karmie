@@ -13,6 +13,7 @@
 	import AppShell from '$lib/components/layout/AppShell.svelte';
 	import { setPageMeta, page as pageStore } from '$lib/stores/page';
 	import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
+	import { themeStore } from '$lib/stores/theme';
 
 	let user: User | null = null;
 	let checkedOnboarding = false;
@@ -34,6 +35,15 @@
 			authUserDoc.set(null);
 			return null;
 		}
+	}
+
+	// HOW: Reactive variable that updates whenever theme store changes
+	$: currentTheme = $themeStore;
+
+	// HOW: Apply theme data-mode attribute to document root whenever theme changes
+	// This triggers CSS custom property updates across the entire app via [data-mode="dark"] selectors
+	$: if (typeof document !== 'undefined') {
+		document.documentElement.setAttribute('data-mode', currentTheme);
 	}
 
 	onMount(async () => {
@@ -131,6 +141,10 @@
 				loginInProgress.set(false);
 			}
 		});
+
+		// HOW: Initialize theme from saved preference or system detection
+		// Must happen after component mounts to ensure browser APIs are available
+		themeStore.init();
 	});
 
 	// Set page metadata based on current route
@@ -158,11 +172,30 @@
 	$: meta = $pageStore;
 </script>
 
+<!-- 
+Flash Prevention Script and Page Meta
+HOW: This executes before the page renders, preventing theme flash
+- Immediately checks localStorage for saved theme
+- Applies theme class to document root before any content shows
+- Fallback to system preference if no saved theme exists
+-->
 <svelte:head>
 	<title>{meta.title ? `${meta.title} | Reputator` : 'Reputator'}</title>
 	{#if meta.description}
 		<meta name="description" content={meta.description} />
 	{/if}
+	<script>
+		// HOW: Same flash prevention as original Header - use 'mode' key
+		(function() {
+			const stored = localStorage.getItem('mode');
+			if (stored) {
+				document.documentElement.setAttribute('data-mode', stored);
+			} else {
+				const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+				document.documentElement.setAttribute('data-mode', prefersDark ? 'dark' : 'light');
+			}
+		})();
+	</script>
 </svelte:head>
 
 <!-- Global Skeleton Toaster for toast notifications -->
