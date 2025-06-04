@@ -29,10 +29,10 @@
 - [x] Remove redundant "Users" navigation option
 - [x] Update profile paths to use /u/demo_user for logged-out state
 - [x] Delete old profile components and routes
+- [x] Implement basic user data fetching (handle, name, avatar)
 
 ## 🚧 In Progress
-- [ ] Connect to real data using `query_by_key.ts`
-- [ ] Implement user data fetching
+- [ ] Connect remaining components to real data using `query_by_key.ts`
 - [ ] Add reputation calculations
 - [ ] Set up vote history display
 - [ ] Plan reputation graph visualization using Sigma.js
@@ -41,7 +41,7 @@
 - [ ] QA for dark/light themes, responsiveness, and focus states.
 - [ ] Mark components with dummy data as "under construction"
 - [ ] Update component status:
-  - [ ] ProfileHeader.svelte - needs real data integration
+  - [x] ProfileHeader.svelte - basic user data integrated
   - [ ] TrustedCommunities.svelte - needs real data integration
   - [ ] ReputationOverview.svelte - needs real data integration
   - [ ] ActiveReputations.svelte - needs real data integration

@@ -10,6 +10,7 @@
 	import { toaster } from '$lib/skeletonui/toaster-skeleton';
 	import type { UserData } from '$lib/types';
 	import { page as pageStore, type PageMeta } from '$lib/stores/page';
+	import { handleLogin, handleLogout } from '$lib/login';
 
 	let checked = false;
 	$: currentPath = $page.url.pathname;
@@ -38,39 +39,6 @@
 		document.documentElement.setAttribute('data-mode', mode);
 		localStorage.setItem('mode', mode);
 		checked = event.checked;
-	}
-
-	/**
-	 * Handles login. All onboarding and redirect logic is now centralized in +layout.svelte.
-	 */
-	async function handleLogin() {
-		try {
-			await toaster.promise(
-				signIn(),
-				{
-					loading: { title: 'Logging in...' },
-					success: { title: 'Login successful!' },
-					error: { title: 'Login failed', description: 'Please try again.' }
-				}
-			);
-			// All post-login checks and redirects are handled in +layout.svelte
-		} catch (e) {
-			// Other errors are already handled by the toaster.promise above
-		}
-	}
-
-	/**
-	 * Handles logout and redirects on success, with Skeleton toast notifications.
-	 */
-	async function handleLogout() {
-		await toaster.promise(
-			signOut(),
-			{
-				loading: { title: 'Logging out...' },
-				success: { title: 'Logged out' },
-				error: { title: 'Logout failed', description: 'Please try again.' }
-			}
-		);
 	}
 </script>
 
@@ -106,7 +74,7 @@
 					<button
 						type="button"
 						class="btn preset-filled-primary-500"
-						on:click={handleLogin}
+						on:click={() => handleLogin(currentPath)}
 						aria-label="Login with Internet Identity"
 					>
 						Login

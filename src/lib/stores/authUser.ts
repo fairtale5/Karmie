@@ -21,4 +21,13 @@ export const authUser = writable<User | null>(null);
  * import { authUserDoneInitializing } from './stores/authUser';
  * $authUserDoneInitializing // boolean
  */
-export const authUserDoneInitializing = writable(false); 
+export const authUserDoneInitializing = writable(false);
+
+/**
+ * Tracks when an active login is in progress.
+ * Used to distinguish between login actions and regular auth state changes.
+ * @example
+ * import { loginInProgress } from './stores/authUser';
+ * $loginInProgress // boolean
+ */
+export const loginInProgress = writable(false); 
