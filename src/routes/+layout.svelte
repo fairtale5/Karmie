@@ -128,14 +128,14 @@
 					console.log('Layout: Incomplete user doc on non-exempt page - redirecting to onboarding');
 					goto('/onboarding');
 				}
-				
+
 				// Mark auth initialization as complete
 				authUserDoneInitializing.set(true);
 			} catch (e) {
 				console.error('Error checking user document:', e);
 				authUserDoc.set(null);
 				if (!EXEMPT_PATHS.includes(currentPath)) {
-					goto('/onboarding');
+				goto('/onboarding');
 				}
 				authUserDoneInitializing.set(true);
 				loginInProgress.set(false);

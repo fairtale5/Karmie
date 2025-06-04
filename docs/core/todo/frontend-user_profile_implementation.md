@@ -30,15 +30,15 @@
 - [x] Update profile paths to use /u/demo_user for logged-out state
 - [x] Delete old profile components and routes
 - [x] Implement basic user data fetching (handle, name, avatar)
+- [x] Update sidebar to use `profileLink` derived store
 
 ## 🚧 In Progress
 - [ ] Connect remaining components to real data using `query_by_key.ts`
 - [ ] Add reputation calculations
 - [ ] Set up vote history display
 - [ ] Plan reputation graph visualization using Sigma.js
-- [ ] Refactor existing modules into the shared card; add Construction icon & popup where `outlined` is true.
-- [ ] Update sidebar to use `profileLink` derived store.
-- [ ] QA for dark/light themes, responsiveness, and focus states.
+- [ ] Refactor existing modules into the shared card; add Construction icon & popup where `outlined` is true
+- [ ] QA for dark/light themes, responsiveness, and focus states
 - [ ] Mark components with dummy data as "under construction"
 - [ ] Update component status:
   - [x] ProfileHeader.svelte - basic user data integrated
@@ -96,6 +96,7 @@
 
 ## 📚 Related Files
 - `src/routes/u/[handle]/+page.svelte` - Main profile page
+- `src/lib/stores/authUserData.ts` - Profile navigation store
 - `src/lib/types.ts` - Type definitions
 - `src/lib/docs-crud/query_by_key.ts` - Data fetching
 - `src/lib/docs-crud/user_update.ts` - Profile updates

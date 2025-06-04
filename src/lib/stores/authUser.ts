@@ -21,7 +21,7 @@ export const authUser = writable<User | null>(null);
  * import { authUserDoneInitializing } from './stores/authUser';
  * $authUserDoneInitializing // boolean
  */
-export const authUserDoneInitializing = writable(false);
+export const authUserDoneInitializing = writable(false); 
 
 /**
  * Tracks when an active login is in progress.

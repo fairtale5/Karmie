@@ -12,7 +12,7 @@
 		MessageCircleQuestion
 	} from 'lucide-svelte';
 	import { GITHUB_URL } from '$lib/config';
-	import { authUserDoc } from '$lib/stores/authUserDoc';
+	import { profileLink } from '$lib/stores/authUserData';
 
 	/**
 	 * Sidebar component for desktop navigation.
@@ -23,8 +23,6 @@
 	export let isExpanded: boolean;
 	export let toggleExpanded: () => void;
 	export let currentPath: string;
-
-	$: profilePath = $authUserDoc ? `/u/${$authUserDoc.data.user_handle}` : '/u/demo_user';
 </script>
 
 <aside class="hidden md:block h-screen bg-transparent">
@@ -55,8 +53,8 @@
 			<Navigation.Tile id="/tag/new" href="/tag/new" labelExpanded="Create Tag" label="" selected={currentPath === '/tag/new'} labelClasses={currentPath === '/tag/new' ? 'text-primary-600-300' : ''}>
 				<SquarePen class={currentPath === '/tag/new' ? 'text-primary-600-300' : ''} />
 			</Navigation.Tile>
-			<Navigation.Tile id={profilePath} href={profilePath} labelExpanded="Profile" label="" selected={currentPath === profilePath} labelClasses={currentPath === profilePath ? 'text-primary-600-300' : ''}>
-				<User class={currentPath === profilePath ? 'text-primary-600-300' : ''} />
+			<Navigation.Tile id={$profileLink} href={$profileLink} labelExpanded="Profile" label="" selected={currentPath === $profileLink} labelClasses={currentPath === $profileLink ? 'text-primary-600-300' : ''}>
+				<User class={currentPath === $profileLink ? 'text-primary-600-300' : ''} />
 			</Navigation.Tile>
 			<!-- Separator -->
 			<div
