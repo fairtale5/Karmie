@@ -2,6 +2,7 @@
 import { Avatar } from '@skeletonlabs/skeleton-svelte';
 import type { UserDocument } from '$lib/types';
 import BaseCard from '$lib/components/common/BaseCard.svelte';
+import { dummyProfileData } from '$lib/data/dummyProfileData';
 
 interface CommunityStats {
   totalVotesGiven: number;
@@ -12,7 +13,9 @@ interface CommunityStats {
 }
 
 export let user: UserDocument;
-export let stats: CommunityStats;
+
+// For now, use dummy stats. Later this should fetch real community stats based on user
+let stats: CommunityStats = dummyProfileData.communityStats;
 </script>
 
 <BaseCard>

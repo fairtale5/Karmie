@@ -31,6 +31,10 @@
 - [x] Delete old profile components and routes
 - [x] Implement basic user data fetching (handle, name, avatar)
 - [x] Update sidebar to use `profileLink` derived store
+- [x] Implement reactive profile navigation to handle URL parameter changes
+- [x] Replace server-side page loader with client-side reactive data loading
+- [x] Fix race condition between Juno initialization and auth user document loading
+- [x] Add case-insensitive handle matching for user document queries
 
 ## 🚧 In Progress
 - [ ] Connect remaining components to real data using `query_by_key.ts`
@@ -51,8 +55,8 @@
 - [ ] Implement profile editing functionality
 - [ ] Add reputation score calculations
 - [ ] Create vote history pagination
-- [ ] Add loading states for all sections
-- [ ] Implement error handling
+- [x] Add loading states for main profile section
+- [x] Implement error handling for profile loading
 - [ ] Add user search functionality
 - [ ] Create reputation graph visualization
   - [ ] Install Sigma.js, Graphology, and ForceAtlas2
