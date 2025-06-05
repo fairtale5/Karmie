@@ -5,7 +5,8 @@ import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
 import TrustedCommunities from '$lib/components/profile/TrustedCommunities.svelte';
 import ReputationOverview from '$lib/components/profile/ReputationOverview.svelte';
 import ActiveReputations from '$lib/components/profile/ActiveReputations.svelte';
-import RecentActivity from '$lib/components/profile/RecentActivity.svelte';
+import RecentReviewsUser from '$lib/components/profile/RecentReviewsUser.svelte';
+import RecentVotesUser from '$lib/components/profile/RecentVotesUser.svelte';
 import { onMount } from 'svelte';
 import { initJuno } from '$lib/juno';
 import { toaster } from '$lib/skeletonui/toaster-skeleton';
@@ -122,7 +123,8 @@ $effect(() => {
 
       <!-- Right Column -->
       <div class="space-y-6">
-        <RecentActivity activities={dummyProfileData.recentActivity} />
+        <RecentVotesUser user={userDocument} />
+        <RecentReviewsUser reviews={dummyProfileData.recentReviews} />
       </div>
     </div>
   {/if}

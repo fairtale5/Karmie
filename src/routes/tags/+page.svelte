@@ -14,7 +14,7 @@ import NotLoggedInAlert from '$lib/components/common/NotLoggedInAlert.svelte';
 import { authUserDoc } from '$lib/stores/authUserDoc';
 import { Tabs } from '@skeletonlabs/skeleton-svelte';
 import QuickActionsTags from '$lib/components/tags/QuickActionsTags.svelte';
-import RecentVotes from '$lib/components/tags/RecentVotes.svelte';
+import RecentVotesTag from '$lib/components/tags/RecentVotesTag.svelte';
 import type { TagDocument } from '$lib/types';
 
 // --- Preview Data Constants ---
@@ -487,7 +487,7 @@ function onTagChange(event: Event) {
 	<!-- Activity Sections -->
 	<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
 		<!-- Recent Votes -->
-		<RecentVotes 
+		<RecentVotesTag 
 			selectedTag={selectedTag} 
 			cutoffTimestamp={cutoffTimestamp} 
 		/>
