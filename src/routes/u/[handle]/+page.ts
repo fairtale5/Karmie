@@ -21,7 +21,7 @@ export const load: PageLoad = async ({ params }) => {
       trustedCommunities: dummyProfileData.trustedCommunities,
       reputationStats: dummyProfileData.reputationStats,
       activeReputations: dummyProfileData.activeReputations,
-      recentActivity: dummyProfileData.recentActivity
+      recentReviews: dummyProfileData.recentReviews
     };
   }
 
@@ -33,7 +33,7 @@ export const load: PageLoad = async ({ params }) => {
       trustedCommunities: dummyProfileData.trustedCommunities,
       reputationStats: dummyProfileData.reputationStats,
       activeReputations: dummyProfileData.activeReputations,
-      recentActivity: dummyProfileData.recentActivity
+      recentReviews: dummyProfileData.recentReviews
     };
   }
 
@@ -57,7 +57,7 @@ export const load: PageLoad = async ({ params }) => {
           trustedCommunities: dummyProfileData.trustedCommunities,
           reputationStats: dummyProfileData.reputationStats,
           activeReputations: dummyProfileData.activeReputations,
-          recentActivity: dummyProfileData.recentActivity
+          recentReviews: dummyProfileData.recentReviews
         };
       } catch (e: unknown) {
         console.error('Error fetching user:', e);

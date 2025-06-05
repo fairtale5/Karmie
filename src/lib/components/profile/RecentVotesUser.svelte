@@ -9,6 +9,8 @@
     import { Avatar } from '@skeletonlabs/skeleton-svelte';
     // Import Expand icon
     import { Expand } from 'lucide-svelte';
+    // Import dummy data for demo user
+    import { dummyProfileData } from '$lib/data/dummyProfileData';
 
     // --- Component Interface Definition ---
     // These props define the component's external interface and data requirements
@@ -82,6 +84,20 @@
         error = null;
         
         try {
+            // Special case: Demo user - use dummy data
+            if (user.data.user_handle === 'demo_user') {
+                // Use dummy vote data
+                votes = dummyProfileData.recentVotes.slice(0, limit);
+                
+                // Pre-populate userData with dummy users
+                dummyProfileData.dummyUsers.forEach(dummyUser => {
+                    userData.set(dummyUser.data.user_ulid, dummyUser);
+                });
+                
+                loading = false;
+                return;
+            }
+
             // Log query parameters for debugging and monitoring
             console.log('Fetching user votes with params:', {
                 userUlid: user.data.user_ulid,
