@@ -5,11 +5,19 @@
 	import { initJuno } from '$lib/juno';
 	import { page } from '$app/stores';
 	import { authUserDoc } from '$lib/stores/authUserDoc';
+	import { authUserDoneInitializing } from '$lib/stores/authUser';
+	import { handleLogin, handleLogout } from '$lib/login';
 	
+	/**
+	 * Component State
+	 * - initialized: Tracks if Juno has been initialized
+	 * - user: Local reference to current auth state
+	 * - error: Holds any auth-related errors
+	 * - currentPath: Reactive reference to current URL path
+	 */
 	let initialized = false;
 	let user: User | null = null;
 	let error: string | null = null;
-	let unsubscribe: (() => void) | undefined;
 	$: currentPath = $page.url.pathname;
 	
 	// Placeholder image imports (replace with your preferred images from /img/landing_page)
@@ -40,41 +48,66 @@
 		},
 	];
 	
+	/**
+	 * Component Initialization
+	 * - Initializes Juno on mount
+	 * - No auth subscription needed here as it's handled in +layout.svelte
+	 */
 	onMount(() => {
-		let unsub: (() => void) | undefined;
 		(async () => {
 			await initJuno();
-			unsub = authSubscribe((state) => {
-				user = state;
-				// Only redirect if on the homepage
-				if (user !== null && currentPath === '/') {
-					goto('/dashboard');
-				}
-			});
 			initialized = true;
 		})();
-		return () => {
-			if (unsub) unsub();
-		};
 	});
 
+	/**
+	 * Handles user login and post-login navigation
+	 * 
+	 * Flow:
+	 * 1. Calls Juno's signIn()
+	 * 2. If not on homepage, stops here (no redirect)
+	 * 3. If on homepage, waits for:
+	 *    a. Auth state to be set
+	 *    b. User document to be fetched (via authUserDoneInitializing)
+	 * 4. Redirects based on user document status:
+	 *    - No document/missing fields -> /onboarding
+	 *    - Complete document -> /dashboard
+	 * 
+	 * Note: Main onboarding check is in +layout.svelte, this only handles
+	 * the initial login redirect from homepage.
+	 */
 	async function login() {
 		try {
 			error = '';
 			await signIn();
-			// Wait for auth state to be set
+			
+			// Only handle redirects if user is on the homepage
+			if (currentPath !== '/') {
+				return;
+			}
+
+			// Wait for auth state and user document to be ready
 			await new Promise<void>((resolve) => {
 				const unsubscribe = authSubscribe(async (state) => {
 					if (state) {
-						// Use the document from the store instead of fetching again
+						// Wait until layout has finished checking user document
+						// This prevents race conditions with the layout's auth handling
+						if (!$authUserDoneInitializing) {
+							return; // Keep subscription active
+						}
+						
+						// Now safe to check user document as layout has processed it
 						const userDoc = $authUserDoc;
 						const hasRequiredFields = userDoc && userDoc.data.user_handle && userDoc.data.display_name;
 						
+						// Redirect based on user document status
 						if (!userDoc || !hasRequiredFields) {
 							goto('/onboarding');
 						} else {
 							goto('/dashboard');
 						}
+						
+						// Clean up subscription and resolve promise
 						unsubscribe();
 						resolve();
 					}
@@ -86,6 +119,12 @@
 		}
 	}
 
+	/**
+	 * Handles user logout
+	 * - Calls Juno's signOut()
+	 * - Error handling included
+	 * - No redirect needed as +layout.svelte handles auth state changes
+	 */
 	async function logout() {
 		try {
 			error = '';
@@ -107,7 +146,7 @@
 		{#if !user}
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-xl mx-auto mt-4">
 				<!-- Top row -->
-				<button on:click={login} class="btn preset-filled-primary-500 w-full text-lg">
+				<button on:click={() => handleLogin(currentPath)} class="btn preset-filled-primary-500 w-full text-lg">
 					Login with Internet Identity
 				</button>
 				<a
@@ -137,7 +176,7 @@
 		{:else}
 			<div class="flex flex-col items-center gap-2 mb-4">
 				<span class="text-success-500 font-semibold">You are logged in.</span>
-				<button on:click={logout} class="btn preset-outlined-primary-500 w-full sm:w-auto">Logout</button>
+				<button on:click={handleLogout} class="btn preset-outlined-primary-500 w-full sm:w-auto">Logout</button>
 			</div>
 		{/if}
 	</div>

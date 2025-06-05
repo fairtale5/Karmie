@@ -2,8 +2,7 @@ import type { UserDocument } from '$lib/types';
 
 interface Activity {
   type: 'vote' | 'received';
-  target?: string;
-  from?: string;
+  target: string;
   value: number;
   tag: string;
   date: string;
@@ -50,6 +49,6 @@ export const dummyProfileData = {
   recentActivity: [
     { type: 'vote' as const, target: 'alice', value: 1, tag: 'ICP', date: '2h ago', message: 'Great contribution to the community!' },
     { type: 'vote' as const, target: 'bob', value: -1, tag: 'Rust', date: '5h ago', message: 'Incorrect information provided' },
-    { type: 'received' as const, from: 'carol', value: 1, tag: 'Svelte', date: '1d ago', message: 'Helpful explanation' }
+    { type: 'received' as const, target: 'carol', value: 1, tag: 'Svelte', date: '1d ago', message: 'Helpful explanation' }
   ] as Activity[]
 }; 

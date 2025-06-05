@@ -6,13 +6,14 @@
 	import { goto } from '$app/navigation';
 	import { Toaster } from '@skeletonlabs/skeleton-svelte';
 	import { toaster } from '$lib/skeletonui/toaster-skeleton';
-	import { authUser, authUserDoneInitializing } from '$lib/stores/authUser';
+	import { authUser, authUserDoneInitializing, loginInProgress } from '$lib/stores/authUser';
 	import { authUserDoc } from '$lib/stores/authUserDoc';
 	import { page } from '$app/stores';
 	import type { UserData } from '$lib/types';
 	import AppShell from '$lib/components/layout/AppShell.svelte';
 	import { setPageMeta, page as pageStore } from '$lib/stores/page';
 	import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
+	import { themeStore } from '$lib/stores/theme';
 
 	let user: User | null = null;
 	let checkedOnboarding = false;
@@ -34,6 +35,15 @@
 			authUserDoc.set(null);
 			return null;
 		}
+	}
+
+	// HOW: Reactive variable that updates whenever theme store changes
+	$: currentTheme = $themeStore;
+
+	// HOW: Apply theme data-mode attribute to document root whenever theme changes
+	// This triggers CSS custom property updates across the entire app via [data-mode="dark"] selectors
+	$: if (typeof document !== 'undefined') {
+		document.documentElement.setAttribute('data-mode', currentTheme);
 	}
 
 	onMount(async () => {
@@ -80,6 +90,7 @@
 			if (!state) {
 				authUserDoc.set(null);
 				authUserDoneInitializing.set(true);
+				loginInProgress.set(false);
 				return;
 			}
 
@@ -88,28 +99,52 @@
 				const userDoc = await fetchUserDoc(state.key);
 				const hasRequiredFields = userDoc && userDoc.data.user_handle && userDoc.data.display_name;
 				
-				// If no document or missing fields, redirect to onboarding
-				if (!userDoc || !hasRequiredFields) {
-					checkedOnboarding = true;
+				// Store user document regardless of completeness
+				authUserDoc.set(userDoc);
+				
+				// Handle redirects based on login context
+				const isActiveLogin = $loginInProgress;
+				const isHomepage = currentPath === '/';
+				
+				console.log('Layout: Auth state changed', {
+					isActiveLogin,
+					isHomepage,
+					hasRequiredFields: !!hasRequiredFields,
+					currentPath
+				});
+				
+				if (isActiveLogin && isHomepage) {
+					// Active login from homepage - redirect based on user document
+					if (hasRequiredFields) {
+						console.log('Layout: Active login with complete user doc - redirecting to dashboard');
+						goto('/dashboard');
+					} else {
+						console.log('Layout: Active login with incomplete user doc - redirecting to onboarding');
+						goto('/onboarding');
+					}
+					loginInProgress.set(false);
+				} else if (!hasRequiredFields && !EXEMPT_PATHS.includes(currentPath)) {
+					// New user or incomplete profile on non-exempt page - redirect to onboarding
+					console.log('Layout: Incomplete user doc on non-exempt page - redirecting to onboarding');
 					goto('/onboarding');
-					authUserDoneInitializing.set(true);
-					return;
 				}
 
-				// If we're on an exempt path, don't redirect
-				if (EXEMPT_PATHS.includes(currentPath)) {
-					authUserDoneInitializing.set(true);
-					return;
-				}
-
-				// Document is complete, allow access to the current page
+				// Mark auth initialization as complete
 				authUserDoneInitializing.set(true);
 			} catch (e) {
 				console.error('Error checking user document:', e);
-				checkedOnboarding = true;
+				authUserDoc.set(null);
+				if (!EXEMPT_PATHS.includes(currentPath)) {
 				goto('/onboarding');
+				}
+				authUserDoneInitializing.set(true);
+				loginInProgress.set(false);
 			}
 		});
+
+		// HOW: Initialize theme from saved preference or system detection
+		// Must happen after component mounts to ensure browser APIs are available
+		themeStore.init();
 	});
 
 	// Set page metadata based on current route
@@ -137,11 +172,30 @@
 	$: meta = $pageStore;
 </script>
 
+<!-- 
+Flash Prevention Script and Page Meta
+HOW: This executes before the page renders, preventing theme flash
+- Immediately checks localStorage for saved theme
+- Applies theme class to document root before any content shows
+- Fallback to system preference if no saved theme exists
+-->
 <svelte:head>
 	<title>{meta.title ? `${meta.title} | Reputator` : 'Reputator'}</title>
 	{#if meta.description}
 		<meta name="description" content={meta.description} />
 	{/if}
+	<script>
+		// HOW: Same flash prevention as original Header - use 'mode' key
+		(function() {
+			const stored = localStorage.getItem('mode');
+			if (stored) {
+				document.documentElement.setAttribute('data-mode', stored);
+			} else {
+				const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+				document.documentElement.setAttribute('data-mode', prefersDark ? 'dark' : 'light');
+			}
+		})();
+	</script>
 </svelte:head>
 
 <!-- Global Skeleton Toaster for toast notifications -->

@@ -9,39 +9,91 @@ import RecentActivity from '$lib/components/profile/RecentActivity.svelte';
 import { onMount } from 'svelte';
 import { initJuno } from '$lib/juno';
 import { toaster } from '$lib/skeletonui/toaster-skeleton';
-import type { PageData } from './$types';
+import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
+import { authUserDoc } from '$lib/stores/authUserDoc';
+import { authUser } from '$lib/stores/authUser';
+import { dummyProfileData } from '$lib/data/dummyProfileData';
 
-// Get handle from URL
-const handle = $page.params.handle;
-let { data } = $props<{ data: PageData }>();
-
+let junoInitialized = $state(false);
 let loading = $state(true);
-let error = $state<string | null>(null);
-let userData = $state<any>(null);
+let error_state = $state<string | null>(null);
+let userDocument = $state<UserDocument | null>(null);
+let currentHandle = $state<string>('');
 
+// Initialize Juno on mount
 onMount(async () => {
+  try {
+    await initJuno();
+    junoInitialized = true;
+  } catch (e) {
+    error_state = e instanceof Error ? e.message : 'Failed to initialize Juno';
+    toaster.error({ title: error_state });
+    loading = false;
+  }
+});
+
+// Fetch user document for a specific handle
+async function fetchUserDocument(handle: string): Promise<UserDocument> {
+  // Case 1: Demo user - return dummy data
+  if (handle === 'demo_user') {
+    return dummyProfileData.user;
+  }
+
+  // Case 2: Current logged-in user - use existing store
+  if ($authUserDoc && handle.toLowerCase() === $authUserDoc.data.user_handle.toLowerCase()) {
+    return $authUserDoc;
+  }
+
+  // Case 3: Other user - fetch from database
+  // Normalize handle to lowercase to match database storage format
+  const normalizedHandle = handle.toLowerCase();
+  const results = await queryDocsByKey('users', `hdl_${normalizedHandle}_`);
+  if (!results.items.length) {
+    throw new Error('User not found');
+  }
+
+  return results.items[0] as UserDocument;
+}
+
+// React to URL parameter changes
+$effect(() => {
+  const handle = $page.params.handle;
+  
+  // Only proceed if Juno is initialized and handle has changed
+  if (!junoInitialized || handle === currentHandle) {
+    return;
+  }
+
+  // For logged-in users accessing their own profile, wait for authUserDoc to be populated
+  // This prevents race conditions when accessing profile directly via URL
+  if ($authUser && !$authUserDoc && handle !== 'demo_user') {
+    // Auth user exists but user doc not loaded yet - wait for layout to populate it
+    return;
+  }
+
+  // Update current handle and start loading
+  currentHandle = handle;
+  loading = true;
+  error_state = null;
+
+  // Handle async operation inside the effect
+  (async () => {
     try {
-        await initJuno();
-        
-        // If we have a fetchUserData function, use it
-        if (data.fetchUserData) {
-            userData = await data.fetchUserData();
-        } else {
-            // Otherwise use the data directly (demo or current user case)
-            userData = data;
-        }
+      userDocument = await fetchUserDocument(handle);
     } catch (e) {
-        error = e instanceof Error ? e.message : 'Failed to load user data';
-        toaster.error({ title: error });
+      error_state = e instanceof Error ? e.message : 'Failed to load user';
+      toaster.error({ title: error_state });
+      userDocument = null;
     } finally {
-        loading = false;
+      loading = false;
     }
+  })();
 });
 </script>
 
 <div class="p-4">
-  {#if error}
-    <div class="alert alert-error mb-6">{error}</div>
+  {#if error_state}
+    <div class="alert alert-error mb-6">{error_state}</div>
   {/if}
 
   {#if loading}
@@ -53,24 +105,24 @@ onMount(async () => {
         <div class="h-64 bg-surface-200-800 rounded"></div>
       </div>
     </div>
-  {:else if userData}
+  {:else if userDocument}
     <!-- Main Grid Layout -->
     <div class="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
       <!-- Left Column -->
       <div class="space-y-6">
-        <ProfileHeader user={userData.user} stats={userData.stats} />
-        <TrustedCommunities communities={userData.trustedCommunities} />
+        <ProfileHeader user={userDocument} />
+        <TrustedCommunities communities={dummyProfileData.trustedCommunities} />
       </div>
 
       <!-- Middle Column -->
       <div class="space-y-6">
-        <ReputationOverview stats={userData.reputationStats} />
-        <ActiveReputations reputations={userData.activeReputations} />
+        <ReputationOverview stats={dummyProfileData.reputationStats} />
+        <ActiveReputations reputations={dummyProfileData.activeReputations} />
       </div>
 
       <!-- Right Column -->
       <div class="space-y-6">
-        <RecentActivity activities={userData.recentActivity} />
+        <RecentActivity activities={dummyProfileData.recentActivity} />
       </div>
     </div>
   {/if}
