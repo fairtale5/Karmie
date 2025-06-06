@@ -106,7 +106,7 @@
 
   function handleActionClick(action: string) {
     if (action === 'Create Tag') {
-        goto('/tag/new');
+        goto('/new/tag');
         return;
     }
     activeAction = activeAction === action ? null : action;

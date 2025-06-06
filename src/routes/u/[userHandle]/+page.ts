@@ -10,7 +10,7 @@ import type { UserDocument } from '$lib/types';
 export const prerender = false;
 
 export const load: PageLoad = async ({ params }) => {
-  const handle = params.handle;
+  const handle = params.userHandle;
   const currentUserDoc = get(authUserDoc);
 
   // Case 1: Demo user - return dummy data

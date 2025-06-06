@@ -168,7 +168,7 @@ async function saveTag() {
         // Add a small delay to ensure toast is visible
         await new Promise(resolve => setTimeout(resolve, 1000));
         // Navigate after success
-        goto('/tags');
+        goto('/tag');
       })(),
       {
         loading: {
@@ -520,7 +520,7 @@ function removeTimePeriod(i: number) {
             Create Tag
           {/if}
         </button>
-        <button type="button" onclick={() => goto('/tags')} class="btn preset-tonal-secondary">
+        <button type="button" onclick={() => goto('/tag')} class="btn preset-tonal-secondary">
           Cancel
         </button>
       </div>

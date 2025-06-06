@@ -61,7 +61,7 @@ async function fetchUserDocument(handle: string): Promise<UserDocument> {
 
 // React to URL parameter changes
 $effect(() => {
-  const handle = $page.params.handle;
+  const handle = $page.params.userHandle;
   
   // Skip if we're currently normalizing the URL to prevent re-fetch
   if (isNormalizing) {

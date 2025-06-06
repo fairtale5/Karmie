@@ -13,7 +13,7 @@ import { profileLink } from '$lib/stores/authUserData';
 	<Navigation.Bar>
 		<Navigation.Tile label="Home" href="/"><Home class="h-6 w-6" /></Navigation.Tile>
 		<Navigation.Tile label="Dashboard" href="/dashboard"><LayoutDashboard class="h-6 w-6" /></Navigation.Tile>
-		<Navigation.Tile label="Tags" href="/tags"><Orbit class="h-6 w-6" /></Navigation.Tile>
+		<Navigation.Tile label="Tags" href="/tag"><Orbit class="h-6 w-6" /></Navigation.Tile>
 		<Navigation.Tile label="Profile" href={$profileLink}><User class="h-6 w-6" /></Navigation.Tile>
 	</Navigation.Bar>
 </aside> 

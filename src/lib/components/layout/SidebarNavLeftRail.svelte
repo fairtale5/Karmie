@@ -47,11 +47,11 @@
 			<Navigation.Tile id="/dashboard" href="/dashboard" labelExpanded="Dashboard" label="" selected={currentPath === '/dashboard'} labelClasses={currentPath === '/dashboard' ? 'text-primary-600-300' : ''}>
 				<LayoutDashboard class={currentPath === '/dashboard' ? 'text-primary-600-300' : ''} />
 			</Navigation.Tile>
-			<Navigation.Tile id="/tags" href="/tags" labelExpanded="Tags" label="" selected={currentPath === '/tags'} labelClasses={currentPath === '/tags' ? 'text-primary-600-300' : ''}>
-				<Orbit class={currentPath === '/tags' ? 'text-primary-600-300' : ''} />
+			<Navigation.Tile id="/tag" href="/tag" labelExpanded="Tags" label="" selected={currentPath === '/tag'} labelClasses={currentPath === '/tag' ? 'text-primary-600-300' : ''}>
+				<Orbit class={currentPath === '/tag' ? 'text-primary-600-300' : ''} />
 			</Navigation.Tile>
-			<Navigation.Tile id="/tag/new" href="/tag/new" labelExpanded="Create Tag" label="" selected={currentPath === '/tag/new'} labelClasses={currentPath === '/tag/new' ? 'text-primary-600-300' : ''}>
-				<SquarePen class={currentPath === '/tag/new' ? 'text-primary-600-300' : ''} />
+			<Navigation.Tile id="/new/tag" href="/new/tag" labelExpanded="Create Tag" label="" selected={currentPath === '/new/tag'} labelClasses={currentPath === '/new/tag' ? 'text-primary-600-300' : ''}>
+				<SquarePen class={currentPath === '/new/tag' ? 'text-primary-600-300' : ''} />
 			</Navigation.Tile>
 			<Navigation.Tile id={$profileLink} href={$profileLink} labelExpanded="Profile" label="" selected={currentPath === $profileLink} labelClasses={currentPath === $profileLink ? 'text-primary-600-300' : ''}>
 				<User class={currentPath === $profileLink ? 'text-primary-600-300' : ''} />
@@ -62,8 +62,8 @@
 				class:w-[92%]={isExpanded}
 				class:w-[79%]={!isExpanded}
 			></div>
-			<Navigation.Tile id="/onboarding" href="/onboarding" labelExpanded="Onboarding" label="" selected={currentPath === '/onboarding'} labelClasses={currentPath === '/onboarding' ? 'text-primary-600-300' : ''}>
-				<MessageCircleQuestion class={currentPath === '/onboarding' ? 'text-primary-600-300' : ''} />
+			<Navigation.Tile id="/new/user" href="/new/user" labelExpanded="New User" label="" selected={currentPath === '/new/user'} labelClasses={currentPath === '/new/user' ? 'text-primary-600-300' : ''}>
+				<MessageCircleQuestion class={currentPath === '/new/user' ? 'text-primary-600-300' : ''} />
 			</Navigation.Tile>
 			<Navigation.Tile id="/admin" href="/admin" labelExpanded="Admin" label="" selected={currentPath === '/admin'} labelClasses={currentPath === '/admin' ? 'text-primary-600-300' : ''}>
 				<ShieldMinus class={currentPath === '/admin' ? 'text-primary-600-300' : ''} />

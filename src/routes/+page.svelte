@@ -106,7 +106,7 @@
 						
 						// Redirect based on user document status
 						if (!userDoc || !hasRequiredFields) {
-							goto('/onboarding');
+							goto('/new/user');
 						} else {
 							goto('/dashboard');
 						}

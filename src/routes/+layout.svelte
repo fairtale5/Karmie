@@ -20,7 +20,7 @@
 	$: currentPath = $page.url.pathname;
 
 	// List of paths that don't require user document check
-	const EXEMPT_PATHS = ['/onboarding', '/', '/login'];
+	const EXEMPT_PATHS = ['/new/user', '/', '/login'];
 
 	// Function to fetch user document
 	async function fetchUserDoc(principal: string) {
@@ -119,14 +119,14 @@
 						console.log('Layout: Active login with complete user doc - redirecting to dashboard');
 						goto('/dashboard');
 					} else {
-						console.log('Layout: Active login with incomplete user doc - redirecting to onboarding');
-						goto('/onboarding');
+						console.log('Layout: Active login with incomplete user doc - redirecting to new user');
+						goto('/new/user');
 					}
 					loginInProgress.set(false);
 				} else if (!hasRequiredFields && !EXEMPT_PATHS.includes(currentPath)) {
-					// New user or incomplete profile on non-exempt page - redirect to onboarding
-					console.log('Layout: Incomplete user doc on non-exempt page - redirecting to onboarding');
-					goto('/onboarding');
+					// New user or incomplete profile on non-exempt page - redirect to 'new/user'
+					console.log('Layout: Incomplete user doc on non-exempt page - redirecting to new user');
+					goto('/new/user');
 				}
 
 				// Mark auth initialization as complete
@@ -135,7 +135,7 @@
 				console.error('Error checking user document:', e);
 				authUserDoc.set(null);
 				if (!EXEMPT_PATHS.includes(currentPath)) {
-				goto('/onboarding');
+				goto('/new/user');
 				}
 				authUserDoneInitializing.set(true);
 				loginInProgress.set(false);
