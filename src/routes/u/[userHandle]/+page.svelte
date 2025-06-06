@@ -1,5 +1,5 @@
 <script lang="ts">
-import { page } from '$app/stores';
+let { data } = $props<{ data: { handle: string } }>();
 import type { UserDocument } from '$lib/types';
 import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
 import TrustedCommunities from '$lib/components/profile/TrustedCommunities.svelte';
@@ -61,7 +61,7 @@ async function fetchUserDocument(handle: string): Promise<UserDocument> {
 
 // React to URL parameter changes
 $effect(() => {
-  const handle = $page.params.userHandle;
+  const handle = data.handle;
   
   // Skip if we're currently normalizing the URL to prevent re-fetch
   if (isNormalizing) {
