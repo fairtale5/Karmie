@@ -369,9 +369,7 @@ function onTagChange(event: Event) {
 			</div>
 
 			<!-- Quick Actions -->
-			<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
-				<QuickActionsTags selectedTag={selectedTag} />
-			</div>
+			<QuickActionsTags selectedTag={selectedTag} />
 		</div>
 
 		<!-- User Activity -->

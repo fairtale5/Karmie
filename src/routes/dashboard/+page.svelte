@@ -1,6 +1,6 @@
 <script lang="ts">
 // Placeholder data for dashboard widgets
-import QuickActions from '$lib/components/dashboard/QuickActions.svelte';
+import QuickActionsDashboard from '$lib/components/dashboard/QuickActionsDashboard.svelte';
 import { setPageMeta } from '$lib/stores/page';
 import { onMount } from 'svelte';
 
@@ -95,7 +95,7 @@ onMount(() => {
     </div>
 
     <!-- Quick Actions -->
-    <QuickActions />
+    <QuickActionsDashboard />
 
     <!-- Most Recent Tags -->
     <div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
