@@ -15,12 +15,14 @@ import { authUserDoc } from '$lib/stores/authUserDoc';
 import { authUser } from '$lib/stores/authUser';
 import { dummyProfileData } from '$lib/data/dummyProfileData';
 import { setPageMeta } from '$lib/stores/page';
+import { goto } from '$app/navigation';
 
 let junoInitialized = $state(false);
 let loading = $state(true);
 let error_state = $state<string | null>(null);
 let userDocument = $state<UserDocument | null>(null);
 let currentHandle = $state<string>('');
+let isNormalizing = $state(false); // Flag to prevent re-fetch during URL normalization
 
 // Initialize Juno on mount
 onMount(async () => {
@@ -61,6 +63,12 @@ async function fetchUserDocument(handle: string): Promise<UserDocument> {
 $effect(() => {
   const handle = $page.params.handle;
   
+  // Skip if we're currently normalizing the URL to prevent re-fetch
+  if (isNormalizing) {
+    isNormalizing = false; // Reset flag
+    return;
+  }
+  
   // Only proceed if Juno is initialized and handle has changed
   if (!junoInitialized || handle === currentHandle) {
     return;
@@ -80,18 +88,38 @@ $effect(() => {
 
   // Handle async operation inside the effect
   (async () => {
-          try {
-        userDocument = await fetchUserDocument(handle);
-        // Set dynamic page title and header text based on user data
-        if (userDocument) {
+    try {
+      userDocument = await fetchUserDocument(handle);
+      
+      // Check if URL needs normalization (case mismatch)
+      if (userDocument) {
+        const realHandle = userDocument.data.user_handle;
+        const urlHandle = handle;
+        
+        if (realHandle !== urlHandle) {
+          // Mismatch detected! Normalize URL without re-fetching data
+          // Set page title before normalizing since we'll skip title setting in the next effect run
           const browserTitle = `@${userDocument.data.user_handle}`;
           const headerTitle = `${userDocument.data.display_name}`;
           setPageMeta({ 
             title: browserTitle,
             headerTitle: headerTitle
           });
+          
+          isNormalizing = true; // Set flag BEFORE goto to prevent effect re-run
+          goto(`/u/${realHandle}`, { replaceState: true });
+          return; // Exit early, the goto will trigger effect again but flag will prevent re-fetch
         }
-      } catch (e) {
+        
+        // No mismatch, set page title normally
+        const browserTitle = `@${userDocument.data.user_handle}`;
+        const headerTitle = `${userDocument.data.display_name}`;
+        setPageMeta({ 
+          title: browserTitle,
+          headerTitle: headerTitle
+        });
+      }
+    } catch (e) {
       error_state = e instanceof Error ? e.message : 'Failed to load user';
       toaster.error({ title: error_state });
       userDocument = null;
