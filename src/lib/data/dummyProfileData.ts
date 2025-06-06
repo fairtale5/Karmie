@@ -11,11 +11,11 @@ interface Review {
 
 export const dummyProfileData = {
   user: {
-    key: 'user_123',
+    key: 'demo_user',
     data: {
       user_handle: 'demo_user',
       display_name: 'Demo User',
-      user_ulid: 'user_123',
+      user_ulid: 'demo_user',
       avatar_url: 'https://i.pravatar.cc/100?img=3'
     }
   } as UserDocument,
@@ -50,7 +50,7 @@ export const dummyProfileData = {
     {
       key: 'vote_demo_1',
       data: {
-        owner_ulid: 'user_123', // demo user casting vote
+        owner_ulid: 'demo_user', // demo user casting vote
         target_ulid: 'user_alice',
         tag_ulid: 'tag_icp',
         vote_ulid: 'vote_demo_1',
@@ -64,7 +64,7 @@ export const dummyProfileData = {
       key: 'vote_demo_2',
       data: {
         owner_ulid: 'user_bob',
-        target_ulid: 'user_123', // demo user receiving vote
+        target_ulid: 'demo_user', // demo user receiving vote
         tag_ulid: 'tag_rust',
         vote_ulid: 'vote_demo_2',
         value: 1,
@@ -76,7 +76,7 @@ export const dummyProfileData = {
     {
       key: 'vote_demo_3',
       data: {
-        owner_ulid: 'user_123', // demo user casting vote
+        owner_ulid: 'demo_user', // demo user casting vote
         target_ulid: 'user_carol',
         tag_ulid: 'tag_svelte',
         vote_ulid: 'vote_demo_3',
@@ -90,7 +90,7 @@ export const dummyProfileData = {
       key: 'vote_demo_4',
       data: {
         owner_ulid: 'user_delta',
-        target_ulid: 'user_123', // demo user receiving vote
+        target_ulid: 'demo_user', // demo user receiving vote
         tag_ulid: 'tag_typescript',
         vote_ulid: 'vote_demo_4',
         value: 1,
@@ -102,7 +102,7 @@ export const dummyProfileData = {
     {
       key: 'vote_demo_5',
       data: {
-        owner_ulid: 'user_123', // demo user casting vote
+        owner_ulid: 'demo_user', // demo user casting vote
         target_ulid: 'user_echo',
         tag_ulid: 'tag_icp',
         vote_ulid: 'vote_demo_5',

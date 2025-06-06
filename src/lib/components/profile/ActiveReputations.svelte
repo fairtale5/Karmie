@@ -1,6 +1,6 @@
 <script lang="ts">
 import BaseCard from '$lib/components/common/BaseCard.svelte';
-import { Activity } from 'lucide-svelte';
+import { Orbit } from 'lucide-svelte';
 import { Progress } from '@skeletonlabs/skeleton-svelte';
 
 interface Reputation {
@@ -16,7 +16,7 @@ export let reputations: Reputation[];
 
 <BaseCard>
   <div class="flex items-center gap-2 mb-4">
-    <Activity class="text-primary-500" size={20} />
+    <Orbit class="text-primary-500" size={20} />
     <h2 class="text-xl font-bold">Active In</h2>
   </div>
 

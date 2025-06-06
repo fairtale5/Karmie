@@ -7,8 +7,8 @@
     import { onMount } from 'svelte';
     // Import Avatar component
     import { Avatar } from '@skeletonlabs/skeleton-svelte';
-    // Import Expand icon
-    import { Expand } from 'lucide-svelte';
+    // Import icons
+    import { Expand, Activity } from 'lucide-svelte';
     // Import dummy data for demo user
     import { dummyProfileData } from '$lib/data/dummyProfileData';
 
@@ -25,7 +25,11 @@
     let loading = $state(true);                         // Loading state flag for UI feedback
     let error = $state<string | null>(null);            // Error state container
     let userData = $state<Map<string, UserDocument>>(new Map());  // Cache for user documents
-    let voteFilter = $state('all');                     // Filter for vote types: 'all', 'in', 'out', 'positive', 'negative'
+    // Individual toggle filters - all enabled by default
+    let showIncoming = $state(true);                    // Show votes received by user
+    let showOutgoing = $state(true);                    // Show votes cast by user  
+    let showPositive = $state(true);                    // Show positive votes
+    let showNegative = $state(true);                    // Show negative votes
 
     // Helper function to get user initials from handle
     function getInitials(handle: string): string {
@@ -37,15 +41,21 @@
         return `https://images.unsplash.com/photo-1617296538902-887900d9b592?ixid=M3w0Njc5ODF8MHwxfGFsbHx8fHx8fHx8fDE2ODc5NzExMDB8&ixlib=rb-4.0.3&w=128&h=128&auto=format&fit=crop`;
     }
 
-    // Helper function to filter votes based on selected filter
-    function filterVotes(votes: VoteDocument[], filter: string): VoteDocument[] {
+    // Helper function to filter votes based on toggle states
+    function filterVotes(votes: VoteDocument[]): VoteDocument[] {
         return votes.filter(vote => {
-            if (filter === 'all') return true;
-            if (filter === 'in') return vote.data.target_ulid === user.data.user_ulid; // Votes received by user
-            if (filter === 'out') return vote.data.owner_ulid === user.data.user_ulid; // Votes cast by user
-            if (filter === 'positive') return (vote.data.value ?? 0) > 0;
-            if (filter === 'negative') return (vote.data.value ?? 0) < 0;
-            return true;
+            // Check direction filters
+            const isIncoming = vote.data.target_ulid === user.data.user_ulid;
+            const isOutgoing = vote.data.owner_ulid === user.data.user_ulid;
+            const directionMatch = (isIncoming && showIncoming) || (isOutgoing && showOutgoing);
+            
+            // Check value filters
+            const voteValue = vote.data.value ?? 0;
+            const isPositive = voteValue > 0;
+            const isNegative = voteValue < 0;
+            const valueMatch = (isPositive && showPositive) || (isNegative && showNegative);
+            
+            return directionMatch && valueMatch;
         });
     }
 
@@ -151,15 +161,23 @@
 <div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
     <!-- Header Section -->
     <div class="flex justify-between items-center mb-4">
-        <h2 class="text-lg font-bold">Recent Votes</h2>
+        <div class="flex items-center gap-2">
+            <Activity class="text-primary-500" size={20} />
+            <h2 class="text-lg font-bold">Recent Votes</h2>
+        </div>
         <div class="flex items-center gap-2">
             <!-- Filter Controls -->
             <div class="flex gap-2">
-                <button type="button" class="chip text-xs {voteFilter === 'all' ? 'preset-filled-primary-500' : 'preset-tonal-surface'}" onclick={() => voteFilter = 'all'}>All</button>
-                <button type="button" class="chip text-xs {voteFilter === 'in' ? 'preset-filled-secondary-500' : 'preset-tonal-surface'}" onclick={() => voteFilter = 'in'}>In</button>
-                <button type="button" class="chip text-xs {voteFilter === 'out' ? 'preset-filled-tertiary-500' : 'preset-tonal-surface'}" onclick={() => voteFilter = 'out'}>Out</button>
-                <button type="button" class="chip text-xs {voteFilter === 'positive' ? 'preset-filled-success-500' : 'preset-tonal-surface'}" onclick={() => voteFilter = 'positive'}>+</button>
-                <button type="button" class="chip text-xs {voteFilter === 'negative' ? 'preset-filled-error-500' : 'preset-tonal-surface'}" onclick={() => voteFilter = 'negative'}>-</button>
+                <!-- Direction filters (closer spacing) -->
+                <div class="flex gap-1">
+                    <button type="button" class="chip text-xs {showIncoming ? 'preset-filled-secondary-500' : 'preset-tonal-surface'}" onclick={() => showIncoming = !showIncoming}>In</button>
+                    <button type="button" class="chip text-xs {showOutgoing ? 'preset-filled-tertiary-500' : 'preset-tonal-surface'}" onclick={() => showOutgoing = !showOutgoing}>Out</button>
+                </div>
+                <!-- Value filters (closer spacing) -->
+                <div class="flex gap-1">
+                    <button type="button" class="chip text-xs {showPositive ? 'preset-filled-success-500' : 'preset-tonal-surface'}" onclick={() => showPositive = !showPositive}>+</button>
+                    <button type="button" class="chip text-xs {showNegative ? 'preset-filled-error-500' : 'preset-tonal-surface'}" onclick={() => showNegative = !showNegative}>-</button>
+                </div>
             </div>
             <!-- Expand Icon -->
             <button type="button" class="chip-icon preset-tonal-surface" disabled title="See More Votes (Coming Soon)">
@@ -182,7 +200,7 @@
             <p class="text-center text-error-500">{error}</p>
         {:else if votes.length > 0}
             <!-- Success State: Vote Table -->
-            {@const filteredVotes = filterVotes(votes, voteFilter)}
+            {@const filteredVotes = filterVotes(votes)}
             {#if filteredVotes.length > 0}
                 <div class="table-wrap">
                     <table class="table caption-bottom">
