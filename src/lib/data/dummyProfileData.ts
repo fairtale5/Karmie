@@ -40,6 +40,14 @@ export const dummyProfileData = {
     averageScore: 600
   },
 
+  reputationStats: {
+    overallReputation: 750,
+    rank: 15,
+    totalContributions: 50,
+    positiveFeedback: 45,
+    negativeFeedback: 5
+  },
+
   recentReviews: [
     { type: 'vote' as const, target: 'alice', value: 1, tag: 'ICP', date: '2h ago', message: 'Great contribution to the community!' },
     { type: 'vote' as const, target: 'bob', value: -1, tag: 'Rust', date: '5h ago', message: 'Incorrect information provided' },
