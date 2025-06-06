@@ -1,12 +1,13 @@
 <script lang="ts">
 import { Avatar, Popover } from '@skeletonlabs/skeleton-svelte';
-import type { UserDocument } from '$lib/types';
+import type { UserDocument, UserData } from '$lib/types';
 import BaseCard from '$lib/components/common/BaseCard.svelte';
 import { dummyProfileData } from '$lib/data/dummyProfileData';
 import { authUserDoc } from '$lib/stores/authUserDoc';
 import { Edit3, Save, X, CircleHelp, Trash2, LoaderCircle } from 'lucide-svelte';
 import { updateUserDoc } from '$lib/docs-crud/user_update';
 import { deleteUserDoc } from '$lib/docs-crud/user_delete';
+import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
 import { toaster } from '$lib/skeletonui/toaster-skeleton';
 import { goto } from '$app/navigation';
 import { signOut } from '@junobuild/core';
@@ -91,10 +92,37 @@ async function saveProfile() {
       }
     );
 
-    // Update the local user object with new values
-    user.data.display_name = editDisplayName.trim();
-    user.data.description = editDescription.trim();
-    user.data.avatar_url = editAvatarUrl.trim();
+    // Fetch the updated document from the backend to get the correct version and any other updates
+    try {
+      const results = await queryDocsByKey<UserData>('users', user.key);
+      if (results.items.length > 0) {
+        const freshUserDoc = results.items[0];
+        
+        // Update the local user object with fresh data from backend
+        user.data = freshUserDoc.data;
+        user.version = freshUserDoc.version;
+        user.updated_at = freshUserDoc.updated_at;
+        
+        // Also update the global auth store if this is the current user
+        if ($authUserDoc?.key === user.key) {
+          authUserDoc.set({
+            key: user.key,
+            data: freshUserDoc.data,
+            version: freshUserDoc.version,
+            owner: freshUserDoc.owner,
+            created_at: freshUserDoc.created_at,
+            updated_at: freshUserDoc.updated_at,
+            description: freshUserDoc.description
+          });
+        }
+      }
+    } catch (fetchError) {
+      console.warn('Failed to fetch updated user document:', fetchError);
+      // Fallback: just update the data fields we know changed
+      user.data.display_name = editDisplayName.trim();
+      user.data.description = editDescription.trim();
+      user.data.avatar_url = editAvatarUrl.trim();
+    }
     
     editMode = false;
   } catch (e) {
@@ -242,7 +270,7 @@ function closeHandleHelp() {
         disabled={loading}
       ></textarea>
     {:else if user.data.description}
-      <p class="text-center opacity-80 mb-4">{user.data.description}</p>
+      <p class="text-center opacity-80 mb-4 whitespace-pre-line">{user.data.description}</p>
     {/if}
 
     <!-- Avatar URL field in edit mode -->
