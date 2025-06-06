@@ -16,6 +16,7 @@ export const load: PageLoad = async ({ params }) => {
   // Case 1: Demo user - return dummy data
   if (handle === 'demo_user') {
     return {
+      handle,
       user: dummyProfileData.user,
       stats: dummyProfileData.communityStats,
       trustedCommunities: dummyProfileData.trustedCommunities,
@@ -28,6 +29,7 @@ export const load: PageLoad = async ({ params }) => {
   // Case 2: Logged in user viewing their own profile
   if (currentUserDoc && handle === currentUserDoc.data.user_handle) {
     return {
+      handle,
       user: currentUserDoc,
       stats: dummyProfileData.communityStats,
       trustedCommunities: dummyProfileData.trustedCommunities,
