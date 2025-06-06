@@ -81,11 +81,11 @@ onMount(() => {
   <div class="space-y-6">
     <!-- User Profile Card -->
     <div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6 flex flex-col items-center">
-      <img src={user.avatarUrl} alt="avatar" class="rounded-full w-24 h-24 mb-4 border-4 border-primary-500" />
-      <div class="font-bold text-xl">{user.displayName}</div>
+      <img src={user.avatarUrl} alt="avatar" class="rounded-full w-24 h-24 mb-4 mt-2 border-4 border-primary-500" />
+      <div class="text-2xl font-bold">{user.displayName}</div>
       <div class="opacity-60 mb-2">@{user.handle}</div>
       <div class="w-full mt-2">
-        <div class="font-semibold text-center mb-4">Most-Active In:</div>
+        <div class="font-semibold text-center mb-4">Most Active In:</div>
         <div class="flex gap-2 justify-center flex-wrap">
           {#each user.topTags as tag}
             <span class="badge preset-tonal-primary">#{tag.name}: {tag.score}</span>

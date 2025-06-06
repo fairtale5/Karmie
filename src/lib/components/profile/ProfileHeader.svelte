@@ -191,28 +191,24 @@ function closeHandleHelp() {
     {/if}
 
     <!-- Avatar section -->
-    <div class="mb-4 w-24 h-24">
-      {#if editMode}
-        <div class="relative">
-          <Avatar 
-            src={editAvatarUrl} 
-            size="xl" 
-            name={editDisplayName || user.data.display_name}
-            classes="w-full h-full object-cover"
-          />
-          <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
-            <Edit3 class="w-6 h-6 text-white" />
-          </div>
-        </div>
-      {:else}
-        <Avatar 
-          src={user.data.avatar_url} 
-          size="xl" 
-          name={user.data.display_name}
-          classes="w-full h-full object-cover"
+    {#if editMode}
+      <div class="relative my-4 w-24 h-24">
+        <img 
+          src={editAvatarUrl || user.data.avatar_url} 
+          alt="avatar" 
+          class="rounded-full w-24 h-24 border-4 border-primary-500 object-cover"
         />
-      {/if}
-    </div>
+        <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
+          <Edit3 class="w-6 h-6 text-white" />
+        </div>
+      </div>
+    {:else}
+      <img 
+        src={user.data.avatar_url} 
+        alt="avatar" 
+        class="rounded-full w-24 h-24 my-4 border-4 border-primary-500 object-cover"
+      />
+    {/if}
 
     <!-- Display name section -->
     {#if editMode}
@@ -228,7 +224,7 @@ function closeHandleHelp() {
     {/if}
 
     <!-- Handle section with help icon in edit mode -->
-    <div class="flex items-center gap-1 opacity-60 mb-4">
+    <div class="flex items-center gap-1 opacity-60 mb-2">
       <span>@{user.data.user_handle}</span>
       {#if editMode}
         <Popover
@@ -363,6 +359,16 @@ function closeHandleHelp() {
         </details>
       </div>
     {/if}
+
+    <!-- Most Active In section - matching dashboard design -->
+    <div class="w-full mt-2">
+      <div class="font-semibold text-center mb-4">Most Active In:</div>
+      <div class="flex gap-2 justify-center flex-wrap">
+        {#each dummyProfileData.activeReputations.slice(0, 3) as reputation}
+          <span class="badge preset-tonal-primary">#{reputation.tag}: {reputation.score}</span>
+        {/each}
+      </div>
+    </div>
 
     <!-- Main Reputation Score -->
     <div class="mt-6 p-4 bg-surface-200-800 rounded-lg w-full">
