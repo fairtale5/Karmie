@@ -85,7 +85,7 @@ onMount(() => {
       <div class="font-bold text-xl">{user.displayName}</div>
       <div class="opacity-60 mb-2">@{user.handle}</div>
       <div class="w-full mt-2">
-        <div class="font-semibold mb-1">Top Tag Reputations</div>
+        <div class="font-semibold text-center mb-4">Most-Active In:</div>
         <div class="flex gap-2 justify-center flex-wrap">
           {#each user.topTags as tag}
             <span class="badge preset-tonal-primary">#{tag.name}: {tag.score}</span>
