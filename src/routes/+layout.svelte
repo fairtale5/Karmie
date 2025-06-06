@@ -147,26 +147,12 @@
 		themeStore.init();
 	});
 
-	// Set page metadata based on current route
+	// Only set fallback title if no page has set one
+	// Individual pages should set their own titles using setPageMeta()
 	$: {
-		if ($page.url.pathname === '/') {
-			setPageMeta({ title: 'Home' });
-		} else if ($page.url.pathname === '/dashboard') {
-			setPageMeta({ title: 'Dashboard' });
-		} else if ($page.url.pathname === '/tags') {
-			setPageMeta({ title: 'Tags' });
-		} else if ($page.url.pathname === '/tag/new') {
-			setPageMeta({ title: 'Create Tag' });
-		} else if ($page.url.pathname === '/user/me') {
-			setPageMeta({ title: 'Profile' });
-		} else if ($page.url.pathname === '/user') {
-			setPageMeta({ title: 'Users' });
-		} else if ($page.url.pathname === '/onboarding') {
-			setPageMeta({ title: 'Onboarding' });
-		} else if ($page.url.pathname === '/admin') {
-			setPageMeta({ title: 'Admin' });
-		} else {
-			setPageMeta({ title: 'Reputator' }); // fallback
+		// Simple fallback - pages should handle their own titles
+		if (!$pageStore.title) {
+			setPageMeta({ title: 'Reputator' });
 		}
 	}
 	$: meta = $pageStore;

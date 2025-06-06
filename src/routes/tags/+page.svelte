@@ -16,6 +16,7 @@ import { Tabs } from '@skeletonlabs/skeleton-svelte';
 import QuickActionsTags from '$lib/components/tags/QuickActionsTags.svelte';
 import RecentVotesTag from '$lib/components/tags/RecentVotesTag.svelte';
 import type { TagDocument } from '$lib/types';
+import { setPageMeta } from '$lib/stores/page';
 
 // --- Preview Data Constants ---
 const PREVIEW_TAG_KEY = '___PREVIEW_DATA___';
@@ -109,6 +110,9 @@ function setPeriod(period: { label: string; ms: number | null }) {
 
 // --- Initialization ---
 onMount(async () => {
+	// Set page title
+	setPageMeta({ title: 'Tags' });
+	
 	try {
 		await initJuno();
 		const result = await listDocs({ collection: 'tags' });

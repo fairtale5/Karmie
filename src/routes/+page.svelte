@@ -7,6 +7,7 @@
 	import { authUserDoc } from '$lib/stores/authUserDoc';
 	import { authUserDoneInitializing } from '$lib/stores/authUser';
 	import { handleLogin, handleLogout } from '$lib/login';
+	import { setPageMeta } from '$lib/stores/page';
 	
 	/**
 	 * Component State
@@ -54,6 +55,9 @@
 	 * - No auth subscription needed here as it's handled in +layout.svelte
 	 */
 	onMount(() => {
+		// Set page title
+		setPageMeta({ title: 'Home' });
+		
 		(async () => {
 			await initJuno();
 			initialized = true;

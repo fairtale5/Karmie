@@ -1,6 +1,8 @@
 <script lang="ts">
 // Placeholder data for dashboard widgets
 import QuickActions from '$lib/components/dashboard/QuickActions.svelte';
+import { setPageMeta } from '$lib/stores/page';
+import { onMount } from 'svelte';
 
 const user = {
   handle: 'johndoe',
@@ -66,6 +68,11 @@ const quickActions = [
   { name: 'Invite User', icon: '📨' },
   { name: 'View Reports', icon: '📊' }
 ];
+
+// Set page title
+onMount(() => {
+  setPageMeta({ title: 'Dashboard' });
+});
 </script>
 
 <!-- Main dashboard grid -->

@@ -14,6 +14,7 @@ import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
 import { authUserDoc } from '$lib/stores/authUserDoc';
 import { authUser } from '$lib/stores/authUser';
 import { dummyProfileData } from '$lib/data/dummyProfileData';
+import { setPageMeta } from '$lib/stores/page';
 
 let junoInitialized = $state(false);
 let loading = $state(true);
@@ -79,9 +80,18 @@ $effect(() => {
 
   // Handle async operation inside the effect
   (async () => {
-    try {
-      userDocument = await fetchUserDocument(handle);
-    } catch (e) {
+          try {
+        userDocument = await fetchUserDocument(handle);
+        // Set dynamic page title and header text based on user data
+        if (userDocument) {
+          const browserTitle = `@${userDocument.data.user_handle}`;
+          const headerTitle = `${userDocument.data.display_name}`;
+          setPageMeta({ 
+            title: browserTitle,
+            headerTitle: headerTitle
+          });
+        }
+      } catch (e) {
       error_state = e instanceof Error ? e.message : 'Failed to load user';
       toaster.error({ title: error_state });
       userDocument = null;
