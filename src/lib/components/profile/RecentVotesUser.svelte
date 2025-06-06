@@ -104,6 +104,19 @@
                     userData.set(dummyUser.data.user_ulid, dummyUser);
                 });
                 
+                // Ensure the demo user themselves has an avatar by adding them to userData
+                // Create a demo user document with avatar if not already present
+                if (!userData.has(user.data.user_ulid)) {
+                    const demoUserWithAvatar = {
+                        ...user,
+                        data: {
+                            ...user.data,
+                            avatar_url: user.data.avatar_url || getAvatarUrl(user.data.user_ulid)
+                        }
+                    };
+                    userData.set(user.data.user_ulid, demoUserWithAvatar);
+                }
+                
                 loading = false;
                 return;
             }
