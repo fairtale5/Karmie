@@ -40,6 +40,9 @@ pub fn assert_doc_user(context: &AssertSetDocContext) -> Result<(), String> {
             err_msg
         })?;
     
+    // Check if we're updating an existing document
+    let is_update = context.data.data.current.is_some();
+
     // Step 2: Validate document key format
     // First validate that the user_key field in the user data is a valid ULID
     if let Some(ref user_key) = user_data.user_ulid {
@@ -50,8 +53,14 @@ pub fn assert_doc_user(context: &AssertSetDocContext) -> Result<(), String> {
             return Err(err_msg);
         }
 
-        // Step 2.2: Validate ULID timestamp
-        if let Err(e) = validate_ulid_timestamp(user_key, CheckULIDisNew::yes()) {
+        // Step 2.2: Validate ULID timestamp (strict for new documents, lenient for updates)
+        let check_is_new = if is_update { 
+            CheckULIDisNew::no()  // For updates: validate format but not timestamp freshness
+        } else { 
+            CheckULIDisNew::yes() // For new docs: validate format AND require recent timestamp
+        };
+        
+        if let Err(e) = validate_ulid_timestamp(user_key, check_is_new) {
             let err_msg = format!("[assert_doc_user] Invalid ULID timestamp: {}", e);
             logger!("error", "{}", err_msg);
             return Err(err_msg);
@@ -77,7 +86,7 @@ pub fn assert_doc_user(context: &AssertSetDocContext) -> Result<(), String> {
             }
         }
     } else {
-        let err_msg = "[assert_doc_user] Missing user_key field in user data".to_string();
+        let err_msg = "[assert_doc_user] Missing user_ulid field in user data".to_string();
         logger!("error", "{}", err_msg);
         return Err(err_msg);
     }
@@ -101,9 +110,6 @@ pub fn assert_doc_user(context: &AssertSetDocContext) -> Result<(), String> {
     let normalized_username = crate::processors::document_keys::sanitize_for_key(&user_data.user_handle);
     logger!("debug", "[assert_doc_user] Checking username uniqueness for handle: {}", normalized_username);
 
-    // Check if we're updating an existing document
-    let is_update = context.data.data.current.is_some();
-    
     // Use query_doc_by_key with a more semantic query
     let results = query_doc_by_key("users", &format!("hdl_{}_", normalized_username))
         .map_err(|e| {

@@ -12,12 +12,14 @@ import type { Doc } from '@junobuild/core';
  * - display_name: Display name (required)
  * - user_key: ULID for this user (required, string)
  * - avatar_url: Avatar URL (required, can be empty string)
+ * - description: User profile description (optional)
  */
 export interface UserData {
     user_handle: string;    // Unique username/handle (required)
     display_name: string;  // Display name (required)
     user_ulid: string;      // ULID for this user (required, string)
     avatar_url: string;    // Avatar URL (required, can be empty string)
+    description?: string;   // User profile description (optional)
 }
 
 /**
