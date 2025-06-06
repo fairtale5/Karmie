@@ -16,7 +16,7 @@ export let communities: Community[];
 <BaseCard>
   <div class="flex items-center gap-2 mb-4">
     <Shield class="text-primary-500" size={20} />
-    <h2 class="text-xl font-bold">User Trust</h2>
+    <h2 class="text-xl font-bold">Trusted In</h2>
   </div>
 
   <div class="space-y-4">

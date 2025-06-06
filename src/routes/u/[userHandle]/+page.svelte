@@ -3,7 +3,7 @@ let { data } = $props<{ data: { handle: string } }>();
 import type { UserDocument } from '$lib/types';
 import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
 import TrustedCommunities from '$lib/components/profile/TrustedCommunities.svelte';
-import ReputationOverview from '$lib/components/profile/ReputationOverview.svelte';
+
 import ActiveReputations from '$lib/components/profile/ActiveReputations.svelte';
 import RecentReviewsUser from '$lib/components/profile/RecentReviewsUser.svelte';
 import RecentVotesUser from '$lib/components/profile/RecentVotesUser.svelte';
@@ -155,14 +155,13 @@ $effect(() => {
 
       <!-- Middle Column -->
       <div class="space-y-6">
-        <ReputationOverview stats={dummyProfileData.reputationStats} />
-        <ActiveReputations reputations={dummyProfileData.activeReputations} />
+        <RecentVotesUser user={userDocument} />
+        <RecentReviewsUser reviews={dummyProfileData.recentReviews} />
       </div>
 
       <!-- Right Column -->
       <div class="space-y-6">
-        <RecentVotesUser user={userDocument} />
-        <RecentReviewsUser reviews={dummyProfileData.recentReviews} />
+        <ActiveReputations reputations={dummyProfileData.activeReputations} />
       </div>
     </div>
   {/if}

@@ -25,12 +25,6 @@ export const dummyProfileData = {
     { tag: 'Rust', score: 720, rank: 12, isTrusted: true, progress: 100 }
   ],
 
-  reputationStats: {
-    trustedIn: 2,
-    totalCommunities: 4,
-    activeIn: 4
-  },
-
   activeReputations: [
     { tag: 'ICP', score: 850, rank: 5, isTrusted: true, progress: 100 },
     { tag: 'Rust', score: 720, rank: 12, isTrusted: true, progress: 100 },

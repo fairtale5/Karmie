@@ -20,9 +20,9 @@
 - [x] Set up data flow for demo, current user, and other user cases
 - [x] Fix avatar sizing and styling consistency
 - [x] Create and implement core profile components:
-  - [x] ProfileHeader.svelte (avatar, name, handle, stats)
+  - [x] ProfileHeader.svelte (avatar, name, handle, stats) - now includes reputation overview
   - [x] TrustedCommunities.svelte (community list)
-  - [x] ReputationOverview.svelte (reputation stats)
+  - [x] ~~ReputationOverview.svelte~~ (merged into ProfileHeader for cleaner design)
   - [x] ActiveReputations.svelte (active reputation list)
   - [x] RecentActivity.svelte (activity feed)
   - [x] BaseCard.svelte (shared card component)
@@ -45,9 +45,8 @@
 - [ ] QA for dark/light themes, responsiveness, and focus states
 - [ ] Mark components with dummy data as "under construction"
 - [ ] Update component status:
-  - [x] ProfileHeader.svelte - basic user data integrated
+  - [x] ProfileHeader.svelte - basic user data integrated, includes reputation overview
   - [ ] TrustedCommunities.svelte - needs real data integration
-  - [ ] ReputationOverview.svelte - needs real data integration
   - [ ] ActiveReputations.svelte - needs real data integration
   - [ ] RecentActivity.svelte - needs real data integration
 

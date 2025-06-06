@@ -17,7 +17,7 @@ export let reputations: Reputation[];
 <BaseCard>
   <div class="flex items-center gap-2 mb-4">
     <Activity class="text-primary-500" size={20} />
-    <h2 class="text-xl font-bold">Active Reputations</h2>
+    <h2 class="text-xl font-bold">Active In</h2>
   </div>
 
   <div class="space-y-4">

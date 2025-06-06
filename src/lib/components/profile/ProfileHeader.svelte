@@ -388,11 +388,11 @@ function closeHandleHelp() {
         <div class="text-xl font-bold text-primary-500">{stats.totalVotesReceived}</div>
       </div>
       <div class="p-3 bg-surface-200-800 rounded">
-        <div class="text-sm opacity-70">Trusted Communities</div>
+        <div class="text-sm opacity-70">Trusted In</div>
         <div class="text-xl font-bold text-primary-500">{stats.trustedCommunities}</div>
       </div>
       <div class="p-3 bg-surface-200-800 rounded">
-        <div class="text-sm opacity-70">Active Communities</div>
+        <div class="text-sm opacity-70">Active In</div>
         <div class="text-xl font-bold text-primary-500">{stats.activeCommunities}</div>
       </div>
     </div>
