@@ -218,7 +218,6 @@
     <!-- Top Users -->
     <TagTopUsersCard 
       tag={tagData?.tag} 
-      topUsers={tagData?.topUsers || []}
       loading={loading}
       isPreview={tagData?.isPreview}
     />
