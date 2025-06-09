@@ -11,18 +11,19 @@ type ReputationData = record {
   reputation_total_effective : float64;
   owner_ulid : text;
 };
-type Result = variant { Ok : text; Err : text };
-type Result_1 = variant { Ok : float64; Err : text };
-type Result_2 = variant { Ok : ReputationData; Err : text };
-type Result_3 = variant { Ok : bool; Err : text };
+type Result = variant { Ok : bool; Err : text };
+type Result_1 = variant { Ok : text; Err : text };
+type Result_2 = variant { Ok : float64; Err : text };
+type Result_3 = variant { Ok : ReputationData; Err : text };
 service : {
   build_version : () -> (text) query;
-  create_document_key_for_reputation : (text, text) -> (Result) query;
-  create_document_key_for_tag : (text, text) -> (Result) query;
-  create_document_key_for_user : (text, text) -> (Result) query;
-  create_document_key_for_vote : (text, text, text) -> (Result) query;
-  get_user_reputation : (text, text) -> (Result_1) query;
-  get_user_reputation_full : (text, text) -> (Result_2) query;
-  recalculate_reputation : (text, text) -> (Result_1);
-  validate_document_key : (text, text) -> (Result_3) query;
+  check_username_availability_scan : (text) -> (Result) query;
+  create_document_key_for_reputation : (text, text) -> (Result_1) query;
+  create_document_key_for_tag : (text, text) -> (Result_1) query;
+  create_document_key_for_user : (text, text) -> (Result_1) query;
+  create_document_key_for_vote : (text, text, text) -> (Result_1) query;
+  get_user_reputation : (text, text) -> (Result_2) query;
+  get_user_reputation_full : (text, text) -> (Result_3) query;
+  recalculate_reputation : (text, text) -> (Result_2);
+  validate_document_key : (text, text) -> (Result) query;
 }

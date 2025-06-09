@@ -27,6 +27,7 @@
 	import { initJuno } from '$lib/juno';
 	import NotLoggedInAlert from '$lib/components/common/NotLoggedInAlert.svelte';
 	import { authUser, authUserDoneInitializing } from '$lib/stores/authUser';
+	import { LoaderCircle, CheckCircle, XCircle } from 'lucide-svelte';
 
 	// Configuration Constants
 	const DEFAULT_VOTE_WEIGHT = 1;
@@ -134,6 +135,12 @@
 
 	// Explicitly type the version variable
 	let version: bigint | undefined;
+
+	// Username availability testing variables
+	let testUsername = '';
+	let usernameTestStatus: 'idle' | 'loading' | 'available' | 'taken' | 'error' | 'invalid' = 'idle';
+	let usernameTestError = '';
+	let lastCheckedTestHandle = '';
 
 	// Function to load user reputations for selected tag
 	async function loadUserReputations(tagKey: string) {
@@ -913,6 +920,107 @@
 			errorGlobal = e instanceof Error ? e.message : 'Failed to delete reputation document';
 		}
 	}
+
+	// Username validation function (copied from user creation page)
+	function validateUsername(name: string): { isValid: boolean; error?: string } {
+		if (!name) return { isValid: false, error: 'Username is required' };
+		
+		// Check for spaces
+		if (name.includes(' ')) {
+			return { isValid: false, error: 'No spaces allowed' };
+		}
+
+		// Check for special characters and validate format
+		const validFormat = /^[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*$/;
+		if (!validFormat.test(name)) {
+			return { 
+				isValid: false, 
+				error: 'Only letters, numbers, and single dashes (-) between words allowed' 
+			};
+		}
+
+		// Check for consecutive dashes
+		if (name.includes('--')) {
+			return { isValid: false, error: 'No consecutive dashes allowed' };
+		}
+
+		// Check for dashes at start or end
+		if (name.startsWith('-') || name.endsWith('-')) {
+			return { isValid: false, error: 'Dashes not allowed at start or end' };
+		}
+
+		return { isValid: true };
+	}
+
+	// Debounce function
+	function debounce<T extends (...args: any[]) => void>(fn: T, delay: number): (...args: Parameters<T>) => void {
+		let timeout: ReturnType<typeof setTimeout>;
+		return (...args: Parameters<T>) => {
+			clearTimeout(timeout);
+			timeout = setTimeout(() => fn(...args), delay);
+		};
+	}
+
+	// Username availability checker using the new custom endpoint
+	const checkUsernameAvailability = debounce(async (handle: string) => {
+		// Reset status
+		usernameTestStatus = 'idle';
+		usernameTestError = '';
+
+		// Basic length check
+		if (!handle || handle.length < 3) {
+			usernameTestStatus = 'idle';
+			return;
+		}
+
+		// Validate format
+		const validation = validateUsername(handle);
+		if (!validation.isValid) {
+			usernameTestStatus = 'invalid';
+			usernameTestError = validation.error || 'Invalid username format';
+			return;
+		}
+
+		// If valid, check availability using our new custom endpoint
+		usernameTestStatus = 'loading';
+		lastCheckedTestHandle = handle;
+		try {
+			console.log('[Admin] Checking username availability using custom endpoint:', handle);
+			
+			// Get the satellite actor
+			const actor = await getSatelliteExtendedActor<SatelliteActor>({
+				idlFactory
+			});
+			
+			// Call our custom username availability endpoint
+			const result = await actor.check_username_availability_scan(handle.trim());
+			
+			console.log('[Admin] Username availability result:', result);
+			
+			// Only update if the input hasn't changed since the request was sent
+			if (lastCheckedTestHandle === handle) {
+				if ('Ok' in result) {
+					// Result.Ok contains boolean: true = available, false = taken
+					usernameTestStatus = result.Ok ? 'available' : 'taken';
+				} else {
+					// Result.Err contains error message
+					usernameTestStatus = 'error';
+					usernameTestError = result.Err || 'Unknown error occurred';
+				}
+			}
+		} catch (e) {
+			console.error('[Admin] Error checking username availability:', e);
+			if (lastCheckedTestHandle === handle) {
+				usernameTestStatus = 'error';
+				usernameTestError = e instanceof Error ? e.message : 'Failed to check username availability';
+			}
+		}
+	}, 350);
+
+	// Watch for username input changes
+	$: if (testUsername !== lastCheckedTestHandle) {
+		checkUsernameAvailability(testUsername);
+	}
 </script>
 
 <!-- Show warning if not logged in -->
@@ -932,6 +1040,62 @@
 		<!-- Admin Tools Section -->
 		<div class="bg-base-200 mb-8 rounded-lg p-4">
 			<h2 class="mb-4 text-2xl font-bold">Admin Tools</h2>
+			
+			<!-- Username Availability Tester -->
+			<div class="mb-6 p-4 bg-surface-50-950 rounded-lg border border-surface-200-800">
+				<h3 class="text-lg font-semibold mb-3">Test Username Availability</h3>
+				<p class="text-sm opacity-70 mb-3">
+					Test the new username availability endpoint that scans user documents by user_handle field.
+				</p>
+				<div class="flex items-center gap-4">
+					<div class="relative flex-1 max-w-md">
+						<input
+							type="text"
+							bind:value={testUsername}
+							class="input pr-10 border-primary-300-700 focus:border-primary-500 focus:ring-primary-500 bg-surface-50-950 w-full"
+							placeholder="Enter username to test"
+							autocomplete="off"
+							aria-describedby="test-username-status"
+						/>
+						<span class="absolute right-2 top-1/2 -translate-y-1/2" aria-live="polite" id="test-username-status">
+							{#if usernameTestStatus === 'loading'}
+								<LoaderCircle class="animate-spin text-gray-400" />
+							{:else if usernameTestStatus === 'available'}
+								<CheckCircle class="text-success-500" />
+							{:else if usernameTestStatus === 'taken'}
+								<XCircle class="text-error-500" />
+							{:else if usernameTestStatus === 'error'}
+								<XCircle class="text-error-500" />
+							{/if}
+						</span>
+					</div>
+					<div class="text-sm min-w-32">
+						{#if usernameTestStatus === 'taken'}
+							<span class="text-error-500 font-medium">Username taken</span>
+						{:else if usernameTestStatus === 'available'}
+							<span class="text-success-500 font-medium">Available!</span>
+						{:else if usernameTestStatus === 'loading'}
+							<span class="text-gray-500">Checking...</span>
+						{:else if usernameTestStatus === 'error'}
+							<span class="text-error-500 font-medium">Error occurred</span>
+						{:else if usernameTestStatus === 'invalid'}
+							<span class="text-error-500 font-medium">Invalid format</span>
+						{:else if testUsername && testUsername.length > 0 && testUsername.length < 3}
+							<span class="text-warning-500 font-medium">Too short</span>
+						{:else}
+							<span class="text-gray-500">Enter username</span>
+						{/if}
+					</div>
+				</div>
+				{#if usernameTestStatus === 'invalid' && usernameTestError}
+					<p class="text-error-500 text-xs mt-2">{usernameTestError}</p>
+				{:else if usernameTestStatus === 'error' && usernameTestError}
+					<p class="text-error-500 text-xs mt-2">{usernameTestError}</p>
+				{:else if testUsername && testUsername.length > 0 && testUsername.length < 3}
+					<p class="text-warning-500 text-xs mt-2">Username must be at least 3 characters.</p>
+				{/if}
+			</div>
+
 			{#if successGlobal}
 				<div class="alert alert-success mt-4">
 					<span>{successGlobal}</span>

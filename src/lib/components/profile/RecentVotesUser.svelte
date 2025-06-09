@@ -183,13 +183,13 @@
             <div class="flex gap-2">
                 <!-- Direction filters (closer spacing) -->
                 <div class="flex gap-1">
-                    <button type="button" class="chip text-xs {showIncoming ? 'preset-filled-secondary-500' : 'preset-tonal-surface'}" onclick={() => showIncoming = !showIncoming}>In</button>
-                    <button type="button" class="chip text-xs {showOutgoing ? 'preset-filled-tertiary-500' : 'preset-tonal-surface'}" onclick={() => showOutgoing = !showOutgoing}>Out</button>
+                    <button type="button" class="chip text-xs px-2 py-0.5 w-8 {showIncoming ? 'preset-filled-secondary-500' : 'preset-tonal-surface'}" onclick={() => showIncoming = !showIncoming}>In</button>
+                    <button type="button" class="chip text-xs px-2 py-0.5 w-8 {showOutgoing ? 'preset-filled-tertiary-500' : 'preset-tonal-surface'}" onclick={() => showOutgoing = !showOutgoing}>Out</button>
                 </div>
                 <!-- Value filters (closer spacing) -->
                 <div class="flex gap-1">
-                    <button type="button" class="chip text-xs {showPositive ? 'preset-filled-success-500' : 'preset-tonal-surface'}" onclick={() => showPositive = !showPositive}>+</button>
-                    <button type="button" class="chip text-xs {showNegative ? 'preset-filled-error-500' : 'preset-tonal-surface'}" onclick={() => showNegative = !showNegative}>-</button>
+                    <button type="button" class="chip text-xs px-2 py-0.5 w-6 {showPositive ? 'preset-filled-success-500' : 'preset-tonal-surface'}" onclick={() => showPositive = !showPositive}>+</button>
+                    <button type="button" class="chip text-xs px-2 py-0.5 w-6 {showNegative ? 'preset-filled-error-500' : 'preset-tonal-surface'}" onclick={() => showNegative = !showNegative}>-</button>
                 </div>
             </div>
             <!-- Expand Icon -->

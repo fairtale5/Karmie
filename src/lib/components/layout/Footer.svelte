@@ -34,7 +34,7 @@
 					<span class="preset-typo-body-2">built by <a href={GITHUB_URL} target="_blank" rel="noopener" class="text-primary-500 hover:underline">@Fairtale</a></span>
 				</div>
 				<div>
-					<span class="preset-typo-caption text-surface-500-400 mt-2">&copy; {new Date().getFullYear()} Reputator. All rights reserved.</span>
+					<span class="preset-typo-caption text-surface-500-400 mt-2">&copy; {new Date().getFullYear()} Karmie. All rights reserved.</span>
 				</div>
 			</div>
 		</div>

@@ -29,7 +29,7 @@ We're implementing a dedicated `users_handles` collection that provides:
 
 ### **New Architecture:**
 ```
-Users Collection:        usr_{ulid}_
+Users Collection:        prn_{principal}_usr_{ulid}_
 Users Handles Collection: hdl_{handle}_usr_{ulid}_
 ```
 
@@ -374,210 +374,515 @@ fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
 
 ---
 
-## **Comprehensive Impact Analysis: Required Changes**
+## **Comprehensive Impact Analysis: All Files Requiring Changes**
 
-After implementing the `users_handles` index collection, multiple parts of the system need updates to support the new architecture. Here's a complete breakdown:
+After conducting a thorough investigation of the entire codebase, here is the **complete** list of files that need changes for the users_handles index collection implementation:
 
-### **1. Backend Database Schema Changes**
+### **🚨 CRITICAL: Backend Implementation Files (MUST CREATE)**
 
-#### **Users Collection Key Format**
-```rust
-// OLD FORMAT:
-usr_{ulid}_hdl_{handle}_
+#### **1. New Files to Create**
+```
+src/satellite/src/on_set_doc/
+├── mod.rs                           ✅ IMPLEMENTED IN PLAN
+└── users_handles.rs                 ✅ IMPLEMENTED IN PLAN
 
-// NEW FORMAT:
-usr_{ulid}_
+src/satellite/src/assert_set_doc/
+└── assert_doc_users_handles.rs      ✅ IMPLEMENTED IN PLAN
+
+src/satellite/src/utils/
+└── structs.rs                       ✅ UPDATE WITH UserHandleDoc
+
+src/satellite/src/lib.rs              ✅ UPDATE WITH NEW HOOKS
 ```
 
-**Files Affected:**
-- `src/satellite/src/processors/document_keys.rs` - Update `create_user_key()` function
-- `src/satellite/src/assert_set_doc/assert_doc_user.rs` - Update key validation logic
-- `src/satellite/src/validation/` - All user-related validation functions
+### **🔧 Backend Files Requiring Major Updates**
 
-#### **Query Pattern Changes**
-- All backend queries that rely on handle-in-key patterns need updating
-- Replace handle-based key queries with users_handles index lookups
+#### **2. Document Key Generation & Validation**
+```
+src/satellite/src/processors/document_keys.rs
+├── create_user_key()               ❌ REMOVE hdl_ FROM KEY FORMAT
+├── create_tag_key()                ❌ REMOVE hdl_ FROM KEY FORMAT  
+├── validate_user_key()             ❌ UPDATE REGEX PATTERNS
+├── validate_tag_key()              ❌ UPDATE REGEX PATTERNS
+└── ALL TESTS                       ❌ UPDATE ALL TEST CASES
+```
 
-### **2. Backend Helper Functions**
+#### **3. Backend Validation Logic**
+```
+src/satellite/src/assert_set_doc/assert_doc_user.rs
+├── Key format validation           ❌ UPDATE FOR NEW FORMAT
+├── Username uniqueness check       ❌ USE users_handles COLLECTION
+└── Error messages                  ❌ UPDATE FOR NEW APPROACH
 
-**Files Requiring Updates:**
-- `src/satellite/src/processors/document_keys.rs`:
-  - `create_user_key()` - Remove handle parameter, use ULID-only format
-  - `validate_user_key()` - Update validation for new format
-  - `extract_handle_from_user_key()` - DELETE (no longer possible)
-  
-- `src/satellite/src/processors/document_queries.rs`:
-  - Add `query_user_by_handle()` - Query users_handles then lookup user
-  - Update any functions that extract handles from user keys
+src/satellite/src/assert_set_doc/assert_doc_tag.rs
+├── Tag handle uniqueness check     ❌ FUTURE: USE tags_handles COLLECTION
+└── Key format validation           ❌ UPDATE FOR NEW FORMAT
 
-### **3. Backend Validation Changes**
+src/satellite/src/assert_set_doc/mod.rs
+├── Export new validation module    ❌ ADD users_handles VALIDATOR
+└── Update assert_set_doc hook      ❌ ADD COLLECTION SUPPORT
+```
 
-**Files Requiring Updates:**
-- `src/satellite/src/assert_set_doc/assert_doc_user.rs`:
-  - Remove handle validation from user key format
-  - Add validation to check users_handles collection for conflicts
-  - Update key format validation logic
+#### **4. Backend Query Functions**
+```
+src/satellite/src/processors/document_queries.rs
+├── Add query_user_by_handle()      ❌ NEW: HANDLE → ULID → USER LOOKUP
+├── Update existing patterns        ❌ REMOVE handle-based key queries
+└── Add users_handles support       ❌ NEW COLLECTION QUERY PATTERNS
+```
 
-- `src/satellite/src/validation/field_validation.rs`:
-  - Update username availability checking to use users_handles collection
-  - Modify handle uniqueness validation
+#### **5. Backend Library Hooks**
+```
+src/satellite/src/lib.rs
+├── on_set_doc hook                 ❌ ADD users COLLECTION HANDLER
+├── assert_set_doc hook             ❌ ADD users_handles VALIDATION
+├── Module imports                  ❌ ADD on_set_doc MODULE
+└── Collection routing              ❌ UPDATE COLLECTION HANDLERS
+```
 
-### **4. Frontend Document Creation & Key Generation**
+### **📱 Frontend Files Requiring Major Updates**
 
-**Files Requiring Updates:**
-- `src/lib/docs-crud/user_create.ts`:
-  - Update key generation to use ULID-only format
-  - Remove handle from key generation logic
+#### **6. Frontend Key Generation**
+```
+src/lib/keys/format_key_user.ts     ❌ REMOVE handle PARAMETER & hdl_ FROM KEY
+src/lib/keys/format_key_tag.ts      ❌ REMOVE handle PARAMETER & hdl_ FROM KEY  
+src/lib/keys/mod.ts                 ❌ UPDATE EXPORTS & DOCUMENTATION
+```
 
-- `src/lib/docs-crud/user_update.ts`:
-  - Update to work with new key format
-  - Handle username changes properly
+#### **7. Frontend Document CRUD Operations**
+```
+src/lib/docs-crud/user_create.ts    ❌ UPDATE KEY GENERATION LOGIC
+src/lib/docs-crud/user_update.ts    ❌ HANDLE USERNAME CHANGES
+src/lib/docs-crud/tag_create.ts     ❌ UPDATE KEY GENERATION LOGIC
+src/lib/docs-crud/query_by_key.ts   ❌ ADD USER LOOKUP BY HANDLE
+```
 
-- `src/lib/utils/document-keys.ts` (if exists):
-  - Update user key generation functions
-  - Remove handle-based key logic
+#### **8. Frontend Username Availability Checking**
+```
+src/routes/new/user/+page.svelte
+├── checkUsername function          ❌ USE users_handles COLLECTION
+├── queryDocsByKey call             ❌ REPLACE WITH users_handles QUERY
+└── Username validation logic       ❌ UPDATE FOR NEW APPROACH
 
-### **5. Frontend Onboarding Changes**
+src/routes/new/tag/+page.svelte
+├── Tag name checking              ❌ FUTURE: USE tags_handles COLLECTION
+└── existingTags query             ❌ UPDATE FOR NEW APPROACH
+```
 
-**Files Requiring Updates:**
-- `src/routes/onboarding/+page.svelte`:
-  - Update username availability checking logic
-  - Change from key-based queries to users_handles collection queries
-  - Modify `checkUsername()` function to query new collection
+#### **9. Frontend User Profile Lookup**
+```
+src/routes/u/[userHandle]/+page.ts
+├── User lookup by handle          ❌ TWO-STEP: users_handles → users
+├── queryDocsByKey call            ❌ REPLACE WITH NEW LOOKUP PATTERN
+└── Error handling                 ❌ UPDATE FOR NEW APPROACH
 
-- `src/lib/docs-crud/query_by_key.ts`:
-  - Add helper for username availability checking
-  - Create `checkUsernameAvailability()` function
+src/routes/u/[userHandle]/+page.svelte
+├── User lookup logic              ❌ UPDATE FOR NEW LOOKUP PATTERN
+├── queryDocsByKey call            ❌ REPLACE WITH users_handles LOOKUP
+└── Error handling                 ❌ UPDATE FOR NEW APPROACH
+```
 
-### **6. Frontend Profile & User Lookup**
+#### **10. Frontend Admin & Testing Tools**
+```
+src/routes/admin/+page.svelte
+├── Username availability tester    ❌ UPDATE TO USE users_handles
+├── User search functionality       ❌ UPDATE SEARCH PATTERNS
+├── Manual user creation            ❌ UPDATE KEY GENERATION
+└── User document editing           ❌ HANDLE USERNAME CHANGES
+```
 
-**Files Requiring Updates:**
-- `src/routes/u/[handle]/+page.svelte`:
-  - Update user lookup logic to use users_handles index
-  - Change from direct key queries to two-step lookup process
+### **📚 Documentation Files Requiring Updates**
 
-- `src/routes/u/[handle]/+page.ts`:
-  - Update server-side user lookup logic
-  - Implement users_handles → users collection lookup
+#### **11. Core Documentation**
+```
+docs/core/architecture/database.md
+├── Users collection schema         ❌ UPDATE KEY FORMAT
+├── Tags collection schema          ❌ UPDATE KEY FORMAT
+├── Add users_handles collection    ❌ NEW COLLECTION DOCUMENTATION
+├── Query examples                  ❌ UPDATE FOR NEW PATTERNS
+└── Performance considerations      ❌ TWO-STEP LOOKUP IMPACT
 
-### **7. Tag Collection (Future Implementation)**
+docs/core/todo/keys_and_queries_optimization.md
+├── Key format examples             ❌ UPDATE ALL PATTERNS
+├── Query optimization strategies   ❌ UPDATE FOR HANDLE COLLECTIONS
+└── Performance analysis            ❌ HANDLE INDEX PERFORMANCE
 
-**Similar Changes Required:**
-- Create `tags_handles` collection with format: `hdl_{tagName}_tag_{tagULID}_`
-- Update tag keys from `usr_{userUlid}_tag_{tagUlid}_hdl_{handle}_` to `usr_{userUlid}_tag_{tagUlid}_`
-- Create `src/satellite/src/on_set_doc/tags_handles.rs`
-- Create `src/satellite/src/assert_set_doc/assert_doc_tags_handles.rs`
-- Update all tag-related frontend and backend code similarly
+docs/core/todo/frontend-user_profile_implementation.md
+├── User lookup examples            ❌ UPDATE FOR TWO-STEP LOOKUP
+├── queryDocsByKey patterns         ❌ REPLACE WITH users_handles
+└── Error handling strategies       ❌ UPDATE FOR NEW APPROACH
+```
 
-### **8. Database Migration Requirements**
+#### **12. API & Resource Documentation**
+```
+docs/resources/ic_and_juno_api_reference.md
+├── Query examples                  ❌ UPDATE FOR users_handles PATTERNS
+├── Document key formats            ❌ UPDATE FOR NEW FORMATS
+├── Error handling                  ❌ NEW ERROR TYPES
+└── Migration examples              ❌ BEFORE/AFTER CODE PATTERNS
 
-**Migration Strategy:**
-1. **Phase 1**: Deploy users_handles collection support
-2. **Phase 2**: Create migration script to populate users_handles from existing user documents
-3. **Phase 3**: Update frontend to use new lookup methods
-4. **Phase 4**: Update user key format (breaking change - requires careful coordination)
-5. **Phase 5**: Clean up old code and helper functions
+docs/resources/development.md
+├── Database query examples         ❌ UPDATE FOR NEW COLLECTIONS
+├── Testing patterns               ❌ users_handles TESTING
+└── Development workflow           ❌ HANDLE COLLECTION SUPPORT
+```
 
-### **9. Testing & Validation**
+#### **13. Implementation Guides**
+```
+docs/implementation/reputation.md
+├── User lookup patterns           ❌ UPDATE FOR users_handles
+├── Key extraction logic           ❌ REMOVE (NO LONGER POSSIBLE)
+└── Performance considerations     ❌ TWO-STEP LOOKUP IMPACT
 
-**Test Files Requiring Updates:**
-- All user creation/update tests
-- Username validation tests  
-- Profile lookup tests
-- Onboarding flow tests
+docs/implementation/juno_integration.md
+├── Collection management          ❌ ADD users_handles COLLECTION
+├── Query patterns                 ❌ UPDATE FOR HANDLE LOOKUP
+└── Validation strategies          ❌ HANDLE VALIDATION PATTERNS
+```
 
-### **10. Documentation Updates**
+### **🧪 Test Files Requiring Updates**
 
-#### **Database Schema Documentation** (`docs/core/architecture/database.md`)
-- **Users Collection**: Update key format from `usr_{ulid}_hdl_{handle}_` to `usr_{ulid}_`
-- **New users_handles Collection**: Add complete schema documentation:
-  ```typescript
-  // Collection: users_handles
-  // Key Format: hdl_{userHandle}_usr_{userULID}_
-  // Purpose: Username → ULID mapping for efficient queries
-  interface UserHandleDocument {
-      key: string;        // hdl_{handle}_usr_{ulid}_
-      data: {
-          user_ulid: string;  // ULID of the user who owns this handle
-      }
-  }
-  ```
-- **Tags Collection**: Update key format from `usr_{userUlid}_tag_{tagUlid}_hdl_{handle}_` to `usr_{userUlid}_tag_{tagUlid}_`
-- **New tags_handles Collection**: Add documentation for future implementation
-- **Query Performance Examples**: Update to show new lookup patterns
-- **Memory Usage Patterns**: Document two-step lookup performance characteristics
+#### **14. Backend Tests**
+```
+src/satellite/src/processors/document_keys.rs
+├── test_create_user_key()         ❌ UPDATE FOR NEW FORMAT
+├── test_create_tag_key()          ❌ UPDATE FOR NEW FORMAT
+├── test_validate_user_key()       ❌ UPDATE REGEX VALIDATION
+├── test_validate_tag_key()        ❌ UPDATE REGEX VALIDATION
+└── ALL TEST ASSERTIONS            ❌ REMOVE hdl_ EXPECTATIONS
 
-#### **Backend Type Definitions** (`src/satellite/src/utils/structs.rs`)
-- **Add New Structs**:
-  ```rust
-  /// Document structure for users_handles collection
-  #[derive(Serialize, Deserialize, Clone, Debug)]
-  pub struct UserHandleDocument {
-      pub key: String,
-      pub description: String,
-      pub owner: Principal,
-      pub created_at: u64,
-      pub updated_at: u64,
-      pub version: u64,
-      pub data: UserHandleData,
-  }
-  
-  #[derive(Serialize, Deserialize, Clone, Debug)]
-  pub struct UserHandleData {
-      pub user_ulid: String,
-  }
-  
-  /// Future: TagHandleDocument and TagHandleData
-  ```
-- **Update Existing Structs**: Remove any references to handle-in-key logic
-- **Add Documentation**: Explain relationship between main collections and handle indexes
+src/satellite/src/validation/validate_handle.rs
+├── test_validate_handle()         ❌ UPDATE FOR NEW VALIDATION
+└── Handle validation tests        ❌ ENSURE COMPATIBILITY
 
-#### **Frontend Type Definitions** (`src/lib/types.ts`)
-- **Add New Interfaces**:
-  ```typescript
-  /** users_handles collection document */
-  export interface UserHandleData {
-      user_ulid: string;  // ULID of the user who owns this handle
-  }
-  export type UserHandleDocument = Doc<UserHandleData>;
-  
-  /** Future: TagHandleData and TagHandleDocument */
-  ```
-- **Update JSDoc**: Explain new handle lookup architecture
-- **Add Examples**: Show how to perform username availability checks and user lookups
+src/satellite/src/assert_set_doc/assert_doc_user.rs
+├── Username uniqueness tests      ❌ UPDATE FOR users_handles
+├── Key validation tests           ❌ NEW KEY FORMAT
+└── Error message tests            ❌ NEW ERROR MESSAGES
 
-#### **API Reference Documentation** (`docs/resources/ic_and_juno_api_reference.md`)
-- **Update Query Examples**: Replace old key-based patterns with users_handles lookups
-- **Add Handle Management Patterns**: Document username availability checking
-- **Update Error Handling**: Document new validation error types
-- **Migration Examples**: Show before/after code patterns
+src/satellite/src/assert_set_doc/assert_doc_tag.rs
+├── Tag handle uniqueness tests    ❌ FUTURE: tags_handles
+├── Key validation tests           ❌ NEW KEY FORMAT
+└── Error message tests            ❌ NEW ERROR MESSAGES
+```
 
-#### **Implementation Documentation** (`docs/implementation/`)
-- **User Management Guide**: Update with new handle architecture
-- **Migration Strategy**: Document step-by-step migration process
-- **Performance Considerations**: Document lookup performance changes
-- **Troubleshooting**: Add common issues with handle management
+#### **15. Frontend Tests (Future)**
+```
+ALL TESTING FILES WILL NEED UPDATES:
+├── User creation tests            ❌ NEW KEY GENERATION
+├── User lookup tests              ❌ TWO-STEP LOOKUP PATTERN
+├── Username availability tests    ❌ users_handles COLLECTION
+├── Profile page tests             ❌ NEW LOOKUP LOGIC
+└── Admin functionality tests      ❌ HANDLE MANAGEMENT
+```
 
-#### **Integration Guides**
-- **Frontend Integration**: Update examples to use new lookup patterns
-- **Backend Integration**: Update server-side code examples
-- **Testing Guides**: Update test patterns for new architecture
+### **⚙️ Configuration & Build Files**
 
-### **Critical Considerations:**
+#### **16. TypeScript & Configuration**
+```
+src/lib/types.ts
+├── UserHandleData interface       ❌ NEW INTERFACE
+├── UserHandleDocument type        ❌ NEW TYPE
+└── JSDoc documentation            ❌ EXPLAIN NEW ARCHITECTURE
 
-1. **Breaking Changes**: The key format change is breaking - requires coordinated deployment
-2. **Data Migration**: Existing user documents need users_handles entries created
-3. **Rollback Strategy**: Plan for reverting if issues arise during migration
-4. **Performance Impact**: Two-step lookups (handle → ULID → user) vs direct key access
-5. **Consistency**: Ensure users_handles index stays in sync with users collection
+vite.config.ts                     ❌ NO CHANGES NEEDED
+tsconfig.json                      ❌ NO CHANGES NEEDED
+package.json                       ❌ NO CHANGES NEEDED
+```
 
-### **Recommended Implementation Order:**
+#### **17. Satellite Configuration**
+```
+juno.config.ts
+├── users_handles collection       ❌ ADD NEW COLLECTION CONFIG
+├── Collection permissions         ❌ SET APPROPRIATE PERMISSIONS
+└── Memory allocation              ❌ CONFIGURE FOR HANDLE LOOKUPS
 
-1. ✅ Implement users_handles collection and hooks (current task)
-2. 🔄 Update backend helper functions for dual support
-3. 🔄 Update frontend to use users_handles for lookups
-4. 🔄 Create migration script for existing data
-5. 🔄 Update user key format (coordinated deployment)
-6. 🔄 Remove old code and cleanup
-7. 🔄 Implement same pattern for tags_handles
-8. 🔄 Full system testing and validation
+juno.dev.config.ts                 ❌ SAME UPDATES AS ABOVE
+```
+
+### **🔄 Migration Requirements**
+
+#### **18. Data Migration Scripts (MUST CREATE)**
+```
+MIGRATION SCRIPTS NEEDED:
+├── populate_users_handles.rs      ❌ CREATE users_handles FROM EXISTING
+├── verify_migration.rs            ❌ VALIDATE DATA CONSISTENCY
+├── rollback_migration.rs          ❌ EMERGENCY ROLLBACK CAPABILITY
+└── update_user_keys.rs            ❌ MIGRATE TO NEW KEY FORMAT
+```
+
+### **🚀 Deployment & Operational Files**
+
+#### **19. Build & Deployment**
+```
+Cargo.toml                         ❌ NO CHANGES NEEDED
+Cargo.lock                         ❌ WILL UPDATE AUTOMATICALLY
+satellite_extension.did            ❌ AUTO-GENERATED (NO MANUAL EDIT)
+```
+
+#### **20. Deployment Documentation**
+```
+README.md
+├── Project structure              ❌ UPDATE FOR users_handles
+├── Database schema overview       ❌ NEW COLLECTION DOCUMENTATION
+└── Development setup              ❌ NEW COLLECTION SETUP
+
+docs/README.md
+├── Architecture overview          ❌ HANDLE COLLECTION ARCHITECTURE
+├── Cross-references              ❌ UPDATE ALL REFERENCES
+└── Getting started guide         ❌ NEW COLLECTION SETUP
+```
+
+### **📊 Summary Statistics**
+
+- **🆕 New Files to Create**: 4 files
+- **🔧 Backend Files to Modify**: 8 files  
+- **📱 Frontend Files to Modify**: 9 files
+- **📚 Documentation to Update**: 7 files
+- **🧪 Test Files to Update**: 5+ files
+- **⚙️ Configuration Files**: 3 files
+- **🔄 Migration Scripts Needed**: 4 files
+- **🚀 Deployment Updates**: 2 files
+
+**📈 TOTAL IMPACT: 40+ files across the entire system**
+
+### **🎯 Implementation Priority Order**
+
+1. **Phase 1: Backend Foundation** (4 files)
+   - Create users_handles collection and hooks
+   - Add validation logic
+   - Update backend structure
+
+2. **Phase 2: Backend Key Migration** (8 files)
+   - Update key generation and validation
+   - Remove hdl_ patterns from backend
+   - Update all backend tests
+
+3. **Phase 3: Frontend Integration** (9 files)
+   - Update frontend key generation
+   - Implement two-step user lookup
+   - Update username availability checking
+
+4. **Phase 4: Data Migration** (4 files)
+   - Create migration scripts
+   - Populate users_handles collection
+   - Migrate to new key formats
+
+5. **Phase 5: Documentation & Testing** (12 files)
+   - Update all documentation
+   - Update test files
+   - Create deployment guides
+
+6. **Phase 6: Configuration & Deployment** (5 files)
+   - Update configuration files
+   - Deploy and verify system
+   - Performance optimization
+
+### **⚠️ CRITICAL CONSIDERATIONS**
+
+1. **Breaking Changes**: This affects **40+ files** across the entire system
+2. **Database Migration**: Requires careful coordination and rollback planning
+3. **Two-Step Lookups**: Performance impact of handle → ULID → user pattern
+4. **Testing Requirements**: Every component needs comprehensive testing
+5. **Deployment Coordination**: Frontend and backend must be deployed together
+6. **Documentation Maintenance**: All examples and guides need updates
+
+### **🔍 MISSED IN PREVIOUS ANALYSIS**
+
+The previous analysis significantly underestimated the scope. Missing items included:
+
+- **Test files across the system** (5+ files requiring updates)
+- **All documentation files** (7 files needing updates)
+- **Frontend admin and testing tools** (1 major file)
+- **Migration script requirements** (4 essential scripts)
+- **Configuration file updates** (3 files)
+- **Complete impact on validation logic** (extensive updates needed)
+- **Type definitions and interfaces** (new TypeScript interfaces)
+- **Deployment and operational considerations** (coordination requirements)
+
+This implementation touches **every major component** of the system and represents a **foundational architectural change** rather than a simple feature addition.
+
+---
+
+## **🔍 COMPLETE CODEBASE INVESTIGATION RESULTS**
+
+### **Investigation Summary**
+
+After performing a comprehensive search across the entire codebase, I found that the users_handles implementation impacts **significantly more files** than initially documented. Here are the detailed findings:
+
+### **🚨 NEWLY DISCOVERED FILES REQUIRING CHANGES**
+
+#### **Missing Frontend Files**
+```
+src/lib/components/dashboard/QuickActionsDashboard.svelte
+├── User search functionality      ❌ user.data.user_handle REFERENCES
+├── Selected user display          ❌ @{selectedUser.data.user_handle}
+└── Vote target selection          ❌ USER HANDLE DISPLAY LOGIC
+
+src/lib/components/tags/QuickActionsTags.svelte
+├── User search functionality      ❌ user.data.user_handle REFERENCES  
+├── Selected user display          ❌ @{selectedUser.data.user_handle}
+└── Vote target selection          ❌ USER HANDLE DISPLAY LOGIC
+
+src/lib/components/profile/ProfileHeader.svelte
+├── User handle display            ❌ @{user.data.user_handle}
+├── Profile editing                ❌ user_handle FIELD UPDATES
+└── Handle preservation logic      ❌ HANDLE CHANGE DETECTION
+
+src/lib/components/tags/RecentVotesTag.svelte
+├── User handle display           ❌ user.data.user_handle REFERENCES
+├── Avatar name generation        ❌ getInitials(user.data.user_handle)
+└── User identification           ❌ MULTIPLE HANDLE REFERENCES
+
+src/lib/components/profile/RecentVotesUser.svelte
+├── Demo user detection           ❌ user.data.user_handle === 'demo_user'
+├── Owner/target user display     ❌ HANDLE DISPLAY IN VOTES
+└── Avatar generation             ❌ HANDLE-BASED AVATARS
+
+src/routes/+page.svelte
+├── Required fields check         ❌ userDoc.data.user_handle VALIDATION
+└── User onboarding logic         ❌ HANDLE REQUIREMENT CHECK
+
+src/routes/+layout.svelte  
+├── Required fields check         ❌ userDoc.data.user_handle VALIDATION
+└── Navigation logic              ❌ HANDLE REQUIREMENT CHECK
+```
+
+#### **Missing Documentation Files**
+```
+docs/core/todo/frontend-user_profile_implementation.md
+├── User lookup examples          ❌ queryDocsByKey('users', 'hdl_${handle}_')
+├── Profile page patterns         ❌ HANDLE-BASED LOOKUP PATTERNS
+└── Implementation guides         ❌ CURRENT hdl_ DOCUMENTATION
+
+docs/core/development/testing.md
+├── Vote interaction tests        ❌ 'handles vote interactions'
+├── User workflow tests           ❌ HANDLE-BASED TEST PATTERNS
+└── Testing strategies            ❌ HANDLE VALIDATION TESTS
+```
+
+#### **Missing Backend Files**
+```
+src/satellite/src/core/reputation_calculations.rs
+├── No handle extraction found    ✅ GOOD - NO CHANGES NEEDED
+├── Uses ULID-based lookups       ✅ COMPATIBLE WITH NEW APPROACH
+└── Key parsing independence      ✅ REPUTATION SYSTEM IS CLEAN
+
+src/satellite/src/processors/username_availability.rs
+├── Full collection scan logic    ✅ ALREADY DEMONSTRATES NEW APPROACH
+├── Handle field checking         ✅ SHOWS users_handles PATTERN
+└── Performance comparison        ✅ TESTING IMPLEMENTATION READY
+```
+
+### **📊 UPDATED IMPACT STATISTICS**
+
+- **🆕 New Files to Create**: 4 files
+- **🔧 Backend Files to Modify**: 8 files
+- **📱 Frontend Files to Modify**: 16 files (**+7 newly discovered**)
+- **📚 Documentation to Update**: 9 files (**+2 newly discovered**)
+- **🧪 Test Files to Update**: 5+ files
+- **⚙️ Configuration Files**: 3 files
+- **🔄 Migration Scripts Needed**: 4 files
+- **🚀 Deployment Updates**: 2 files
+
+**📈 UPDATED TOTAL IMPACT: 50+ files across the entire system**
+
+### **🎯 CRITICAL FRONTEND COMPONENTS IMPACTED**
+
+The investigation revealed that **user handle references are deeply embedded** throughout the frontend:
+
+1. **Dashboard Components**: User search and selection logic
+2. **Profile Components**: Handle display and editing functionality  
+3. **Voting Components**: User identification and avatar generation
+4. **Layout Components**: User validation and navigation logic
+5. **Route Components**: Handle-based user lookup and validation
+
+### **🔍 KEY TECHNICAL FINDINGS**
+
+#### **✅ POSITIVE DISCOVERIES**
+- **Reputation System is Clean**: No handle extraction from keys in reputation calculations
+- **Existing Username Availability**: Already have scanning implementation for testing
+- **Clear Separation**: Frontend vs backend handle usage is well-defined
+- **Auto-Generated Files**: satellite_extension.did doesn't need manual editing
+
+#### **⚠️ CONCERNING DISCOVERIES**  
+- **Embedded Handle References**: user.data.user_handle used extensively across UI
+- **Avatar Generation**: Handle-based avatar naming throughout components
+- **Validation Dependencies**: Multiple components check for handle presence
+- **Search Functionality**: User search relies on handle field access
+
+### **🚀 IMPLEMENTATION STRATEGY RECOMMENDATION**
+
+Given the comprehensive scope analysis:
+
+#### **Option A: Full users_handles Implementation**
+**Effort**: Very High (50+ files)
+**Benefits**: 
+- ✅ Future-proof mutable usernames
+- ✅ Scalable architecture  
+- ✅ Clean separation of concerns
+- ✅ Long-term maintenance benefits
+
+**Risks**:
+- ❌ Massive scope affecting entire system
+- ❌ Complex migration with rollback challenges
+- ❌ Performance impact from two-step lookups
+- ❌ Extensive testing requirements
+
+#### **Option B: Simple Handle-in-Description Approach**
+**Effort**: Low (5-10 files)
+**Benefits**:
+- ✅ Quick implementation
+- ✅ Uses existing Juno filter capabilities
+- ✅ Minimal breaking changes
+- ✅ Easy rollback if needed
+
+**Risks**:
+- ❌ Still ties handles to document IDs
+- ❌ Limited long-term flexibility
+- ❌ Doesn't solve core mutability issue
+- ❌ Performance impact of description filtering
+
+### **💡 STRATEGIC RECOMMENDATION**
+
+**Go with Option A (Full users_handles Implementation)** because:
+
+1. **Scale of Changes is Similar**: Both approaches require significant frontend updates
+2. **Long-term Value**: Option A provides lasting architectural benefits
+3. **Current Testing**: We already have the scanning approach working
+4. **Future Requirements**: Username changes will eventually be needed
+5. **Technical Debt**: Option B creates technical debt we'll need to solve later
+
+### **🗺️ FINAL IMPLEMENTATION ROADMAP**
+
+#### **Phase 1: Foundation** (Week 1)
+- Implement users_handles collection and backend hooks
+- Create validation and query logic
+- Add TypeScript interfaces
+
+#### **Phase 2: Backend Migration** (Week 2)  
+- Update all key generation and validation
+- Remove hdl_ patterns from backend
+- Update all backend tests
+
+#### **Phase 3: Frontend Core** (Week 3)
+- Update document CRUD operations
+- Implement two-step user lookup  
+- Update username availability checking
+
+#### **Phase 4: Frontend Components** (Week 4)
+- Update all UI components with handle references
+- Update profile, dashboard, and voting components
+- Ensure avatar and display logic works
+
+#### **Phase 5: Migration & Testing** (Week 5)
+- Create and run migration scripts
+- Comprehensive testing across all components
+- Performance validation
+
+#### **Phase 6: Documentation & Deployment** (Week 6)
+- Update all documentation and examples
+- Coordinated deployment
+- Monitoring and verification
+
+This represents a **major architectural upgrade** that will provide **significant long-term benefits** for the system's scalability and user experience.

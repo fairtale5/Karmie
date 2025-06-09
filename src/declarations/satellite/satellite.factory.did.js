@@ -3,8 +3,9 @@
 
 // @ts-expect-error
 export const idlFactory = ({ IDL }) => {
-  const Result = IDL.Variant({ 'Ok' : IDL.Text, 'Err' : IDL.Text });
-  const Result_1 = IDL.Variant({ 'Ok' : IDL.Float64, 'Err' : IDL.Text });
+  const Result = IDL.Variant({ 'Ok' : IDL.Bool, 'Err' : IDL.Text });
+  const Result_1 = IDL.Variant({ 'Ok' : IDL.Text, 'Err' : IDL.Text });
+  const Result_2 = IDL.Variant({ 'Ok' : IDL.Float64, 'Err' : IDL.Text });
   const ReputationData = IDL.Record({
     'last_calculation' : IDL.Nat64,
     'reputation_basis' : IDL.Float64,
@@ -15,44 +16,44 @@ export const idlFactory = ({ IDL }) => {
     'reputation_total_effective' : IDL.Float64,
     'owner_ulid' : IDL.Text,
   });
-  const Result_2 = IDL.Variant({ 'Ok' : ReputationData, 'Err' : IDL.Text });
-  const Result_3 = IDL.Variant({ 'Ok' : IDL.Bool, 'Err' : IDL.Text });
+  const Result_3 = IDL.Variant({ 'Ok' : ReputationData, 'Err' : IDL.Text });
   return IDL.Service({
     'build_version' : IDL.Func([], [IDL.Text], ['query']),
+    'check_username_availability_scan' : IDL.Func([IDL.Text], [Result], []),
     'create_document_key_for_reputation' : IDL.Func(
-        [IDL.Text, IDL.Text],
-        [Result],
-        ['query'],
-      ),
-    'create_document_key_for_tag' : IDL.Func(
-        [IDL.Text, IDL.Text],
-        [Result],
-        ['query'],
-      ),
-    'create_document_key_for_user' : IDL.Func(
-        [IDL.Text, IDL.Text],
-        [Result],
-        ['query'],
-      ),
-    'create_document_key_for_vote' : IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Text],
-        [Result],
-        ['query'],
-      ),
-    'get_user_reputation' : IDL.Func(
         [IDL.Text, IDL.Text],
         [Result_1],
         ['query'],
       ),
-    'get_user_reputation_full' : IDL.Func(
+    'create_document_key_for_tag' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [Result_1],
+        ['query'],
+      ),
+    'create_document_key_for_user' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [Result_1],
+        ['query'],
+      ),
+    'create_document_key_for_vote' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text],
+        [Result_1],
+        ['query'],
+      ),
+    'get_user_reputation' : IDL.Func(
         [IDL.Text, IDL.Text],
         [Result_2],
         ['query'],
       ),
-    'recalculate_reputation' : IDL.Func([IDL.Text, IDL.Text], [Result_1], []),
-    'validate_document_key' : IDL.Func(
+    'get_user_reputation_full' : IDL.Func(
         [IDL.Text, IDL.Text],
         [Result_3],
+        ['query'],
+      ),
+    'recalculate_reputation' : IDL.Func([IDL.Text, IDL.Text], [Result_2], []),
+    'validate_document_key' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [Result],
         ['query'],
       ),
   });

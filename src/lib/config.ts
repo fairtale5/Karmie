@@ -1,5 +1,5 @@
 /**
- * Global configuration constants for the Reputator project.
+ * Global configuration constants
  *
  * This file centralizes shared URLs and other static configuration values
  * so they can be easily reused and updated in one place.

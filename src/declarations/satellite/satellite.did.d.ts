@@ -15,27 +15,31 @@ export interface ReputationData {
   'reputation_total_effective' : number,
   'owner_ulid' : string,
 }
-export type Result = { 'Ok' : string } |
+export type Result = { 'Ok' : boolean } |
   { 'Err' : string };
-export type Result_1 = { 'Ok' : number } |
+export type Result_1 = { 'Ok' : string } |
   { 'Err' : string };
-export type Result_2 = { 'Ok' : ReputationData } |
+export type Result_2 = { 'Ok' : number } |
   { 'Err' : string };
-export type Result_3 = { 'Ok' : boolean } |
+export type Result_3 = { 'Ok' : ReputationData } |
   { 'Err' : string };
 export interface _SERVICE {
   'build_version' : ActorMethod<[], string>,
-  'create_document_key_for_reputation' : ActorMethod<[string, string], Result>,
-  'create_document_key_for_tag' : ActorMethod<[string, string], Result>,
-  'create_document_key_for_user' : ActorMethod<[string, string], Result>,
+  'check_username_availability_scan' : ActorMethod<[string], Result>,
+  'create_document_key_for_reputation' : ActorMethod<
+    [string, string],
+    Result_1
+  >,
+  'create_document_key_for_tag' : ActorMethod<[string, string], Result_1>,
+  'create_document_key_for_user' : ActorMethod<[string, string], Result_1>,
   'create_document_key_for_vote' : ActorMethod<
     [string, string, string],
-    Result
+    Result_1
   >,
-  'get_user_reputation' : ActorMethod<[string, string], Result_1>,
-  'get_user_reputation_full' : ActorMethod<[string, string], Result_2>,
-  'recalculate_reputation' : ActorMethod<[string, string], Result_1>,
-  'validate_document_key' : ActorMethod<[string, string], Result_3>,
+  'get_user_reputation' : ActorMethod<[string, string], Result_2>,
+  'get_user_reputation_full' : ActorMethod<[string, string], Result_3>,
+  'recalculate_reputation' : ActorMethod<[string, string], Result_2>,
+  'validate_document_key' : ActorMethod<[string, string], Result>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

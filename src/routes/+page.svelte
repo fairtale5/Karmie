@@ -142,10 +142,10 @@
 
 <section class="section flex flex-col items-center justify-center min-h-[60vh] py-12 space-y-8">
 	<div class="container max-w-2xl mx-auto text-center space-y-6">
-		<h1 class="preset-typo-title text-5xl font-bold mb-2">Reputator dApp</h1>
+		<h1 class="preset-typo-title text-5xl font-bold mb-2">Karmie dApp</h1>
 		<h2 class="preset-typo-title text-2xl text-secondary-500 mb-4">Decentralized On-chain Reputation System</h2>
 		<p class="preset-typo-body-1 text-lg mb-6">
-			Reputator is a tool to track reputations across any app, store, community, or game. Any dev can integrate it easily into their app with just a few API calls. Everything is handled on-chain, so not even the owners of those apps can adulterate or censor any votes. It gives true transparency and power to users.
+			Karmie is a tool to track reputations across any app, store, community, or game. Any dev can integrate it easily into their app with just a few API calls. Everything is handled on-chain, so not even the owners of those apps can adulterate or censor any votes. It gives true transparency and power to users.
 		</p>
 		{#if !user}
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-xl mx-auto mt-4">

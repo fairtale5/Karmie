@@ -1,7 +1,7 @@
 #!/bin/bash
 # Script to force clean the project and remove all build artifacts
 
-echo "Force cleaning Reputator project..."
+echo "Force cleaning project..."
 
 # Remove Node.js related files and folders
 echo "Removing Node.js artifacts..."

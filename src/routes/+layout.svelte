@@ -152,7 +152,7 @@
 	$: {
 		// Simple fallback - pages should handle their own titles
 		if (!$pageStore.title) {
-			setPageMeta({ title: 'Reputator' });
+			setPageMeta({ title: 'Karmie' });
 		}
 	}
 	$: meta = $pageStore;
@@ -166,7 +166,7 @@ HOW: This executes before the page renders, preventing theme flash
 - Fallback to system preference if no saved theme exists
 -->
 <svelte:head>
-	<title>{meta.title ? `${meta.title} | Reputator` : 'Reputator'}</title>
+	<title>{meta.title ? `${meta.title} | Karmie` : 'Karmie'}</title>
 	{#if meta.description}
 		<meta name="description" content={meta.description} />
 	{/if}
@@ -187,6 +187,6 @@ HOW: This executes before the page renders, preventing theme flash
 <!-- Global Skeleton Toaster for toast notifications -->
 <Toaster {toaster} />
 
-<AppShell title="Reputator">
+<AppShell title="Karmie">
 	<slot />
 </AppShell>

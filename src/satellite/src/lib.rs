@@ -212,6 +212,9 @@ use crate::core::{
     calculate_and_store_vote_weight,
 };
 
+// Import username availability checker
+use crate::processors::username_availability::check_username_availability_v2;
+
 // =============================================================================
 // Module Declarations
 // =============================================================================
@@ -648,6 +651,27 @@ pub async fn recalculate_reputation(user_key: String, tag_key: String) -> Result
     );
     
     Ok(reputation_data.reputation_total_effective)
+}
+
+/// Username availability check using full collection scan approach
+/// 
+/// This endpoint demonstrates the new approach to username availability checking
+/// by filtering documents by their data.user_handle field instead of using key patterns.
+/// 
+/// **Performance Testing**: Use this endpoint to compare performance against the
+/// current handle-in-key approach in your frontend implementations.
+/// 
+/// **Note**: This is a query function for optimal performance. Logs from this function
+/// won't appear in Juno logs report since query functions run in a sandboxed environment.
+/// 
+/// # Arguments
+/// * `username` - The username to check for availability
+/// 
+/// # Returns
+/// * `Result<bool, String>` - Returns true if available, false if taken
+#[query]
+pub async fn check_username_availability_scan(username: String) -> Result<bool, String> {
+    check_username_availability_v2(username).await
 }
 
 /// Creates a document key using the new ULID-based format

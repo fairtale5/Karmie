@@ -1,4 +1,4 @@
-# Reputator
+# Karmie
 
 A decentralized reputation system built on the Internet Computer using Juno and SvelteKit.
 

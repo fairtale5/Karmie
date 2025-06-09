@@ -13,7 +13,15 @@ export const buildVersion = async (): Promise<string> => {
 	return await build_version();
 }
 
-export const createDocumentKeyForReputation = async (value0: string, value1: string): Promise<Result> => {
+export const checkUsernameAvailabilityScan = async (value0: string): Promise<Result> => {
+	const {check_username_availability_scan} = await getSatelliteExtendedActor<SatelliteActor>({
+		idlFactory
+	});
+
+	return await check_username_availability_scan(value0);
+}
+
+export const createDocumentKeyForReputation = async (value0: string, value1: string): Promise<Result_1> => {
 	const {create_document_key_for_reputation} = await getSatelliteExtendedActor<SatelliteActor>({
 		idlFactory
 	});
@@ -21,7 +29,7 @@ export const createDocumentKeyForReputation = async (value0: string, value1: str
 	return await create_document_key_for_reputation(value0, value1);
 }
 
-export const createDocumentKeyForTag = async (value0: string, value1: string): Promise<Result> => {
+export const createDocumentKeyForTag = async (value0: string, value1: string): Promise<Result_1> => {
 	const {create_document_key_for_tag} = await getSatelliteExtendedActor<SatelliteActor>({
 		idlFactory
 	});
@@ -29,7 +37,7 @@ export const createDocumentKeyForTag = async (value0: string, value1: string): P
 	return await create_document_key_for_tag(value0, value1);
 }
 
-export const createDocumentKeyForUser = async (value0: string, value1: string): Promise<Result> => {
+export const createDocumentKeyForUser = async (value0: string, value1: string): Promise<Result_1> => {
 	const {create_document_key_for_user} = await getSatelliteExtendedActor<SatelliteActor>({
 		idlFactory
 	});
@@ -37,7 +45,7 @@ export const createDocumentKeyForUser = async (value0: string, value1: string): 
 	return await create_document_key_for_user(value0, value1);
 }
 
-export const createDocumentKeyForVote = async (value0: string, value1: string, value2: string): Promise<Result> => {
+export const createDocumentKeyForVote = async (value0: string, value1: string, value2: string): Promise<Result_1> => {
 	const {create_document_key_for_vote} = await getSatelliteExtendedActor<SatelliteActor>({
 		idlFactory
 	});
@@ -45,7 +53,7 @@ export const createDocumentKeyForVote = async (value0: string, value1: string, v
 	return await create_document_key_for_vote(value0, value1, value2);
 }
 
-export const getUserReputation = async (value0: string, value1: string): Promise<Result_1> => {
+export const getUserReputation = async (value0: string, value1: string): Promise<Result_2> => {
 	const {get_user_reputation} = await getSatelliteExtendedActor<SatelliteActor>({
 		idlFactory
 	});
@@ -53,7 +61,7 @@ export const getUserReputation = async (value0: string, value1: string): Promise
 	return await get_user_reputation(value0, value1);
 }
 
-export const getUserReputationFull = async (value0: string, value1: string): Promise<Result_2> => {
+export const getUserReputationFull = async (value0: string, value1: string): Promise<Result_3> => {
 	const {get_user_reputation_full} = await getSatelliteExtendedActor<SatelliteActor>({
 		idlFactory
 	});
@@ -61,7 +69,7 @@ export const getUserReputationFull = async (value0: string, value1: string): Pro
 	return await get_user_reputation_full(value0, value1);
 }
 
-export const recalculateReputation = async (value0: string, value1: string): Promise<Result_1> => {
+export const recalculateReputation = async (value0: string, value1: string): Promise<Result_2> => {
 	const {recalculate_reputation} = await getSatelliteExtendedActor<SatelliteActor>({
 		idlFactory
 	});
@@ -69,7 +77,7 @@ export const recalculateReputation = async (value0: string, value1: string): Pro
 	return await recalculate_reputation(value0, value1);
 }
 
-export const validateDocumentKey = async (value0: string, value1: string): Promise<Result_3> => {
+export const validateDocumentKey = async (value0: string, value1: string): Promise<Result> => {
 	const {validate_document_key} = await getSatelliteExtendedActor<SatelliteActor>({
 		idlFactory
 	});
