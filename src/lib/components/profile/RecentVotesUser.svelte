@@ -11,6 +11,8 @@
     import { Expand, Activity, X } from 'lucide-svelte';
     // Import dummy data for demo user
     import { dummyProfileData } from '$lib/data/dummyProfileData';
+    // Import BaseCard component
+    import BaseCard from '$lib/components/common/BaseCard.svelte';
 
     // --- Component Interface Definition ---
     // These props define the component's external interface and data requirements
@@ -179,7 +181,7 @@
 </script>
 
 <!-- --- Component Template --- -->
-<div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
+<BaseCard>
     <!-- Header Section -->
     <div class="flex justify-between items-center mb-4">
         <div class="flex items-center gap-2">
@@ -312,4 +314,4 @@
             <p class="text-center opacity-70">No recent votes to display for this user.</p>
         {/if}
     </div>
-</div> 
+</BaseCard> 
