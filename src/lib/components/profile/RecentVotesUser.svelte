@@ -257,7 +257,7 @@
                             <tr>
                                 <th>From</th>
                                 <th>To</th>
-                                <th class="text-right">Value</th>
+                                <th class="text-right flex justify-end">Value</th>
                             </tr>
                         </thead>
                         <tbody class="[&>tr]:hover:preset-tonal-primary">
@@ -302,8 +302,8 @@
                                     {/if}
                                 </td>
                                 <td class="text-right">
-                                    <span class="badge preset-filled-{(vote.data.value ?? 0) > 0 ? 'success' : 'error'}-500">
-                                        {(vote.data.value ?? 0) > 0 ? '+1' : '-1'}
+                                    <span class="badge preset-filled-{(vote.data.value ?? 0) > 0 ? 'success' : 'error'}-500 w-6">
+                                        {(vote.data.value ?? 0) > 0 ? '+' : '-'}
                                     </span>
                                 </td>
                             </tr>
