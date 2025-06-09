@@ -8,11 +8,9 @@
     // Import query helper
     import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
     // Import Avatar component
-    import { Avatar } from '@skeletonlabs/skeleton-svelte';
+    import { Avatar, Popover } from '@skeletonlabs/skeleton-svelte';
     // Import icons
-    import { Expand, CirclePlus, CircleMinus } from 'lucide-svelte';
-    // Import goto for navigation
-    import { goto } from '$app/navigation';
+    import { Expand, CirclePlus, CircleMinus, X } from 'lucide-svelte';
 
     // --- Preview Data Constants ---
     const PREVIEW_TAG_KEY = '___PREVIEW_DATA___';
@@ -55,7 +53,8 @@
             data: {
                 user_handle: 'alice',
                 user_ulid: 'demo_user_1',
-                avatar_url: null
+                display_name: 'Alice Demo',
+                avatar_url: ''
             }
         }],
         ['demo_user_2', {
@@ -63,7 +62,8 @@
             data: {
                 user_handle: 'bob',
                 user_ulid: 'demo_user_2',
-                avatar_url: null
+                display_name: 'Bob Demo',
+                avatar_url: ''
             }
         }],
         ['demo_user_3', {
@@ -71,7 +71,8 @@
             data: {
                 user_handle: 'carol',
                 user_ulid: 'demo_user_3',
-                avatar_url: null
+                display_name: 'Carol Demo',
+                avatar_url: ''
             }
         }]
     ]);
@@ -90,6 +91,14 @@
     let loading = $state(true);                         // Loading state flag for UI feedback
     let error = $state<string | null>(null);            // Error state container
     let userData = $state<Map<string, UserDocument>>(new Map());  // Cache for user documents
+
+    // Popover state for expand icon
+    let expandPopoverOpen = $state(false);
+
+    // Helper function to close expand popover
+    function closeExpandPopover() {
+        expandPopoverOpen = false;
+    }
 
     // Helper function to get user initials from handle
     function getInitials(handle: string): string {
@@ -223,9 +232,30 @@
     <!-- Header Section -->
     <div class="flex justify-between items-center mb-4">
         <h2 class="text-lg font-bold {((!selectedTag) ? 'opacity-50' : '')}">Recent Votes</h2>
-        <button type="button" class="chip-icon preset-tonal-surface" onclick={() => goto(`/tags/${selectedTag?.key}/votes`)} disabled={!selectedTag || selectedTag?.key === PREVIEW_TAG_KEY || loading || (selectedTag && Boolean(selectedTag) && loading && votes.length === 0)} title="See More Votes">
-            <Expand size={16} />
-        </button>
+        <Popover
+            open={expandPopoverOpen}
+            onOpenChange={(e) => (expandPopoverOpen = e.open)}
+            positioning={{ placement: 'top', flip: true }}
+            triggerBase="chip-icon preset-tonal-surface"
+            contentBase="card bg-surface-200-800 p-4 space-y-4 max-w-[320px]"
+            arrow
+            arrowBackground="!bg-surface-200 dark:!bg-surface-800"
+        >
+            {#snippet trigger()}
+                <Expand size={16} />
+            {/snippet}
+            {#snippet content()}
+                <header class="flex justify-between">
+                    <p class="font-bold">See More Votes</p>
+                    <button class="btn-icon hover:preset-tonal" onclick={closeExpandPopover}><X class="w-4 h-4" /></button>
+                </header>
+                <article>
+                    <p class="opacity-60">
+                        This feature isn't available yet. In the future, you'll be able to view a comprehensive list of all votes for this tag, with advanced filtering, search, and sorting capabilities.
+                    </p>
+                </article>
+            {/snippet}
+        </Popover>
     </div>
 
     <!-- Content Section -->

@@ -6,6 +6,7 @@ alwaysApply: false
 Example of what a good commit looks like:
 Avoid filler words and lawyer-talk. Avoid words like "enhanced" (say updated).
 
+````
 type(scope): concise summary of changes
 
 Overview:
@@ -26,3 +27,6 @@ Files changed:
   - Any relevant implementation details
 
 [Optional] Additional context or notes about the changes, especially if they affect other parts of the system or have important implications.
+````
+
+please no filler words, and no weird shit like "refactor". we build. we replace, we add features. we dont "improve" or "enhance the user experience". we dont make assumptions, we let the usrs decide. we report what we built and what we changed. at the end we can add something explaining our expected outcomes, in the outro, but dont open with it. 

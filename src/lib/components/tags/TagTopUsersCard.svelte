@@ -1,7 +1,6 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
-  import { Expand, UserRoundPen } from 'lucide-svelte';
-  import { Avatar } from '@skeletonlabs/skeleton-svelte';
+  import { Expand, UserRoundPen, X } from 'lucide-svelte';
+  import { Avatar, Popover } from '@skeletonlabs/skeleton-svelte';
   import BaseCard from '$lib/components/common/BaseCard.svelte';
   import type { TagDocument } from '$lib/types';
 
@@ -16,6 +15,14 @@
     loading?: boolean;
     isPreview?: boolean;
   } = $props();
+
+  // Popover state for expand icon
+  let expandPopoverOpen = $state(false);
+
+  // Helper function to close expand popover
+  function closeExpandPopover() {
+    expandPopoverOpen = false;
+  }
 </script>
 
 <BaseCard>
@@ -25,15 +32,30 @@
   
   {#snippet actions()}
     {#if tag && !isPreview}
-      <button 
-        type="button" 
-        class="chip-icon preset-tonal-surface" 
-        onclick={() => goto(`/tag/${tag?.data.tag_handle}/users`)} 
-        disabled={loading || topUsers.length === 0} 
-        title="See More Users"
+      <Popover
+        open={expandPopoverOpen}
+        onOpenChange={(e) => (expandPopoverOpen = e.open)}
+        positioning={{ placement: 'top', flip: true }}
+        triggerBase="chip-icon preset-tonal-surface"
+        contentBase="card bg-surface-200-800 p-4 space-y-4 max-w-[320px]"
+        arrow
+        arrowBackground="!bg-surface-200 dark:!bg-surface-800"
       >
-        <Expand size={16} />
-      </button>
+        {#snippet trigger()}
+          <Expand size={16} />
+        {/snippet}
+        {#snippet content()}
+          <header class="flex justify-between">
+            <p class="font-bold">See More Users</p>
+            <button class="btn-icon hover:preset-tonal" onclick={closeExpandPopover}><X class="w-4 h-4" /></button>
+          </header>
+          <article>
+            <p class="opacity-60">
+              This feature isn't available yet. In the future, you'll be able to view a comprehensive list of all users in this tag, with their reputation scores, rankings, and activity metrics.
+            </p>
+          </article>
+        {/snippet}
+      </Popover>
     {/if}
   {/snippet}
   

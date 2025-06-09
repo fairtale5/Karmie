@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
-  import { Expand } from 'lucide-svelte';
+  import { Expand, X } from 'lucide-svelte';
   import BaseCard from '$lib/components/common/BaseCard.svelte';
   import type { TagDocument } from '$lib/types';
+  import { Popover } from '@skeletonlabs/skeleton-svelte';
 
   const { 
     tag, 
@@ -13,6 +13,14 @@
     loading?: boolean;
     isPreview?: boolean;
   } = $props();
+
+  // Popover state for expand icon
+  let expandPopoverOpen = $state(false);
+
+  // Helper function to close expand popover
+  function closeExpandPopover() {
+    expandPopoverOpen = false;
+  }
 </script>
 
 <BaseCard underConstruction={true} classes="2xl:col-span-1 lg:col-span-2">
@@ -22,15 +30,30 @@
   
   {#snippet actions()}
     {#if tag && !isPreview}
-      <button 
-        type="button" 
-        class="chip-icon preset-tonal-surface" 
-        onclick={() => goto(`/tag/${tag?.data.tag_handle}/graph`)} 
-        disabled={loading} 
-        title="View Full Graph"
+      <Popover
+        open={expandPopoverOpen}
+        onOpenChange={(e) => (expandPopoverOpen = e.open)}
+        positioning={{ placement: 'top', flip: true }}
+        triggerBase="chip-icon preset-tonal-surface"
+        contentBase="card bg-surface-200-800 p-4 space-y-4 max-w-[320px]"
+        arrow
+        arrowBackground="!bg-surface-200 dark:!bg-surface-800"
       >
-        <Expand size={16} />
-      </button>
+        {#snippet trigger()}
+          <Expand size={16} />
+        {/snippet}
+        {#snippet content()}
+          <header class="flex justify-between">
+            <p class="font-bold">Graph View</p>
+            <button class="btn-icon hover:preset-tonal" onclick={closeExpandPopover}><X class="w-4 h-4" /></button>
+          </header>
+          <article>
+            <p class="opacity-60">
+              This feature isn't available yet. In the future, you'll be able to view an interactive network visualization showing reputation relationships, vote flows, and community connections within this tag.
+            </p>
+          </article>
+        {/snippet}
+      </Popover>
     {/if}
   {/snippet}
   
