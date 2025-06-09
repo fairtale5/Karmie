@@ -13,10 +13,6 @@
 </script>
 
 <BaseCard classes="h-[412px]">
-  {#snippet header()}
-    <h2 class="text-lg font-bold">Tag Details</h2>
-  {/snippet}
-  
   {#snippet children()}
     <div class="h-full flex flex-col">
       <Tabs value={activeTab} onValueChange={async (e) => { activeTab = e.value; await tick();}}>
@@ -31,7 +27,7 @@
           </Tabs.Control>
         {/snippet}
         {#snippet content()}
-<div class="h-[300px] overflow-y-auto">
+<div class="h-[312px] overflow-y-auto">
             <Tabs.Panel value="about">
               {#if loading}
                 <div class="placeholder animate-pulse w-full h-24 rounded"></div>
