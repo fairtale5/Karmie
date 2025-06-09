@@ -9,8 +9,8 @@
     import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
     // Import Avatar component
     import { Avatar } from '@skeletonlabs/skeleton-svelte';
-    // Import Expand icon
-    import { Expand } from 'lucide-svelte';
+    // Import icons
+    import { Expand, CirclePlus, CircleMinus } from 'lucide-svelte';
     // Import goto for navigation
     import { goto } from '$app/navigation';
 
@@ -174,7 +174,7 @@
                     <tr>
                         <th>From</th>
                         <th>To</th>
-                        <th class="text-right">Value</th>
+                        <th class="text-right flex justify-end">Value</th>
                     </tr>
                 </thead>
                 <tbody class="[&>tr]:hover:preset-tonal-primary">
@@ -219,8 +219,12 @@
                                 {/if}
                             </td>
                             <td class="text-right">
-                                <span class="badge preset-filled-{(vote.data.value ?? 0) > 0 ? 'success' : 'error'}-500">
-                                    {(vote.data.value ?? 0) > 0 ? '+1' : '-1'}
+                                <span class="chip-icon preset-filled-{(vote.data.value ?? 0) > 0 ? 'success' : 'error'}-500 w-5 h-5">
+                                    {#if (vote.data.value ?? 0) > 0}
+                                        <CirclePlus size={19} />
+                                    {:else}
+                                        <CircleMinus size={19} />
+                                    {/if}
                                 </span>
                             </td>
                         </tr>

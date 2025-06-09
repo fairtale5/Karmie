@@ -8,7 +8,7 @@
     // Import Avatar component
     import { Avatar, Popover } from '@skeletonlabs/skeleton-svelte';
     // Import icons
-    import { Expand, Activity, X } from 'lucide-svelte';
+    import { Expand, Activity, X, CirclePlus, CircleMinus } from 'lucide-svelte';
     // Import dummy data for demo user
     import { dummyProfileData } from '$lib/data/dummyProfileData';
     // Import BaseCard component
@@ -203,8 +203,12 @@
         </div>
         <!-- Value filters (closer spacing) -->
         <div class="flex gap-1">
-            <button type="button" class="chip text-xs px-2 py-0.5 w-6 {showPositive ? 'preset-filled-success-500' : 'preset-tonal-surface'}" onclick={() => showPositive = !showPositive}>+</button>
-            <button type="button" class="chip text-xs px-2 py-0.5 w-6 {showNegative ? 'preset-filled-error-500' : 'preset-tonal-surface'}" onclick={() => showNegative = !showNegative}>-</button>
+            <button type="button" class="chip text-xs px-1 py-0.5 w-6 flex justify-center items-center {showPositive ? 'preset-filled-success-500' : 'preset-tonal-surface'}" onclick={() => showPositive = !showPositive}>
+                <CirclePlus size={14} />
+            </button>
+            <button type="button" class="chip text-xs px-1 py-0.5 w-6 flex justify-center items-center {showNegative ? 'preset-filled-error-500' : 'preset-tonal-surface'}" onclick={() => showNegative = !showNegative}>
+                <CircleMinus size={14} />
+            </button>
         </div>
     </div>
     <!-- Expand Icon with Popover -->
@@ -302,8 +306,12 @@
                                     {/if}
                                 </td>
                                 <td class="text-right">
-                                    <span class="badge preset-filled-{(vote.data.value ?? 0) > 0 ? 'success' : 'error'}-500 w-6">
-                                        {(vote.data.value ?? 0) > 0 ? '+' : '-'}
+                                    <span class="chip-icon preset-filled-{(vote.data.value ?? 0) > 0 ? 'success' : 'error'}-500 w-5 h-5">
+                                        {#if (vote.data.value ?? 0) > 0}
+                                            <CirclePlus size={19} />
+                                        {:else}
+                                            <CircleMinus size={19} />
+                                        {/if}
                                     </span>
                                 </td>
                             </tr>
