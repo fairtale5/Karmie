@@ -16,6 +16,65 @@
 
     // --- Preview Data Constants ---
     const PREVIEW_TAG_KEY = '___PREVIEW_DATA___';
+    
+    // Preview votes data
+    const previewVotes = [
+        {
+            key: 'preview_vote_1',
+            data: {
+                owner_ulid: 'demo_user_1',
+                target_ulid: 'demo_user_2',
+                value: 1,
+                tag_ulid: PREVIEW_TAG_KEY
+            }
+        },
+        {
+            key: 'preview_vote_2',
+            data: {
+                owner_ulid: 'demo_user_3',
+                target_ulid: 'demo_user_1',
+                value: -1,
+                tag_ulid: PREVIEW_TAG_KEY
+            }
+        },
+        {
+            key: 'preview_vote_3',
+            data: {
+                owner_ulid: 'demo_user_2',
+                target_ulid: 'demo_user_3',
+                value: 1,
+                tag_ulid: PREVIEW_TAG_KEY
+            }
+        }
+    ];
+
+    // Preview user data
+    const previewUserData = new Map([
+        ['demo_user_1', {
+            key: 'usr_demo_user_1',
+            data: {
+                user_handle: 'alice',
+                user_ulid: 'demo_user_1',
+                avatar_url: null
+            }
+        }],
+        ['demo_user_2', {
+            key: 'usr_demo_user_2',
+            data: {
+                user_handle: 'bob',
+                user_ulid: 'demo_user_2',
+                avatar_url: null
+            }
+        }],
+        ['demo_user_3', {
+            key: 'usr_demo_user_3',
+            data: {
+                user_handle: 'carol',
+                user_ulid: 'demo_user_3',
+                avatar_url: null
+            }
+        }]
+    ]);
 
     // --- Component Interface Definition ---
     // These props define the component's external interface and data requirements
@@ -138,9 +197,23 @@
 
     // --- Reactive Data Flow ---
     $effect(() => {
+        // Handle preview mode
+        if (selectedTag?.key === PREVIEW_TAG_KEY) {
+            loading = false;
+            error = null;
+            votes = previewVotes as VoteDocument[];
+            userData = previewUserData;
+            return;
+        }
+        
         // Only fetch if we have a valid tag with a tag_ulid
         if (selectedTag?.data?.tag_ulid) {
             fetchRecentVotes();
+        } else {
+            // Clear data if no valid tag
+            loading = false;
+            votes = [];
+            userData.clear();
         }
     });
 </script>
