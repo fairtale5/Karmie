@@ -11,15 +11,22 @@ interface Reputation {
   progress: number;
 }
 
-export let reputations: Reputation[];
+const { reputations } = $props<{ reputations: Reputation[] }>();
 </script>
 
-<BaseCard>
-  <div class="flex items-center gap-2 mb-4">
-    <Orbit class="text-primary-500" size={20} />
-    <h2 class="text-xl font-bold">Active In</h2>
-  </div>
+<BaseCard 
+  underConstruction={true}
+  header={headerSnippet}
+  children={contentSnippet}
+>
+</BaseCard>
 
+{#snippet headerSnippet()}
+  <Orbit class="text-primary-500" size={20} />
+  <h2 class="text-xl font-bold">Active In</h2>
+{/snippet}
+
+{#snippet contentSnippet()}
   <div class="space-y-4">
     {#each reputations as rep}
       <div class="p-4 bg-surface-200-800 rounded-lg">
@@ -47,4 +54,4 @@ export let reputations: Reputation[];
       </div>
     {/each}
   </div>
-</BaseCard> 
+{/snippet} 

@@ -10,15 +10,22 @@ interface Community {
   progress: number;
 }
 
-export let communities: Community[];
+const { communities } = $props<{ communities: Community[] }>();
 </script>
 
-<BaseCard>
-  <div class="flex items-center gap-2 mb-4">
-    <Shield class="text-primary-500" size={20} />
-    <h2 class="text-xl font-bold">Trusted In</h2>
-  </div>
+<BaseCard 
+  underConstruction={true}
+  header={headerSnippet}
+  children={contentSnippet}
+>
+</BaseCard>
 
+{#snippet headerSnippet()}
+  <Shield class="text-primary-500" size={20} />
+  <h2 class="text-xl font-bold">Trusted In</h2>
+{/snippet}
+
+{#snippet contentSnippet()}
   <div class="space-y-4">
     {#each communities as community}
       <div class="flex items-center justify-between">
@@ -38,4 +45,4 @@ export let communities: Community[];
       </div>
     {/each}
   </div>
-</BaseCard> 
+{/snippet} 

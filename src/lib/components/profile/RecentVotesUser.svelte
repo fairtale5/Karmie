@@ -181,55 +181,60 @@
 </script>
 
 <!-- --- Component Template --- -->
-<BaseCard>
-    <!-- Header Section -->
-    <div class="flex justify-between items-center mb-4">
-        <div class="flex items-center gap-2">
-            <Activity class="text-primary-500" size={20} />
-            <h2 class="text-lg font-bold">Recent Votes</h2>
+    <BaseCard 
+        header={headerSnippet}
+        actions={actionsSnippet}
+        children={contentSnippet}
+    >
+    </BaseCard>
+
+{#snippet headerSnippet()}
+    <Activity class="text-primary-500" size={20} />
+    <h2 class="text-lg font-bold">Recent Votes</h2>
+{/snippet}
+
+{#snippet actionsSnippet()}
+    <!-- Filter Controls -->
+    <div class="flex gap-2">
+        <!-- Direction filters (closer spacing) -->
+        <div class="flex gap-1">
+            <button type="button" class="chip text-xs px-2 py-0.5 w-8 {showIncoming ? 'preset-filled-secondary-500' : 'preset-tonal-surface'}" onclick={() => showIncoming = !showIncoming}>In</button>
+            <button type="button" class="chip text-xs px-2 py-0.5 w-8 {showOutgoing ? 'preset-filled-tertiary-500' : 'preset-tonal-surface'}" onclick={() => showOutgoing = !showOutgoing}>Out</button>
         </div>
-        <div class="flex items-center gap-2">
-            <!-- Filter Controls -->
-            <div class="flex gap-2">
-                <!-- Direction filters (closer spacing) -->
-                <div class="flex gap-1">
-                    <button type="button" class="chip text-xs px-2 py-0.5 w-8 {showIncoming ? 'preset-filled-secondary-500' : 'preset-tonal-surface'}" onclick={() => showIncoming = !showIncoming}>In</button>
-                    <button type="button" class="chip text-xs px-2 py-0.5 w-8 {showOutgoing ? 'preset-filled-tertiary-500' : 'preset-tonal-surface'}" onclick={() => showOutgoing = !showOutgoing}>Out</button>
-                </div>
-                <!-- Value filters (closer spacing) -->
-                <div class="flex gap-1">
-                    <button type="button" class="chip text-xs px-2 py-0.5 w-6 {showPositive ? 'preset-filled-success-500' : 'preset-tonal-surface'}" onclick={() => showPositive = !showPositive}>+</button>
-                    <button type="button" class="chip text-xs px-2 py-0.5 w-6 {showNegative ? 'preset-filled-error-500' : 'preset-tonal-surface'}" onclick={() => showNegative = !showNegative}>-</button>
-                </div>
-            </div>
-            <!-- Expand Icon with Popover -->
-            <Popover
-                open={expandPopoverOpen}
-                onOpenChange={(e) => (expandPopoverOpen = e.open)}
-                positioning={{ placement: 'top', flip: true }}
-                triggerBase="chip-icon preset-tonal-surface"
-                contentBase="card bg-surface-200-800 p-4 space-y-4 max-w-[320px]"
-                arrow
-                arrowBackground="!bg-surface-200 dark:!bg-surface-800"
-            >
-                {#snippet trigger()}
-                    <Expand size={16} />
-                {/snippet}
-                {#snippet content()}
-                    <header class="flex justify-between">
-                        <p class="font-bold">See More Votes</p>
-                        <button class="btn-icon hover:preset-tonal" onclick={closeExpandPopover}><X class="w-4 h-4" /></button>
-                    </header>
-                    <article>
-                        <p class="opacity-60">
-                            This feature isn't available yet. In the future, you'll be able to view a comprehensive list of all votes for this user, with advanced filtering, search, and sorting capabilities.
-                        </p>
-                    </article>
-                {/snippet}
-            </Popover>
+        <!-- Value filters (closer spacing) -->
+        <div class="flex gap-1">
+            <button type="button" class="chip text-xs px-2 py-0.5 w-6 {showPositive ? 'preset-filled-success-500' : 'preset-tonal-surface'}" onclick={() => showPositive = !showPositive}>+</button>
+            <button type="button" class="chip text-xs px-2 py-0.5 w-6 {showNegative ? 'preset-filled-error-500' : 'preset-tonal-surface'}" onclick={() => showNegative = !showNegative}>-</button>
         </div>
     </div>
+    <!-- Expand Icon with Popover -->
+    <Popover
+        open={expandPopoverOpen}
+        onOpenChange={(e) => (expandPopoverOpen = e.open)}
+        positioning={{ placement: 'top', flip: true }}
+        triggerBase="chip-icon preset-tonal-surface"
+        contentBase="card bg-surface-200-800 p-4 space-y-4 max-w-[320px]"
+        arrow
+        arrowBackground="!bg-surface-200 dark:!bg-surface-800"
+    >
+        {#snippet trigger()}
+            <Expand size={16} />
+        {/snippet}
+        {#snippet content()}
+            <header class="flex justify-between">
+                <p class="font-bold">See More Votes</p>
+                <button class="btn-icon hover:preset-tonal" onclick={closeExpandPopover}><X class="w-4 h-4" /></button>
+            </header>
+            <article>
+                <p class="opacity-60">
+                    This feature isn't available yet. In the future, you'll be able to view a comprehensive list of all votes for this user, with advanced filtering, search, and sorting capabilities.
+                </p>
+            </article>
+        {/snippet}
+    </Popover>
+{/snippet}
 
+{#snippet contentSnippet()}
     <!-- Content Section -->
     <div class="max-h-64 overflow-y-auto">
         {#if loading}
@@ -314,4 +319,4 @@
             <p class="text-center opacity-70">No recent votes to display for this user.</p>
         {/if}
     </div>
-</BaseCard> 
+{/snippet} 
