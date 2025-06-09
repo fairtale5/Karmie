@@ -25,8 +25,8 @@ function closeExpandPopover() {
 }
 </script>
 
-<BaseCard>
-  <div class="flex justify-between items-center mb-4">
+<BaseCard underConstruction={true}>
+  <div class="flex justify-between items-start mb-4">
     <div class="flex items-center gap-2">
       <Star class="text-primary-500" size={20} />
       <h2 class="text-xl font-bold">Recent Reviews</h2>
