@@ -6,10 +6,10 @@
 </script>
 
 <div class={`card shadow bg-surface-100-900 border border-surface-200-800 p-4 ${underConstruction ? 'preset-outlined-error-500' : ''} ${classes}`}>
-  <div class="flex flex-col mb-4">
+  <div class="flex flex-col">
     <slot />
     {#if underConstruction}
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 mt-4">
         <button
           class="chip-icon preset-tonal-surface"
           title="Under Construction"
