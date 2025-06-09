@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Plus, Mail, BarChart, Vote, LoaderCircle, CheckCircle, XCircle, ThumbsUp, ThumbsDown } from 'lucide-svelte';
+  import { Plus, Share2, BarChart, Vote, LoaderCircle, CheckCircle, XCircle, ThumbsUp, ThumbsDown, X } from 'lucide-svelte';
   import { slide } from 'svelte/transition';
   import { fade } from 'svelte/transition';
   import { listDocs } from '@junobuild/core';
@@ -9,17 +9,21 @@
   import { createVoteDoc } from '$lib/docs-crud/vote_create';
   import { toaster } from '$lib/skeletonui/toaster-skeleton';
   import { authUserDoc } from '$lib/stores/authUserDoc';
+  import { Popover } from '@skeletonlabs/skeleton-svelte';
   import { isValid } from 'ulid';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
 
   // Props
-  export let selectedTag: TagDocument | null = null;
+  let { selectedTag = $bindable(null) } = $props<{
+    selectedTag?: TagDocument | null;
+  }>();
 
   // Quick action buttons configuration
   const quickActions = [
     { name: 'Vote', icon: Vote },
     { name: 'Create Tag', icon: Plus },
-    { name: 'Invite User', icon: Mail },
+    { name: 'Share', icon: Share2 },
     { name: 'View Reports', icon: BarChart }
   ];
 
@@ -42,19 +46,30 @@
   let currentFocus: 'tag' | 'user' | 'vote' = 'tag';
   let selectedVoteValue: number | null = null;
   let isVoting = false;
+  
+  // Popover state for View Reports
+  let reportsPopoverOpen = $state(false);
+  
+  function closeReportsPopover() {
+    reportsPopoverOpen = false;
+  }
 
   // Only load tags when auth is initialized
-  $: if ($authUserDoneInitializing) {
-    loadTags();
-  }
+  $effect(() => {
+    if ($authUserDoneInitializing) {
+      loadTags();
+    }
+  });
 
   // Pre-fill tag when selectedTag prop changes
-  $: if (selectedTag) {
-    tagSearchQuery = selectedTag.data.tag_handle || '';
-    tagSearchStatus = 'found';
-    tagSearchResults = [];
-    currentFocus = 'user';
-  }
+  $effect(() => {
+    if (selectedTag) {
+      tagSearchQuery = selectedTag.data.tag_handle || '';
+      tagSearchStatus = 'found';
+      tagSearchResults = [];
+      currentFocus = 'user';
+    }
+  });
 
   /**
    * Loads all tags and user reputation data.
@@ -119,13 +134,42 @@
         goto('/new/tag');
         return;
     }
-    activeAction = activeAction === action ? null : action;
-    if (!activeAction) {
-      // Reset state when closing
-      selectedUser = null;
-      currentFocus = 'user';
-      userSearchQuery = '';
-      userSearchResults = [];
+    if (action === 'Share') {
+        handleShare();
+        return;
+    }
+    if (action === 'View Reports') {
+        // Not implemented yet - do nothing
+        return;
+    }
+    // Only Vote action opens the drawer
+    if (action === 'Vote') {
+        activeAction = activeAction === action ? null : action;
+        if (!activeAction) {
+          // Reset state when closing
+          selectedUser = null;
+          currentFocus = 'user';
+          userSearchQuery = '';
+          userSearchResults = [];
+        }
+    }
+  }
+
+  async function handleShare() {
+    try {
+      const currentUrl = window.location.href;
+      await navigator.clipboard.writeText(currentUrl);
+      
+      toaster.success({
+        title: 'Link Copied!',
+        description: 'Page URL has been copied to your clipboard.'
+      });
+    } catch (error) {
+      console.error('Failed to copy URL:', error);
+      toaster.error({
+        title: 'Copy Failed',
+        description: 'Unable to copy URL to clipboard.'
+      });
     }
   }
 
@@ -311,204 +355,226 @@
   <div class="card shadow bg-surface-100-900 border border-surface-200-800 p-3">
     <div class="grid grid-cols-4 gap-2">
       {#each quickActions as action}
-        <button 
-          class="btn preset-outlined-primary-500 flex flex-col items-center p-2 transition-all duration-200"
-          class:preset-tonal-primary={activeAction === action.name}
-          class:!border-0={activeAction === action.name}
-          on:click={() => handleActionClick(action.name)}
-        >
-          <svelte:component this={action.icon} size={24} class="mb-1" />
-          <span class="text-xs">{action.name}</span>
-        </button>
+        {#if action.name === 'View Reports'}
+          <div class="w-full h-full">
+            <Popover
+              open={reportsPopoverOpen}
+              onOpenChange={(e) => (reportsPopoverOpen = e.open)}
+              positioning={{ placement: 'top', flip: true }}
+              triggerBase="btn preset-outlined-warning-500 flex flex-col items-center p-2 transition-all duration-200 w-full h-full"
+              contentBase="card bg-surface-200-800 p-4 space-y-4 max-w-[280px]"
+              arrow
+              arrowBackground="!bg-surface-200 dark:!bg-surface-800"
+            >
+              {#snippet trigger()}
+                <svelte:component this={action.icon} size={24} class="mb-1" />
+                <span class="text-xs">{action.name}</span>
+              {/snippet}
+              {#snippet content()}
+                <header class="flex justify-between">
+                  <p class="font-bold">Coming Soon</p>
+                  <button class="btn-icon hover:preset-tonal" onclick={closeReportsPopover}>
+                    <X class="w-4 h-4" />
+                  </button>
+                </header>
+                <article>
+                  <p class="opacity-60">
+                    Detailed analytics and reporting features are currently in development. This will include user activity reports, tag performance metrics, and reputation analytics.
+                  </p>
+                </article>
+              {/snippet}
+            </Popover>
+          </div>
+        {:else}
+          <button 
+            class="btn preset-outlined-primary-500 flex flex-col items-center p-2 transition-all duration-200"
+            class:preset-tonal-primary={activeAction === action.name}
+            class:!border-0={activeAction === action.name}
+            onclick={() => handleActionClick(action.name)}
+          >
+            <svelte:component this={action.icon} size={24} class="mb-1" />
+            <span class="text-xs">{action.name}</span>
+          </button>
+        {/if}
       {/each}
     </div>
   </div>
 
-  <!-- Expandable Content Area -->
-  {#if activeAction}
+  <!-- Expandable Content Area - Only for Vote action -->
+  {#if activeAction === 'Vote'}
     <div 
       class="px-2"
       transition:slide={{ duration: 200 }}
     >
       <div class="bg-surface-100-900/95 backdrop-blur-sm rounded-b-lg shadow-lg">
         <div class="p-4" transition:fade={{ duration: 150 }}>
-          {#if activeAction === 'Vote'}
-            <div class="text-sm">
-              {#if !$authUserDoneInitializing}
-                <div class="text-center">Initializing...</div>
-              {:else if isLoading}
-                <div class="text-center">Loading tags...</div>
-              {:else if error}
-                <div class="text-error-500">{error}</div>
-              {:else}
-                <div class="grid grid-cols-2 gap-4">
-                  <!-- Left Column: Input Fields -->
-                  <div class="space-y-4">
-                    <!-- Tag Display -->
+          <div class="text-sm">
+            {#if !$authUserDoneInitializing}
+              <div class="text-center">Initializing...</div>
+            {:else if isLoading}
+              <div class="text-center">Loading tags...</div>
+            {:else if error}
+              <div class="text-error-500">{error}</div>
+            {:else}
+              <div class="grid grid-cols-2 gap-4">
+                <!-- Left Column: Input Fields -->
+                <div class="space-y-4">
+                  <!-- Tag Display -->
+                  <div>
+                    <label class="label" for="tag-display">Selected Tag</label>
+                    <input
+                      type="text"
+                      id="tag-display"
+                      class="input pr-10 border-primary-300-700 bg-surface-50-950 w-full"
+                      bind:value={tagSearchQuery}
+                      oninput={(e) => searchTags(e.currentTarget.value)}
+                      placeholder="Search for a tag..."
+                    />
+                    {#if tagSearchStatus === 'not_found'}
+                      <span class="text-error-500 text-xs mt-1">No tags found matching "{tagSearchQuery}"</span>
+                    {:else if tagSearchStatus === 'found' && !selectedTag}
+                      <span class="text-success-500 text-xs mt-1">Found {tagSearchResults.length} matching tags</span>
+                    {:else if selectedTag}
+                      <span class="text-success-500 text-xs mt-1">Selected #{selectedTag.data.tag_handle}</span>
+                    {/if}
+                  </div>
+
+                  <!-- User Search -->
+                  {#if selectedTag}
                     <div>
-                      <label class="label" for="tag-display">Selected Tag</label>
-                      <input
-                        type="text"
-                        id="tag-display"
-                        class="input pr-10 border-primary-300-700 bg-surface-50-950 w-full"
-                        bind:value={tagSearchQuery}
-                        on:input={(e) => searchTags(e.currentTarget.value)}
-                        placeholder="Search for a tag..."
-                      />
-                      {#if tagSearchStatus === 'not_found'}
-                        <span class="text-error-500 text-xs mt-1">No tags found matching "{tagSearchQuery}"</span>
-                      {:else if tagSearchStatus === 'found' && !selectedTag}
-                        <span class="text-success-500 text-xs mt-1">Found {tagSearchResults.length} matching tags</span>
-                      {:else if selectedTag}
-                        <span class="text-success-500 text-xs mt-1">Selected #{selectedTag.data.tag_handle}</span>
+                      <label class="label" for="user-search">Select a User</label>
+                      <div class="relative">
+                        <input
+                          type="text"
+                          id="user-search"
+                          bind:value={userSearchQuery}
+                          oninput={(e) => searchUsers(e.currentTarget.value)}
+                          class="input pr-10 border-primary-300-700 focus:border-primary-500 focus:ring-primary-500 bg-surface-50-950 w-full"
+                          placeholder="Search for a user..."
+                        />
+                        <span class="absolute right-2 top-1/2 -translate-y-1/2" aria-live="polite">
+                          {#if userSearchStatus === 'loading'}
+                            <LoaderCircle class="animate-spin text-gray-400" />
+                          {:else if userSearchStatus === 'found'}
+                            <CheckCircle class="text-success-500" />
+                          {:else if userSearchStatus === 'not_found'}
+                            <XCircle class="text-error-500" />
+                          {/if}
+                        </span>
+                      </div>
+                      {#if userSearchStatus === 'not_found'}
+                        <span class="text-error-500 text-xs mt-1">No users found matching "{userSearchQuery}"</span>
+                      {:else if userSearchStatus === 'found' && !selectedUser}
+                        <span class="text-success-500 text-xs mt-1">Found {userSearchResults.length} matching users</span>
+                      {:else if selectedUser}
+                        <span class="text-success-500 text-xs mt-1">Selected @{selectedUser.data.user_handle}</span>
                       {/if}
                     </div>
+                  {/if}
+                </div>
 
-                    <!-- User Search -->
-                    {#if selectedTag}
-                      <div>
-                        <label class="label" for="user-search">Select a User</label>
-                        <div class="relative">
-                          <input
-                            type="text"
-                            id="user-search"
-                            bind:value={userSearchQuery}
-                            on:input={(e) => searchUsers(e.currentTarget.value)}
-                            class="input pr-10 border-primary-300-700 focus:border-primary-500 focus:ring-primary-500 bg-surface-50-950 w-full"
-                            placeholder="Search for a user..."
-                          />
-                          <span class="absolute right-2 top-1/2 -translate-y-1/2" aria-live="polite">
-                            {#if userSearchStatus === 'loading'}
-                              <LoaderCircle class="animate-spin text-gray-400" />
-                            {:else if userSearchStatus === 'found'}
-                              <CheckCircle class="text-success-500" />
-                            {:else if userSearchStatus === 'not_found'}
-                              <XCircle class="text-error-500" />
+                <!-- Right Column: Search Results or Vote Options -->
+                <div class="space-y-4">
+                  {#if currentFocus === 'tag' && tagSearchResults.length > 0}
+                    <div class="space-y-2 max-h-[300px] overflow-y-auto">
+                      {#each tagSearchResults as tag}
+                        <button
+                          class="card shadow bg-surface-100-900 border border-surface-200-800 p-3 w-full text-left hover:preset-tonal-primary transition-colors duration-200"
+                          onclick={() => handleTagSelect(tag)}
+                        >
+                          <div class="flex items-center gap-2">
+                            <span class="i-lucide-tag text-primary-500"></span>
+                            <span class="font-bold">#{tag.data.tag_handle}</span>
+                          </div>
+                        </button>
+                      {/each}
+                    </div>
+                  {:else if currentFocus === 'user' && userSearchResults.length > 0}
+                    <div class="space-y-2 max-h-[300px] overflow-y-auto">
+                      {#each userSearchResults as user}
+                        <button
+                          class="card shadow bg-surface-100-900 border border-surface-200-800 p-3 w-full text-left hover:preset-tonal-primary transition-colors duration-200"
+                          onclick={() => handleUserSelect(user)}
+                        >
+                          <div class="flex items-center gap-3">
+                            <figure class="overflow-hidden isolate bg-surface-400-600 size-10 rounded-full">
+                              {#if user.data.avatar_url}
+                                <img src={user.data.avatar_url} alt="" class="w-full object-cover" />
+                              {:else}
+                                <span class="w-full h-full flex justify-center items-center text-surface-700">
+                                  {user.data.display_name?.[0]?.toUpperCase() || '?'}
+                                </span>
+                              {/if}
+                            </figure>
+                            <div>
+                              <p class="font-bold">{user.data.display_name}</p>
+                              <p class="opacity-60 text-xs">@{user.data.user_handle}</p>
+                            </div>
+                          </div>
+                        </button>
+                      {/each}
+                    </div>
+                  {:else if currentFocus === 'vote' && selectedTag && selectedUser}
+                    <div class="flex flex-col items-center justify-center h-full gap-4">
+                      <p class="text-center opacity-70">
+                        Vote for <span class="font-bold">@{selectedUser.data.user_handle}</span>
+                        <br>in <span class="font-bold">#{selectedTag.data.tag_handle}</span>
+                      </p>
+                      <div class="flex gap-4">
+                        <button
+                          class="btn preset-filled-success-500 p-4 transition-all duration-200"
+                          class:border-2={selectedVoteValue === 1}
+                          class:border-success-500={selectedVoteValue === 1}
+                          class:opacity-75={selectedVoteValue === -1}
+                          onclick={() => handleVote(1)}
+                          disabled={isVoting}
+                        >
+                          <ThumbsUp size={24} />
+                        </button>
+                        <button
+                          class="btn preset-filled-error-500 p-4 transition-all duration-200"
+                          class:border-2={selectedVoteValue === -1}
+                          class:border-error-500={selectedVoteValue === -1}
+                          class:opacity-75={selectedVoteValue === 1}
+                          onclick={() => handleVote(-1)}
+                          disabled={isVoting}
+                        >
+                          <ThumbsDown size={24} />
+                        </button>
+                      </div>
+                      <!-- Placeholder div to prevent layout shift -->
+                      <div class="h-[40px] mt-4">
+                        {#if selectedVoteValue !== null}
+                          <button
+                            class="btn preset-filled-primary-500 w-full"
+                            onclick={confirmVote}
+                            disabled={isVoting}
+                          >
+                            {#if isVoting}
+                              <LoaderCircle class="animate-spin mr-2" />
+                              Recording Vote...
+                            {:else}
+                              Confirm Vote
                             {/if}
-                          </span>
-                        </div>
-                        {#if userSearchStatus === 'not_found'}
-                          <span class="text-error-500 text-xs mt-1">No users found matching "{userSearchQuery}"</span>
-                        {:else if userSearchStatus === 'found' && !selectedUser}
-                          <span class="text-success-500 text-xs mt-1">Found {userSearchResults.length} matching users</span>
-                        {:else if selectedUser}
-                          <span class="text-success-500 text-xs mt-1">Selected @{selectedUser.data.user_handle}</span>
+                          </button>
                         {/if}
                       </div>
-                    {/if}
-                  </div>
-
-                  <!-- Right Column: Search Results or Vote Options -->
-                  <div class="space-y-4">
-                    {#if currentFocus === 'tag' && tagSearchResults.length > 0}
-                      <div class="space-y-2 max-h-[300px] overflow-y-auto">
-                        {#each tagSearchResults as tag}
-                          <button
-                            class="card shadow bg-surface-100-900 border border-surface-200-800 p-3 w-full text-left hover:preset-tonal-primary transition-colors duration-200"
-                            on:click={() => handleTagSelect(tag)}
-                          >
-                            <div class="flex items-center gap-2">
-                              <span class="i-lucide-tag text-primary-500"></span>
-                              <span class="font-bold">#{tag.data.tag_handle}</span>
-                            </div>
-                          </button>
-                        {/each}
-                      </div>
-                    {:else if currentFocus === 'user' && userSearchResults.length > 0}
-                      <div class="space-y-2 max-h-[300px] overflow-y-auto">
-                        {#each userSearchResults as user}
-                          <button
-                            class="card shadow bg-surface-100-900 border border-surface-200-800 p-3 w-full text-left hover:preset-tonal-primary transition-colors duration-200"
-                            on:click={() => handleUserSelect(user)}
-                          >
-                            <div class="flex items-center gap-3">
-                              <figure class="overflow-hidden isolate bg-surface-400-600 size-10 rounded-full">
-                                {#if user.data.avatar_url}
-                                  <img src={user.data.avatar_url} alt="" class="w-full object-cover" />
-                                {:else}
-                                  <span class="w-full h-full flex justify-center items-center text-surface-700">
-                                    {user.data.display_name?.[0]?.toUpperCase() || '?'}
-                                  </span>
-                                {/if}
-                              </figure>
-                              <div>
-                                <p class="font-bold">{user.data.display_name}</p>
-                                <p class="opacity-60 text-xs">@{user.data.user_handle}</p>
-                              </div>
-                            </div>
-                          </button>
-                        {/each}
-                      </div>
-                    {:else if currentFocus === 'vote' && selectedTag && selectedUser}
-                      <div class="flex flex-col items-center justify-center h-full gap-4">
-                        <p class="text-center opacity-70">
-                          Vote for <span class="font-bold">@{selectedUser.data.user_handle}</span>
-                          <br>in <span class="font-bold">#{selectedTag.data.tag_handle}</span>
-                        </p>
-                        <div class="flex gap-4">
-                          <button
-                            class="btn preset-filled-success-500 p-4 transition-all duration-200"
-                            class:border-2={selectedVoteValue === 1}
-                            class:border-success-500={selectedVoteValue === 1}
-                            class:opacity-75={selectedVoteValue === -1}
-                            on:click={() => handleVote(1)}
-                            disabled={isVoting}
-                          >
-                            <ThumbsUp size={24} />
-                          </button>
-                          <button
-                            class="btn preset-filled-error-500 p-4 transition-all duration-200"
-                            class:border-2={selectedVoteValue === -1}
-                            class:border-error-500={selectedVoteValue === -1}
-                            class:opacity-75={selectedVoteValue === 1}
-                            on:click={() => handleVote(-1)}
-                            disabled={isVoting}
-                          >
-                            <ThumbsDown size={24} />
-                          </button>
-                        </div>
-                        <!-- Placeholder div to prevent layout shift -->
-                        <div class="h-[40px] mt-4">
-                          {#if selectedVoteValue !== null}
-                            <button
-                              class="btn preset-filled-primary-500 w-full"
-                              on:click={confirmVote}
-                              disabled={isVoting}
-                            >
-                              {#if isVoting}
-                                <LoaderCircle class="animate-spin mr-2" />
-                                Recording Vote...
-                              {:else}
-                                Confirm Vote
-                              {/if}
-                            </button>
-                          {/if}
-                        </div>
-                      </div>
-                    {:else}
-                      <div class="flex items-center justify-center h-full">
-                        <p class="text-center opacity-70">
-                          {#if !selectedTag}
-                            Search for a tag to begin
-                          {:else if !selectedUser}
-                            Search for a user to vote on
-                          {/if}
-                        </p>
-                      </div>
-                    {/if}
-                  </div>
+                    </div>
+                  {:else}
+                    <div class="flex items-center justify-center h-full">
+                      <p class="text-center opacity-70">
+                        {#if !selectedTag}
+                          Search for a tag to begin
+                        {:else if !selectedUser}
+                          Search for a user to vote on
+                        {/if}
+                      </p>
+                    </div>
+                  {/if}
                 </div>
-              {/if}
-            </div>
-          {:else if activeAction === 'Invite User'}
-            <div class="text-sm">
-              Invite User content goes here
-            </div>
-          {:else if activeAction === 'View Reports'}
-            <div class="text-sm">
-              View Reports content goes here
-            </div>
-          {/if}
+              </div>
+            {/if}
+          </div>
         </div>
       </div>
     </div>

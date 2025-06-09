@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Plus, Mail, BarChart, Vote, LoaderCircle, CheckCircle, XCircle, ThumbsUp, ThumbsDown } from 'lucide-svelte';
+  import { Plus, Share2, BarChart, Vote, LoaderCircle, CheckCircle, XCircle, ThumbsUp, ThumbsDown, X } from 'lucide-svelte';
   import { slide } from 'svelte/transition';
   import { fade } from 'svelte/transition';
   import { listDocs } from '@junobuild/core';
@@ -9,14 +9,16 @@
   import { createVoteDoc } from '$lib/docs-crud/vote_create';
   import { toaster } from '$lib/skeletonui/toaster-skeleton';
   import { authUserDoc } from '$lib/stores/authUserDoc';
+  import { Popover } from '@skeletonlabs/skeleton-svelte';
   import { isValid } from 'ulid';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
 
   // Quick action buttons configuration
   const quickActions = [
     { name: 'Vote', icon: Vote },
     { name: 'Create Tag', icon: Plus },
-    { name: 'Invite User', icon: Mail },
+    { name: 'Share', icon: Share2 },
     { name: 'View Reports', icon: BarChart }
   ];
 
@@ -40,11 +42,20 @@
   let currentFocus: 'tag' | 'user' | 'vote' = 'tag';
   let selectedVoteValue: number | null = null;
   let isVoting = false;
+  
+  // Popover state for View Reports
+  let reportsPopoverOpen = $state(false);
+  
+  function closeReportsPopover() {
+    reportsPopoverOpen = false;
+  }
 
   // Only load tags when auth is initialized
-  $: if ($authUserDoneInitializing) {
-    loadTags();
-  }
+  $effect(() => {
+    if ($authUserDoneInitializing) {
+      loadTags();
+    }
+  });
 
   /**
    * Loads all tags and user reputation data.
@@ -109,16 +120,45 @@
         goto('/new/tag');
         return;
     }
-    activeAction = activeAction === action ? null : action;
-    if (!activeAction) {
-      // Reset state when closing
-      selectedTag = null;
-      selectedUser = null;
-      currentFocus = 'tag';
-      tagSearchQuery = '';
-      userSearchQuery = '';
-      tagSearchResults = [];
-      userSearchResults = [];
+    if (action === 'Share') {
+        handleShare();
+        return;
+    }
+    if (action === 'View Reports') {
+        // Not implemented yet - do nothing
+        return;
+    }
+    // Only Vote action opens the drawer
+    if (action === 'Vote') {
+        activeAction = activeAction === action ? null : action;
+        if (!activeAction) {
+          // Reset state when closing
+          selectedTag = null;
+          selectedUser = null;
+          currentFocus = 'tag';
+          tagSearchQuery = '';
+          userSearchQuery = '';
+          tagSearchResults = [];
+          userSearchResults = [];
+        }
+    }
+  }
+
+  async function handleShare() {
+    try {
+      const currentUrl = window.location.href;
+      await navigator.clipboard.writeText(currentUrl);
+      
+      toaster.success({
+        title: 'Link Copied!',
+        description: 'Page URL has been copied to your clipboard.'
+      });
+    } catch (error) {
+      console.error('Failed to copy URL:', error);
+      toaster.error({
+        title: 'Copy Failed',
+        description: 'Unable to copy URL to clipboard.'
+      });
     }
   }
 
@@ -304,29 +344,60 @@
   <div class="card shadow bg-surface-100-900 border border-surface-200-800 p-3">
     <div class="grid grid-cols-4 gap-2">
       {#each quickActions as action}
-        <button 
-          class="btn preset-outlined-primary-500 flex flex-col items-center p-2 transition-all duration-200"
-          class:preset-tonal-primary={activeAction === action.name}
-          class:!border-0={activeAction === action.name}
-          on:click={() => handleActionClick(action.name)}
-        >
-          <svelte:component this={action.icon} size={24} class="mb-1" />
-          <span class="text-xs">{action.name}</span>
-        </button>
+        {#if action.name === 'View Reports'}
+          <div class="w-full h-full">
+            <Popover
+              open={reportsPopoverOpen}
+              onOpenChange={(e) => (reportsPopoverOpen = e.open)}
+              positioning={{ placement: 'top', flip: true }}
+              triggerBase="btn preset-outlined-warning-500 flex flex-col items-center p-2 transition-all duration-200 w-full h-full"
+              contentBase="card bg-surface-200-800 p-4 space-y-4 max-w-[280px]"
+              arrow
+              arrowBackground="!bg-surface-200 dark:!bg-surface-800"
+            >
+              {#snippet trigger()}
+                <svelte:component this={action.icon} size={24} class="mb-1" />
+                <span class="text-xs">{action.name}</span>
+              {/snippet}
+              {#snippet content()}
+                <header class="flex justify-between">
+                  <p class="font-bold">Coming Soon</p>
+                  <button class="btn-icon hover:preset-tonal" onclick={closeReportsPopover}>
+                    <X class="w-4 h-4" />
+                  </button>
+                </header>
+                <article>
+                  <p class="opacity-60">
+                    Detailed analytics and reporting features are currently in development. This will include user activity reports, tag performance metrics, and reputation analytics.
+                  </p>
+                </article>
+              {/snippet}
+            </Popover>
+          </div>
+        {:else}
+          <button 
+            class="btn preset-outlined-primary-500 flex flex-col items-center p-2 transition-all duration-200"
+            class:preset-tonal-primary={activeAction === action.name}
+            class:!border-0={activeAction === action.name}
+            onclick={() => handleActionClick(action.name)}
+          >
+            <svelte:component this={action.icon} size={24} class="mb-1" />
+            <span class="text-xs">{action.name}</span>
+          </button>
+        {/if}
       {/each}
     </div>
   </div>
 
-  <!-- Expandable Content Area -->
-  {#if activeAction}
+  <!-- Expandable Content Area - Only for Vote action -->
+  {#if activeAction === 'Vote'}
     <div 
       class="px-2"
       transition:slide={{ duration: 200 }}
     >
       <div class="bg-surface-100-900/95 backdrop-blur-sm rounded-b-lg shadow-lg">
         <div class="p-4" transition:fade={{ duration: 150 }}>
-          {#if activeAction === 'Vote'}
-            <div class="text-sm">
+          <div class="text-sm">
               {#if !$authUserDoneInitializing}
                 <div class="text-center">Initializing...</div>
               {:else if isLoading}
@@ -346,7 +417,7 @@
                             {#each suggestedTags as tag}
                               <button
                                 class="btn btn-sm preset-tonal-primary"
-                                on:click={() => handleTagSelect(tag)}
+                                onclick={() => handleTagSelect(tag)}
                               >
                                 {tag.data.tag_handle}
                               </button>
@@ -359,7 +430,7 @@
                           type="text"
                           id="tag-search"
                           bind:value={tagSearchQuery}
-                          on:input={(e) => searchTags(e.currentTarget.value)}
+                          oninput={(e) => searchTags(e.currentTarget.value)}
                           class="input pr-10 border-primary-300-700 focus:border-primary-500 focus:ring-primary-500 bg-surface-50-950 w-full"
                           placeholder="Search for a tag..."
                         />
@@ -391,7 +462,7 @@
                             type="text"
                             id="user-search"
                             bind:value={userSearchQuery}
-                            on:input={(e) => searchUsers(e.currentTarget.value)}
+                            oninput={(e) => searchUsers(e.currentTarget.value)}
                             class="input pr-10 border-primary-300-700 focus:border-primary-500 focus:ring-primary-500 bg-surface-50-950 w-full"
                             placeholder="Search for a user..."
                           />
@@ -423,7 +494,7 @@
                         {#each tagSearchResults as tag}
                           <button
                             class="card shadow bg-surface-100-900 border border-surface-200-800 p-3 w-full text-left hover:preset-tonal-primary transition-colors duration-200"
-                            on:click={() => handleTagSelect(tag)}
+                            onclick={() => handleTagSelect(tag)}
                           >
                             <div class="flex items-center gap-2">
                               <span class="i-lucide-tag text-primary-500"></span>
@@ -437,7 +508,7 @@
                         {#each userSearchResults as user}
                           <button
                             class="card shadow bg-surface-100-900 border border-surface-200-800 p-3 w-full text-left hover:preset-tonal-primary transition-colors duration-200"
-                            on:click={() => handleUserSelect(user)}
+                            onclick={() => handleUserSelect(user)}
                           >
                             <div class="flex items-center gap-3">
                               <figure class="overflow-hidden isolate bg-surface-400-600 size-10 rounded-full">
@@ -469,7 +540,7 @@
                             class:border-2={selectedVoteValue === 1}
                             class:border-success-500={selectedVoteValue === 1}
                             class:opacity-75={selectedVoteValue === -1}
-                            on:click={() => handleVote(1)}
+                            onclick={() => handleVote(1)}
                             disabled={isVoting}
                           >
                             <ThumbsUp size={24} />
@@ -479,7 +550,7 @@
                             class:border-2={selectedVoteValue === -1}
                             class:border-error-500={selectedVoteValue === -1}
                             class:opacity-75={selectedVoteValue === 1}
-                            on:click={() => handleVote(-1)}
+                            onclick={() => handleVote(-1)}
                             disabled={isVoting}
                           >
                             <ThumbsDown size={24} />
@@ -490,7 +561,7 @@
                           {#if selectedVoteValue !== null}
                             <button
                               class="btn preset-filled-primary-500 w-full"
-                              on:click={confirmVote}
+                              onclick={confirmVote}
                               disabled={isVoting}
                             >
                               {#if isVoting}
@@ -518,17 +589,6 @@
                 </div>
               {/if}
             </div>
-          {:else if activeAction === 'Create Tag'}
-            <!-- Remove this section entirely as Create Tag now navigates directly -->
-          {:else if activeAction === 'Invite User'}
-            <div class="text-sm">
-              Invite User content goes here
-            </div>
-          {:else if activeAction === 'View Reports'}
-            <div class="text-sm">
-              View Reports content goes here
-            </div>
-          {/if}
         </div>
       </div>
     </div>
