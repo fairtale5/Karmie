@@ -19,7 +19,11 @@ export const idlFactory = ({ IDL }) => {
   const Result_3 = IDL.Variant({ 'Ok' : ReputationData, 'Err' : IDL.Text });
   return IDL.Service({
     'build_version' : IDL.Func([], [IDL.Text], ['query']),
-    'check_username_availability_scan' : IDL.Func([IDL.Text], [Result], []),
+    'check_username_availability_scan' : IDL.Func(
+        [IDL.Text],
+        [Result],
+        ['query'],
+      ),
     'create_document_key_for_reputation' : IDL.Func(
         [IDL.Text, IDL.Text],
         [Result_1],
