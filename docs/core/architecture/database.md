@@ -122,10 +122,10 @@ interface TagDocument {
     updated_at: bigint;         // Last update timestamp in nanoseconds
     version: bigint;            // Document version for concurrency control
     data: {                     // Tag-specific data
-        name: string;           // Display name of the tag (original case preserved)
+        tag_handle: string;     // The name/handle of the tag (original case preserved)
         description: string;    // Longer description of the tag's purpose
-        owner_ulid: ULID;         // Pure ULID of the user who created the tag
-        tag_ulid: ULID;          // Pure ULID of this tag
+        owner_ulid: ULID;       // Pure ULID of the user who created the tag
+        tag_ulid: ULID;         // Pure ULID of this tag
         time_periods: Array<{   // Time periods for vote decay multipliers
             months: number;     // Duration in months (1-999)
             multiplier: number; // Weight multiplier (0.05-1.5)

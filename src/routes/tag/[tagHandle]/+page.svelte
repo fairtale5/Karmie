@@ -200,15 +200,12 @@
   </div>
 
   <!-- Stats Overview -->
-  {#if tagData?.stats}
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-      <TagStatsCard 
-        tag={tagData?.tag} 
-        stats={tagData.stats}
-        loading={loading}
-      />
-    </div>
-  {/if}
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+    <TagStatsCard 
+      tag={tagData?.tag} 
+      loading={loading}
+    />
+  </div>
 
   <!-- Activity Sections -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
