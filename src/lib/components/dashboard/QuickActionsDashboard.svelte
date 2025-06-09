@@ -23,7 +23,7 @@
   ];
 
   // Component state
-  let activeAction: string | null = null;
+  let activeAction: string | null = $state(null);
   let selectedTag: TagDocument | null = null;
   let selectedUser: UserDocument | null = null;
   let tags: TagDocument[] = [];
@@ -128,19 +128,19 @@
         // Not implemented yet - do nothing
         return;
     }
-    // Only Vote action opens the drawer
-    if (action === 'Vote') {
-        activeAction = activeAction === action ? null : action;
-        if (!activeAction) {
-          // Reset state when closing
-          selectedTag = null;
-          selectedUser = null;
-          currentFocus = 'tag';
-          tagSearchQuery = '';
-          userSearchQuery = '';
-          tagSearchResults = [];
-          userSearchResults = [];
-        }
+    
+    // Toggle drawer for Vote action
+    activeAction = activeAction === action ? null : action;
+    
+    if (!activeAction) {
+      // Reset state when closing
+      selectedTag = null;
+      selectedUser = null;
+      currentFocus = 'tag';
+      tagSearchQuery = '';
+      userSearchQuery = '';
+      tagSearchResults = [];
+      userSearchResults = [];
     }
   }
 
@@ -266,6 +266,8 @@
 
   async function confirmVote() {
     try {
+        isVoting = true;
+        
         // Check if all required selections exist in memory
         if (!selectedTag || !selectedUser || selectedVoteValue === undefined || !$authUserDoc) {
             throw new Error('Please select a tag, user, and vote value');
@@ -335,6 +337,8 @@
         currentFocus = 'tag';
     } catch (error) {
         console.error('Error creating vote:', error);
+    } finally {
+        isVoting = false;
     }
   }
 </script>
