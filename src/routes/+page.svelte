@@ -24,14 +24,14 @@
 	// Placeholder image imports (replace with your preferred images from /img/landing_page)
 	const features = [
 		{
-			title: 'Natively Immune to Bots',
+			title: 'Natively Bots-Resistant',
 			text: `Uses a system in which only the votes of those with good reputation count. In other words: for a user's votes to count, they must earn reputation first. Only votes from a user who has already gained reputation in a topic (say #trust) can influence voting on others in that same topic. This makes it really hard for bots to enter the system, since their spamming or voting won't carry any weight until they earn it.`,
 			img: '/img/landing_page/u6389832795_imagine_a_sketch_of_peopel_uniting_to_build_great_21ea2e1f-e07f-45f7-b1ac-0d7bf9e6c0d3_0.png',
 			imgAlt: 'Sketch of people uniting to build',
 		},
 		{
 			title: 'Easy to Purge Bots',
-			text: `Votes carry weight based on the author's reputation. If a bad actor infiltrates the community and starts spamming or acting in bad faith, others can downvote their account, which will affect not only new votes but also any votes they did in the past. This brings accountability and keeps the system bot and bad actor free, without KYC or infringing on user anonymity.`,
+			text: `If a bad actor is downvoted, all their past and future votes are affected. Votes carry weight based on the author's reputation. If a bad actor infiltrates the community and starts spamming or acting in bad faith, others can downvote their account, which will affect not only new votes but also any votes they did in the past. This brings accountability and keeps the system bot and bad actor free, without KYC or infringing on user anonymity.`,
 			img: '/img/landing_page/u6389832795_imagine_a_sketch_of_hundreds_of_people_all_contri_513e73f8-2993-480f-a765-2c6788a028c9_3-removebg-preview.png',
 			imgAlt: 'Sketch of many people contributing',
 		},
@@ -145,7 +145,7 @@
 		<h1 class="preset-typo-title text-5xl font-bold mb-2">Karmie dApp</h1>
 		<h2 class="preset-typo-title text-2xl text-secondary-500 mb-4">Decentralized On-chain Reputation System</h2>
 		<p class="preset-typo-body-1 text-lg mb-6">
-			Karmie is a tool to track reputations across any app, store, community, or game. Any dev can integrate it easily into their app with just a few API calls. Everything is handled on-chain, so not even the owners of those apps can adulterate or censor any votes. It gives true transparency and power to users.
+			Karmie is a tool to track reputations (Karma) across any app, store, community, or game. Any dev can integrate it easily into their app with just a few API calls. Everything is handled on-chain, so not even the owners of those apps can adulterate or censor any votes. It gives true transparency and power to users.
 		</p>
 		{#if !user}
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-xl mx-auto mt-4">
@@ -206,7 +206,7 @@
 	<div class="container mx-auto text-center space-y-6">
 		<h2 class="preset-typo-title text-3xl mb-4">Ready to build trust in your community?</h2>
 		<div class="flex flex-col sm:flex-row gap-4 justify-center mt-4">
-			<button class="btn preset-filled-secondary-500 w-full sm:w-auto text-lg" disabled>Register Your Community (coming soon)</button>
+			<a href="/new/tag" class="btn preset-filled-secondary-500 w-full sm:w-auto text-lg">Register Your Community</a>
 			<button class="btn preset-filled-tertiary-500 w-full sm:w-auto text-lg" disabled>Integrate in Your App (coming soon)</button>
 		</div>
 	</div>
