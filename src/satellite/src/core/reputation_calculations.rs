@@ -721,19 +721,22 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
     let active_users = get_active_users_count(tag_key).await?;
     let in_bootstrap_phase = active_users < tag.data.min_users_for_threshold;
     
-    // Determine voting power based on threshold or bootstrap phase
-    let has_voting_power = meets_threshold || in_bootstrap_phase;
+    // Only set has_voting_power based on actual threshold achievement, not bootstrap phase
+    // Bootstrap voting power is handled dynamically in get_user_reputation_slim()
+    let has_voting_power = meets_threshold;
     
     // Add detailed info about voting power determination
     if meets_threshold {
-        logger!("info", "[calculate_user_reputation] User meets threshold: user={}, reputation={}, threshold={}",
+        logger!("info", "[calculate_user_reputation] User EARNED voting power: user={}, reputation={}, threshold={}, has_voting_power=true",
             user_key, total_basis_reputation, tag.data.reputation_threshold);
-    } else if in_bootstrap_phase {
-        logger!("info", "[calculate_user_reputation] Bootstrap phase active: active_users={} < min_threshold={}, voting rewards active",
-            active_users, tag.data.min_users_for_threshold);
     } else {
-        logger!("info", "[calculate_user_reputation] User lacks threshold: user={}, reputation={}, threshold={}",
-            user_key, total_basis_reputation, tag.data.reputation_threshold);
+        if in_bootstrap_phase {
+            logger!("info", "[calculate_user_reputation] User lacks threshold BUT bootstrap active: user={}, reputation={}, threshold={}, bootstrap_voting_active=true, has_voting_power=false",
+                user_key, total_basis_reputation, tag.data.reputation_threshold);
+        } else {
+            logger!("info", "[calculate_user_reputation] User lacks threshold: user={}, reputation={}, threshold={}, has_voting_power=false",
+                user_key, total_basis_reputation, tag.data.reputation_threshold);
+        }
     }
 
     // Step 5: Voting Rewards Calculation
@@ -808,13 +811,13 @@ pub async fn calculate_user_reputation(user_key: &str, tag_key: &str) -> Result<
     
     // Log appropriate message based on voting power status
     if meets_threshold {
-        logger!("info", "[calculate_user_reputation] TRUSTED: user={} has voting power by meeting threshold in tag={}",
+        logger!("info", "[calculate_user_reputation] TRUSTED: user={} has earned voting power by meeting threshold in tag={}",
             user_key, tag_key);
     } else if in_bootstrap_phase {
-        logger!("info", "[calculate_user_reputation] BOOTSTRAP: tag={} is in bootstrap phase ({} < {} users), user has voting power",
+        logger!("info", "[calculate_user_reputation] BOOTSTRAP: tag={} is in bootstrap phase ({} < {} users), user gets bootstrap voting benefits but has_voting_power=false",
             tag_key, active_users, tag.data.min_users_for_threshold);
     } else {
-        logger!("info", "[calculate_user_reputation] UNTRUSTED: user={} lacks voting power but still gets voting rewards",
+        logger!("info", "[calculate_user_reputation] UNTRUSTED: user={} lacks voting power and gets no voting rewards",
             user_key);
     }
     
