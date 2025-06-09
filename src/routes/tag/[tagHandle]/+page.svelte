@@ -185,10 +185,9 @@
     <!-- User Activity -->
     <TagUserReputationCard 
       tag={tagData?.tag} 
-      userReputation={tagData?.userReputation} 
-      userRecentActivity={tagData?.userRecentActivity || []}
       loading={loading}
       isPreview={tagData?.isPreview}
+      cutoffTimestamp={cutoffTimestamp}
     />
 
     <!-- Graph Preview -->

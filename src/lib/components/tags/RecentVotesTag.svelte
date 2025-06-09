@@ -92,6 +92,12 @@
     let error = $state<string | null>(null);            // Error state container
     let userData = $state<Map<string, UserDocument>>(new Map());  // Cache for user documents
 
+    // Filter states - toggle filters for better user control
+    let showIncoming = $state(true);                    // Show all incoming votes
+    let showOutgoing = $state(true);                    // Show all outgoing votes  
+    let showPositive = $state(true);                    // Show positive votes
+    let showNegative = $state(true);                    // Show negative votes
+
     // Popover state for expand icon
     let expandPopoverOpen = $state(false);
 
@@ -108,6 +114,27 @@
     // Helper function to get avatar URL
     function getAvatarUrl(ulid: string): string {
         return `https://images.unsplash.com/photo-1617296538902-887900d9b592?ixid=M3w0Njc5ODF8MHwxfGFsbHx8fHx8fHx8fDE2ODc5NzExMDB8&ixlib=rb-4.0.3&w=128&h=128&auto=format&fit=crop`;
+    }
+
+    // Filter votes based on toggle states
+    function filterVotes(votes: VoteDocument[]): VoteDocument[] {
+        return votes.filter(vote => {
+            // For tag-level votes, we don't have specific user context for direction filtering
+            // Instead, we interpret "incoming/outgoing" as vote direction filters
+            // This allows users to filter the type of activity they want to see
+            const voteValue = vote.data.value ?? 0;
+            const isPositive = voteValue > 0;
+            const isNegative = voteValue < 0;
+            
+            // Apply value filters
+            const valueMatch = (isPositive && showPositive) || (isNegative && showNegative);
+            
+            // For now, we'll just use the direction toggles as additional filters
+            // Later this could be enhanced to show different types of vote relationships
+            const directionMatch = showIncoming && showOutgoing; // Show all when both enabled
+            
+            return valueMatch && directionMatch;
+        });
     }
 
     // Helper function to fetch user data
@@ -232,30 +259,50 @@
     <!-- Header Section -->
     <div class="flex justify-between items-center mb-4">
         <h2 class="text-lg font-bold {((!selectedTag) ? 'opacity-50' : '')}">Recent Votes</h2>
-        <Popover
-            open={expandPopoverOpen}
-            onOpenChange={(e) => (expandPopoverOpen = e.open)}
-            positioning={{ placement: 'top', flip: true }}
-            triggerBase="chip-icon preset-tonal-surface"
-            contentBase="card bg-surface-200-800 p-4 space-y-4 max-w-[320px]"
-            arrow
-            arrowBackground="!bg-surface-200 dark:!bg-surface-800"
-        >
-            {#snippet trigger()}
-                <Expand size={16} />
-            {/snippet}
-            {#snippet content()}
-                <header class="flex justify-between">
-                    <p class="font-bold">See More Votes</p>
-                    <button class="btn-icon hover:preset-tonal" onclick={closeExpandPopover}><X class="w-4 h-4" /></button>
-                </header>
-                <article>
-                    <p class="opacity-60">
-                        This feature isn't available yet. In the future, you'll be able to view a comprehensive list of all votes for this tag, with advanced filtering, search, and sorting capabilities.
-                    </p>
-                </article>
-            {/snippet}
-        </Popover>
+        <div class="flex items-center gap-2">
+            <!-- Filter Controls -->
+            <div class="flex gap-2">
+                <!-- Direction filters -->
+                <div class="flex gap-1">
+                    <button type="button" class="chip text-xs px-2 py-0.5 w-8 {showIncoming ? 'preset-filled-secondary-500' : 'preset-tonal-surface'}" onclick={() => showIncoming = !showIncoming}>In</button>
+                    <button type="button" class="chip text-xs px-2 py-0.5 w-8 {showOutgoing ? 'preset-filled-tertiary-500' : 'preset-tonal-surface'}" onclick={() => showOutgoing = !showOutgoing}>Out</button>
+                </div>
+                <!-- Value filters -->
+                <div class="flex gap-1">
+                    <button type="button" class="chip text-xs px-1 py-0.5 w-6 flex justify-center items-center {showPositive ? 'preset-filled-success-500' : 'preset-tonal-surface'}" onclick={() => showPositive = !showPositive}>
+                        <CirclePlus size={14} />
+                    </button>
+                    <button type="button" class="chip text-xs px-1 py-0.5 w-6 flex justify-center items-center {showNegative ? 'preset-filled-error-500' : 'preset-tonal-surface'}" onclick={() => showNegative = !showNegative}>
+                        <CircleMinus size={14} />
+                    </button>
+                </div>
+            </div>
+            <!-- Expand Popover -->
+            <Popover
+                open={expandPopoverOpen}
+                onOpenChange={(e) => (expandPopoverOpen = e.open)}
+                positioning={{ placement: 'top', flip: true }}
+                triggerBase="chip-icon preset-tonal-surface"
+                contentBase="card bg-surface-200-800 p-4 space-y-4 max-w-[320px]"
+                arrow
+                arrowBackground="!bg-surface-200 dark:!bg-surface-800"
+            >
+                {#snippet trigger()}
+                    <Expand size={16} />
+                {/snippet}
+                {#snippet content()}
+                    <header class="flex justify-between">
+                        <p class="font-bold">See More Votes</p>
+                        <button class="btn-icon hover:preset-tonal" onclick={closeExpandPopover}><X class="w-4 h-4" /></button>
+                    </header>
+                    <article>
+                        <p class="opacity-60">
+                            This feature isn't available yet. In the future, you'll be able to view a comprehensive list of all votes for this tag, with advanced filtering, search, and sorting capabilities.
+                        </p>
+                    </article>
+                {/snippet}
+            </Popover>
+        </div>
     </div>
 
     <!-- Content Section -->
@@ -272,16 +319,18 @@
             <p class="text-center text-error-500">{error}</p>
         {:else if votes.length > 0}
             <!-- Success State: Vote Table -->
-            <table class="table caption-bottom">
-                <thead>
-                    <tr>
-                        <th>From</th>
-                        <th>To</th>
-                        <th class="text-right flex justify-end">Value</th>
-                    </tr>
-                </thead>
-                <tbody class="[&>tr]:hover:preset-tonal-primary">
-                    {#each votes as vote (vote.key)}
+            {@const filteredVotes = filterVotes(votes)}
+            {#if filteredVotes.length > 0}
+                <table class="table caption-bottom">
+                    <thead>
+                        <tr>
+                            <th>From</th>
+                            <th>To</th>
+                            <th class="text-right flex justify-end">Value</th>
+                        </tr>
+                    </thead>
+                    <tbody class="[&>tr]:hover:preset-tonal-primary">
+                        {#each filteredVotes as vote (vote.key)}
                         <tr>
                             <td>
                                 {#if vote.data.owner_ulid && userData.get(vote.data.owner_ulid)}
@@ -331,9 +380,12 @@
                                 </span>
                             </td>
                         </tr>
-                    {/each}
-                </tbody>
-            </table>
+                        {/each}
+                    </tbody>
+                </table>
+            {:else}
+                <p class="text-center opacity-70">No votes match the selected filters.</p>
+            {/if}
         {:else}
             <!-- Empty State: No Votes Message -->
             <p class="text-center opacity-70">No recent votes to display for this tag.</p>

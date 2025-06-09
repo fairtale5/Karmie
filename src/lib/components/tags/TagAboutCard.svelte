@@ -12,7 +12,7 @@
   let activeTab = $state('about');
 </script>
 
-<BaseCard classes="h-[400px]">
+<BaseCard classes="h-[412px]">
   {#snippet header()}
     <h2 class="text-lg font-bold">Tag Details</h2>
   {/snippet}
@@ -31,7 +31,7 @@
           </Tabs.Control>
         {/snippet}
         {#snippet content()}
-          <div class="h-[288px] overflow-y-auto">
+<div class="h-[300px] overflow-y-auto">
             <Tabs.Panel value="about">
               {#if loading}
                 <div class="placeholder animate-pulse w-full h-24 rounded"></div>

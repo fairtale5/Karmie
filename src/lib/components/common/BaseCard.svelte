@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Construction, X } from 'lucide-svelte';
+  import { TriangleAlert, X } from 'lucide-svelte';
   import { Popover } from '@skeletonlabs/skeleton-svelte';
   
   const { classes = '', underConstruction = false, header, actions, children } = $props<{
@@ -17,7 +17,7 @@
   }
 </script>
 
-<div class={`card shadow bg-surface-100-900 p-4 ${underConstruction ? 'preset-outlined-error-500' : 'border border-surface-200-800'} ${classes}`}>
+<div class={`card shadow bg-surface-100-900 p-4 ${underConstruction ? 'preset-outlined-warning-500' : 'border border-surface-200-800'} ${classes}`}>
   <!-- Standardized Header -->
   {#if header}
     <div class="flex justify-between items-start mb-4">
@@ -39,7 +39,7 @@
             arrowBackground="!bg-surface-200 dark:!bg-surface-800"
           >
             {#snippet trigger()}
-              <Construction class="text-error-500" size={16}/>
+              <TriangleAlert class="text-warning-500" size={16}/>
             {/snippet}
             {#snippet content()}
               <header class="flex justify-between">
