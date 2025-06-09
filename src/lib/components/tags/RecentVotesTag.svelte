@@ -19,7 +19,7 @@
 
     // --- Component Interface Definition ---
     // These props define the component's external interface and data requirements
-    const { selectedTag, cutoffTimestamp, limit = 20 } = $props<{
+    const { selectedTag, cutoffTimestamp, limit = 250 } = $props<{
         selectedTag: TagDocument | null;  // Current tag context from parent
         cutoffTimestamp: bigint;         // Time boundary for vote filtering
         limit?: number;                   // Maximum number of votes to display

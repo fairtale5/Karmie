@@ -16,7 +16,7 @@
 
     // --- Component Interface Definition ---
     // These props define the component's external interface and data requirements
-    const { user, limit = 20 } = $props<{
+    const { user, limit = 250 } = $props<{
         user: UserDocument;  // User whose votes to display
         limit?: number;      // Maximum number of votes to display
     }>();
