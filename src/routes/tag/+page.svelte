@@ -7,7 +7,7 @@
   import { authUserDoc } from '$lib/stores/authUserDoc';
   import NotLoggedInAlert from '$lib/components/common/NotLoggedInAlert.svelte';
   import BaseCard from '$lib/components/common/BaseCard.svelte';
-  import { Plus, Hash, Users, TrendingUp, Send } from 'lucide-svelte';
+  import { Plus, Hash, Users, ShieldCheck, Send } from 'lucide-svelte';
   import type { TagDocument } from '$lib/types';
   import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
 
@@ -221,7 +221,7 @@
                   {/if}
                 </div>
                 <div class="text-center">
-                  <TrendingUp size={20} class="mx-auto mb-1 text-surface-500" />
+                  							<ShieldCheck size={20} class="mx-auto mb-1 text-surface-500" />
                   <p class="text-xs opacity-70">Trusted Users</p>
                   {#if tag.stats?.loading}
                     <div class="placeholder animate-pulse h-4 w-8 mx-auto rounded"></div>

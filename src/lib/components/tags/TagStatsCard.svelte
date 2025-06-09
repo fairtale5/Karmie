@@ -1,7 +1,7 @@
 <script lang="ts">
   import BaseCard from '$lib/components/common/BaseCard.svelte';
   import type { TagDocument } from '$lib/types';
-  import { Users, TrendingUp, Send } from 'lucide-svelte';
+  import { Users, ShieldCheck, Send } from 'lucide-svelte';
   import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
 
   const { 
@@ -98,7 +98,7 @@
       name: 'Trusted Users', 
       value: stats.trustedUsers, 
       color: 'bg-success-500',
-      icon: TrendingUp
+              icon: ShieldCheck
     },
     { 
       name: 'Total Votes', 
