@@ -6,9 +6,9 @@
     // Import Svelte's lifecycle hook for component initialization
     import { onMount } from 'svelte';
     // Import Avatar component
-    import { Avatar } from '@skeletonlabs/skeleton-svelte';
+    import { Avatar, Popover } from '@skeletonlabs/skeleton-svelte';
     // Import icons
-    import { Expand, Activity } from 'lucide-svelte';
+    import { Expand, Activity, X } from 'lucide-svelte';
     // Import dummy data for demo user
     import { dummyProfileData } from '$lib/data/dummyProfileData';
 
@@ -30,6 +30,9 @@
     let showOutgoing = $state(true);                    // Show votes cast by user  
     let showPositive = $state(true);                    // Show positive votes
     let showNegative = $state(true);                    // Show negative votes
+    
+    // Popover state for expand icon
+    let expandPopoverOpen = $state(false);
 
     // Helper function to get user initials from handle
     function getInitials(handle: string): string {
@@ -39,6 +42,11 @@
     // Helper function to get avatar URL
     function getAvatarUrl(ulid: string): string {
         return `https://images.unsplash.com/photo-1617296538902-887900d9b592?ixid=M3w0Njc5ODF8MHwxfGFsbHx8fHx8fHx8fDE2ODc5NzExMDB8&ixlib=rb-4.0.3&w=128&h=128&auto=format&fit=crop`;
+    }
+
+    // Helper function to close expand popover
+    function closeExpandPopover() {
+        expandPopoverOpen = false;
     }
 
     // Helper function to filter votes based on toggle states
@@ -192,10 +200,31 @@
                     <button type="button" class="chip text-xs px-2 py-0.5 w-6 {showNegative ? 'preset-filled-error-500' : 'preset-tonal-surface'}" onclick={() => showNegative = !showNegative}>-</button>
                 </div>
             </div>
-            <!-- Expand Icon -->
-            <button type="button" class="chip-icon preset-tonal-surface" disabled title="See More Votes (Coming Soon)">
-                <Expand size={16} />
-            </button>
+            <!-- Expand Icon with Popover -->
+            <Popover
+                open={expandPopoverOpen}
+                onOpenChange={(e) => (expandPopoverOpen = e.open)}
+                positioning={{ placement: 'top', flip: true }}
+                triggerBase="chip-icon preset-tonal-surface"
+                contentBase="card bg-surface-200-800 p-4 space-y-4 max-w-[320px]"
+                arrow
+                arrowBackground="!bg-surface-200 dark:!bg-surface-800"
+            >
+                {#snippet trigger()}
+                    <Expand size={16} />
+                {/snippet}
+                {#snippet content()}
+                    <header class="flex justify-between">
+                        <p class="font-bold">See More Votes</p>
+                        <button class="btn-icon hover:preset-tonal" onclick={closeExpandPopover}><X class="w-4 h-4" /></button>
+                    </header>
+                    <article>
+                        <p class="opacity-60">
+                            This feature isn't available yet. In the future, you'll be able to view a comprehensive list of all votes for this user, with advanced filtering, search, and sorting capabilities.
+                        </p>
+                    </article>
+                {/snippet}
+            </Popover>
         </div>
     </div>
 
