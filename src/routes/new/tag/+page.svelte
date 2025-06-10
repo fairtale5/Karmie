@@ -13,6 +13,7 @@ import { X } from 'lucide-svelte';
 import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
 import { LoaderCircle, CheckCircle, XCircle } from 'lucide-svelte';
 import { createTagDoc } from '$lib/docs-crud/tag_create';
+import { setPageMeta } from '$lib/stores/page';
 
 // Tag form state
 let tagBeingEdited = $state<Doc<TagData>>({
@@ -204,11 +205,25 @@ function removeTimePeriod(i: number) {
   const periods = tagBeingEdited.data.time_periods as Array<{ months: number; multiplier: number }>;
   tagBeingEdited.data.time_periods = periods.filter((_, idx) => idx !== i);
 }
+
+// Set page title on mount
+onMount(() => {
+  setPageMeta({ 
+    title: 'New Tag',
+    headerTitle: 'Create New #Tag'
+  });
+});
 </script>
 
 <div class="min-h-screen flex items-center justify-center py-8">
   <div class="card bg-surface-100-900 border border-surface-200-800 shadow-xl max-w-lg w-full p-8">
-    <h1 class="text-2xl font-bold mb-6 text-primary-700-300">Create New Tag</h1>
+    <div class="mb-8">
+      <h1 class="text-2xl font-bold mb-3">Create a New Reputation #Tag</h1>
+      <p class="text-surface-700-400 text-sm leading-relaxed">
+        Tags represent unique reputation systems that track specific skills, contributions, or expertise within a community. 
+        Create a new tag to establish a reputation category that users can earn points in through votes and participation.
+      </p>
+    </div>
     <form onsubmit={(e) => { e.preventDefault(); saveTag(); }} class="space-y-5">
       <div>
         <label class="label">

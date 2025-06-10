@@ -44,7 +44,7 @@
 	<div class="p-4">
 		<div class="px-4 flex justify-between items-center">
 			<div class="flex items-center gap-4">
-				<span class="text-xl font-semibold text-primary-700-300">{meta.headerTitle ?? meta.title ?? ''}</span>
+				<h1 class="text-2xl font-semibold tracking-wide text-surface-900-100 border-l-4 border-primary-500 pl-4">{meta.headerTitle ?? meta.title ?? ''}</h1>
 			</div>
 			<div class="flex items-center gap-4">
 				<!-- Theme Toggle Switch -->
