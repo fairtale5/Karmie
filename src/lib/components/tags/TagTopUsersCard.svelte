@@ -4,7 +4,7 @@
   import BaseCard from '$lib/components/common/BaseCard.svelte';
   import type { TagDocument, UserDocument, ReputationDocument, UserData } from '$lib/types';
   import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
-  import { dummyData } from '$lib/data/dummyProfileData';
+  import { dummyProfileData } from '$lib/data/dummyProfileData';
 
   const { 
     tag, 
@@ -137,7 +137,23 @@
       currentTagUlid = PREVIEW_TAG_KEY;
       componentLoading = false;
       error = null;
-      topUsers = dummyData.tag.topUsers;
+      
+      // Generate topUsers from master user list
+      topUsers = dummyProfileData.dummyUsers.slice(0, 10).map((user, index) => ({
+        userDocument: user,
+        reputationDocument: {
+          key: `rep_${user.data.user_ulid}`,
+          data: {
+            owner_ulid: user.data.user_ulid,
+            tag_ulid: '___PREVIEW_DATA___',
+            reputation_total_effective: 100 - index * 10,
+            has_voting_power: index < 5
+          }
+        } as ReputationDocument,
+        score: 100 - index * 10,
+        isTrusted: index < 5
+      }));
+      
       return;
     }
     

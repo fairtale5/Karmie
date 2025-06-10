@@ -116,7 +116,7 @@
           .map(rep => tags.find(tag => tag.key === rep.data.tag_ulid))
           .filter((tag): tag is TagDocument => tag !== null);
 
-        console.log('Suggested tags:', suggestedTags);
+        console.log('[snapshot] Suggested tags:', $state.snapshot(suggestedTags));
       } else {
         console.log('User is not logged in, skipping reputation fetch');
         suggestedTags = [];

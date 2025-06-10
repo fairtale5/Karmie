@@ -3,7 +3,7 @@
   import type { TagDocument } from '$lib/types';
   import { Users, ShieldCheck, Send } from 'lucide-svelte';
   import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
-  import { dummyData } from '$lib/data/dummyProfileData';
+  import { dummyProfileData } from '$lib/data/dummyProfileData';
 
   const { 
     tag, 
@@ -73,9 +73,9 @@
     if (tag?.key === PREVIEW_TAG_KEY) {
       currentTagUlid = PREVIEW_TAG_KEY;
       stats = {
-        totalUsers: dummyData.tag.stats.totalUsers,
-        trustedUsers: dummyData.tag.stats.trustedUsers,
-        totalVotes: dummyData.tag.stats.totalVotes,
+        totalUsers: dummyProfileData.dummyUsers.length,
+        trustedUsers: Math.floor(dummyProfileData.dummyUsers.length / 3),
+        totalVotes: dummyProfileData.recentVotes.length,
         loading: false
       };
       return;

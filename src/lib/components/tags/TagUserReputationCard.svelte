@@ -5,7 +5,7 @@
   import type { TagDocument, VoteDocument, UserDocument, VoteData, UserData } from '$lib/types';
   import { Popover, Avatar } from '@skeletonlabs/skeleton-svelte';
   import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
-  import { dummyData } from '$lib/data/dummyProfileData';
+  import { dummyProfileData } from '$lib/data/dummyProfileData';
 
   const { 
     tag, 
@@ -54,12 +54,15 @@
 
   // Filter votes based on toggle states and time
   function filterVotes(votes: VoteDocument[]): VoteDocument[] {
-    if (!$authUserDoc?.data?.user_ulid) return [];
+    // In preview mode, use demo_user as the active user
+    const activeUserUlid = tag?.key === PREVIEW_TAG_KEY ? 'demo_user' : $authUserDoc?.data?.user_ulid;
+    
+    if (!activeUserUlid) return [];
     
     return votes.filter(vote => {
       // Check direction filters
-      const isIncoming = vote.data.target_ulid === $authUserDoc.data.user_ulid;
-      const isOutgoing = vote.data.owner_ulid === $authUserDoc.data.user_ulid;
+      const isIncoming = vote.data.target_ulid === activeUserUlid;
+      const isOutgoing = vote.data.owner_ulid === activeUserUlid;
       const directionMatch = (isIncoming && showIncoming) || (isOutgoing && showOutgoing);
       
       // Check value filters
@@ -68,8 +71,8 @@
       const isNegative = voteValue < 0;
       const valueMatch = (isPositive && showPositive) || (isNegative && showNegative);
       
-      // Check time filter (votes should be newer than cutoff)
-      const timeMatch = !vote.created_at || vote.created_at >= cutoffTimestamp;
+      // Check time filter (skip time filter in preview mode)
+      const timeMatch = tag?.key === PREVIEW_TAG_KEY || !vote.created_at || vote.created_at >= cutoffTimestamp;
       
       return directionMatch && valueMatch && timeMatch;
     });
@@ -99,11 +102,13 @@
 
   // Calculate user reputation from votes
   function calculateReputation(votes: VoteDocument[]): { score: number; rank: number } {
-    if (!$authUserDoc?.data?.user_ulid) return { score: 0, rank: 0 };
+    // In preview mode, use demo_user as the active user
+    const activeUserUlid = tag?.key === PREVIEW_TAG_KEY ? 'demo_user' : $authUserDoc?.data?.user_ulid;
     
-    const userUlid = $authUserDoc.data.user_ulid;
+    if (!activeUserUlid) return { score: 0, rank: 0 };
+    
     const score = votes
-      .filter(vote => vote.data.target_ulid === userUlid)
+      .filter(vote => vote.data.target_ulid === activeUserUlid)
       .reduce((sum, vote) => sum + (vote.data.value ?? 0), 0);
     
     // For now, rank is placeholder - would need all users' scores to calculate properly
@@ -181,8 +186,18 @@
     if (tag?.key === PREVIEW_TAG_KEY) {
       votesLoading = false;
       votesError = null;
-      votes = dummyData.profile.recentVotes;
-      userData = dummyData.tag.userData;
+      votes = dummyProfileData.recentVotes;
+      
+      // Create new Map to avoid reactivity issues
+      const newUserData = new Map();
+      
+      // Pre-populate userData with dummy users (exact same approach as RecentVotesUser)
+      dummyProfileData.dummyUsers.forEach(dummyUser => {
+        newUserData.set(dummyUser.data.user_ulid, dummyUser);
+      });
+      
+      // Set userData last to prevent reactivity loops
+      userData = newUserData;
       userReputationScore = 123;
       userRank = 5;
       return;

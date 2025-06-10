@@ -63,7 +63,7 @@ export const dummyData = {
       data: {
         owner_ulid: 'demo_user', // demo user casting vote
         target_ulid: 'user_alice',
-        tag_ulid: 'tag_icp',
+        tag_ulid: '___PREVIEW_DATA___',
         vote_ulid: 'vote_demo_1',
         value: 1,
         weight: 1.0
@@ -76,7 +76,7 @@ export const dummyData = {
       data: {
         owner_ulid: 'user_bob',
         target_ulid: 'demo_user', // demo user receiving vote
-        tag_ulid: 'tag_rust',
+        tag_ulid: '___PREVIEW_DATA___',
         vote_ulid: 'vote_demo_2',
         value: 1,
         weight: 1.0
@@ -89,7 +89,7 @@ export const dummyData = {
       data: {
         owner_ulid: 'demo_user', // demo user casting vote
         target_ulid: 'user_carol',
-        tag_ulid: 'tag_svelte',
+        tag_ulid: '___PREVIEW_DATA___',
         vote_ulid: 'vote_demo_3',
         value: -1,
         weight: 1.0
@@ -102,7 +102,7 @@ export const dummyData = {
       data: {
         owner_ulid: 'user_delta',
         target_ulid: 'demo_user', // demo user receiving vote
-        tag_ulid: 'tag_typescript',
+        tag_ulid: '___PREVIEW_DATA___',
         vote_ulid: 'vote_demo_4',
         value: 1,
         weight: 1.0
@@ -115,14 +115,274 @@ export const dummyData = {
       data: {
         owner_ulid: 'demo_user', // demo user casting vote
         target_ulid: 'user_echo',
-        tag_ulid: 'tag_icp',
+        tag_ulid: '___PREVIEW_DATA___',
         vote_ulid: 'vote_demo_5',
         value: 1,
         weight: 1.0
       },
-             created_at: BigInt(Date.now() - 259200000) * BigInt(1_000_000), // 3d ago in nanoseconds
-       updated_at: BigInt(Date.now() - 259200000) * BigInt(1_000_000)
-     }
+      created_at: BigInt(Date.now() - 259200000) * BigInt(1_000_000), // 3d ago in nanoseconds
+      updated_at: BigInt(Date.now() - 259200000) * BigInt(1_000_000)
+    },
+    {
+      key: 'vote_demo_6',
+      data: {
+        owner_ulid: 'user_frank',
+        target_ulid: 'demo_user',
+        tag_ulid: '___PREVIEW_DATA___',
+        vote_ulid: 'vote_demo_6',
+        value: 1,
+        weight: 1.0
+      },
+      created_at: BigInt(Date.now() - 345600000) * BigInt(1_000_000), // 4d ago
+      updated_at: BigInt(Date.now() - 345600000) * BigInt(1_000_000)
+    },
+    {
+      key: 'vote_demo_7',
+      data: {
+        owner_ulid: 'demo_user',
+        target_ulid: 'user_grace',
+        tag_ulid: '___PREVIEW_DATA___',
+        vote_ulid: 'vote_demo_7',
+        value: 1,
+        weight: 1.0
+      },
+      created_at: BigInt(Date.now() - 432000000) * BigInt(1_000_000), // 5d ago
+      updated_at: BigInt(Date.now() - 432000000) * BigInt(1_000_000)
+    },
+    {
+      key: 'vote_demo_8',
+      data: {
+        owner_ulid: 'user_henry',
+        target_ulid: 'demo_user',
+        tag_ulid: '___PREVIEW_DATA___',
+        vote_ulid: 'vote_demo_8',
+        value: -1,
+        weight: 1.0
+      },
+      created_at: BigInt(Date.now() - 518400000) * BigInt(1_000_000), // 6d ago
+      updated_at: BigInt(Date.now() - 518400000) * BigInt(1_000_000)
+    },
+    {
+      key: 'vote_demo_9',
+      data: {
+        owner_ulid: 'demo_user',
+        target_ulid: 'user_iris',
+        tag_ulid: '___PREVIEW_DATA___',
+        vote_ulid: 'vote_demo_9',
+        value: 1,
+        weight: 1.0
+      },
+      created_at: BigInt(Date.now() - 604800000) * BigInt(1_000_000), // 7d ago
+      updated_at: BigInt(Date.now() - 604800000) * BigInt(1_000_000)
+    },
+    {
+      key: 'vote_demo_10',
+      data: {
+        owner_ulid: 'user_jack',
+        target_ulid: 'demo_user',
+        tag_ulid: '___PREVIEW_DATA___',
+        vote_ulid: 'vote_demo_10',
+        value: 1,
+        weight: 1.0
+      },
+      created_at: BigInt(Date.now() - 691200000) * BigInt(1_000_000), // 8d ago
+      updated_at: BigInt(Date.now() - 691200000) * BigInt(1_000_000)
+    },
+    {
+      key: 'vote_demo_11',
+      data: {
+        owner_ulid: 'demo_user',
+        target_ulid: 'user_kelly',
+        tag_ulid: '___PREVIEW_DATA___',
+        vote_ulid: 'vote_demo_11',
+        value: 1,
+        weight: 1.0
+      },
+      created_at: BigInt(Date.now() - 777600000) * BigInt(1_000_000), // 9d ago
+      updated_at: BigInt(Date.now() - 777600000) * BigInt(1_000_000)
+    },
+    {
+      key: 'vote_demo_12',
+      data: {
+        owner_ulid: 'user_liam',
+        target_ulid: 'demo_user',
+        tag_ulid: '___PREVIEW_DATA___',
+        vote_ulid: 'vote_demo_12',
+        value: 1,
+        weight: 1.0
+      },
+      created_at: BigInt(Date.now() - 864000000) * BigInt(1_000_000), // 10d ago
+      updated_at: BigInt(Date.now() - 864000000) * BigInt(1_000_000)
+    },
+    {
+      key: 'vote_demo_13',
+      data: {
+        owner_ulid: 'demo_user',
+        target_ulid: 'user_mia',
+        tag_ulid: '___PREVIEW_DATA___',
+        vote_ulid: 'vote_demo_13',
+        value: -1,
+        weight: 1.0
+      },
+      created_at: BigInt(Date.now() - 950400000) * BigInt(1_000_000), // 11d ago
+      updated_at: BigInt(Date.now() - 950400000) * BigInt(1_000_000)
+    },
+    {
+      key: 'vote_demo_14',
+      data: {
+        owner_ulid: 'user_noah',
+        target_ulid: 'demo_user',
+        tag_ulid: '___PREVIEW_DATA___',
+        vote_ulid: 'vote_demo_14',
+        value: 1,
+        weight: 1.0
+      },
+      created_at: BigInt(Date.now() - 1036800000) * BigInt(1_000_000), // 12d ago
+      updated_at: BigInt(Date.now() - 1036800000) * BigInt(1_000_000)
+    },
+    {
+      key: 'vote_demo_15',
+      data: {
+        owner_ulid: 'demo_user',
+        target_ulid: 'user_olivia',
+        tag_ulid: '___PREVIEW_DATA___',
+        vote_ulid: 'vote_demo_15',
+        value: 1,
+        weight: 1.0
+      },
+      created_at: BigInt(Date.now() - 1123200000) * BigInt(1_000_000), // 13d ago
+      updated_at: BigInt(Date.now() - 1123200000) * BigInt(1_000_000)
+    },
+    {
+      key: 'vote_demo_16',
+      data: {
+        owner_ulid: 'user_paul',
+        target_ulid: 'demo_user',
+        tag_ulid: '___PREVIEW_DATA___',
+        vote_ulid: 'vote_demo_16',
+        value: 1,
+        weight: 1.0
+      },
+      created_at: BigInt(Date.now() - 1209600000) * BigInt(1_000_000), // 14d ago
+      updated_at: BigInt(Date.now() - 1209600000) * BigInt(1_000_000)
+    },
+    {
+      key: 'vote_demo_17',
+      data: {
+        owner_ulid: 'demo_user',
+        target_ulid: 'user_quinn',
+        tag_ulid: '___PREVIEW_DATA___',
+        vote_ulid: 'vote_demo_17',
+        value: 1,
+        weight: 1.0
+      },
+      created_at: BigInt(Date.now() - 1296000000) * BigInt(1_000_000), // 15d ago
+      updated_at: BigInt(Date.now() - 1296000000) * BigInt(1_000_000)
+    },
+    {
+      key: 'vote_demo_18',
+      data: {
+        owner_ulid: 'user_ruby',
+        target_ulid: 'demo_user',
+        tag_ulid: '___PREVIEW_DATA___',
+        vote_ulid: 'vote_demo_18',
+        value: -1,
+        weight: 1.0
+      },
+      created_at: BigInt(Date.now() - 1382400000) * BigInt(1_000_000), // 16d ago
+      updated_at: BigInt(Date.now() - 1382400000) * BigInt(1_000_000)
+    },
+    {
+      key: 'vote_demo_19',
+      data: {
+        owner_ulid: 'demo_user',
+        target_ulid: 'user_sam',
+        tag_ulid: '___PREVIEW_DATA___',
+        vote_ulid: 'vote_demo_19',
+        value: 1,
+        weight: 1.0
+      },
+      created_at: BigInt(Date.now() - 1468800000) * BigInt(1_000_000), // 17d ago
+      updated_at: BigInt(Date.now() - 1468800000) * BigInt(1_000_000)
+    },
+    {
+      key: 'vote_demo_20',
+      data: {
+        owner_ulid: 'user_tara',
+        target_ulid: 'demo_user',
+        tag_ulid: '___PREVIEW_DATA___',
+        vote_ulid: 'vote_demo_20',
+        value: 1,
+        weight: 1.0
+      },
+      created_at: BigInt(Date.now() - 1555200000) * BigInt(1_000_000), // 18d ago
+      updated_at: BigInt(Date.now() - 1555200000) * BigInt(1_000_000)
+    },
+    {
+      key: 'vote_demo_21',
+      data: {
+        owner_ulid: 'demo_user',
+        target_ulid: 'user_uma',
+        tag_ulid: '___PREVIEW_DATA___',
+        vote_ulid: 'vote_demo_21',
+        value: 1,
+        weight: 1.0
+      },
+      created_at: BigInt(Date.now() - 1641600000) * BigInt(1_000_000), // 19d ago
+      updated_at: BigInt(Date.now() - 1641600000) * BigInt(1_000_000)
+    },
+    {
+      key: 'vote_demo_22',
+      data: {
+        owner_ulid: 'user_victor',
+        target_ulid: 'demo_user',
+        tag_ulid: '___PREVIEW_DATA___',
+        vote_ulid: 'vote_demo_22',
+        value: 1,
+        weight: 1.0
+      },
+      created_at: BigInt(Date.now() - 1728000000) * BigInt(1_000_000), // 20d ago
+      updated_at: BigInt(Date.now() - 1728000000) * BigInt(1_000_000)
+    },
+    {
+      key: 'vote_demo_23',
+      data: {
+        owner_ulid: 'demo_user',
+        target_ulid: 'user_wendy',
+        tag_ulid: '___PREVIEW_DATA___',
+        vote_ulid: 'vote_demo_23',
+        value: -1,
+        weight: 1.0
+      },
+      created_at: BigInt(Date.now() - 1814400000) * BigInt(1_000_000), // 21d ago
+      updated_at: BigInt(Date.now() - 1814400000) * BigInt(1_000_000)
+    },
+    {
+      key: 'vote_demo_24',
+      data: {
+        owner_ulid: 'user_xander',
+        target_ulid: 'demo_user',
+        tag_ulid: '___PREVIEW_DATA___',
+        vote_ulid: 'vote_demo_24',
+        value: 1,
+        weight: 1.0
+      },
+      created_at: BigInt(Date.now() - 1900800000) * BigInt(1_000_000), // 22d ago
+      updated_at: BigInt(Date.now() - 1900800000) * BigInt(1_000_000)
+    },
+    {
+      key: 'vote_demo_25',
+      data: {
+        owner_ulid: 'demo_user',
+        target_ulid: 'user_yara',
+        tag_ulid: '___PREVIEW_DATA___',
+        vote_ulid: 'vote_demo_25',
+        value: 1,
+        weight: 1.0
+      },
+      created_at: BigInt(Date.now() - 1987200000) * BigInt(1_000_000), // 23d ago
+      updated_at: BigInt(Date.now() - 1987200000) * BigInt(1_000_000)
+    }
    ] as VoteDocument[],
 
   // Dummy user data for users referenced in votes
@@ -181,6 +441,237 @@ export const dummyData = {
       },
       created_at: BigInt(Date.now() - 86400000 * 10) * BigInt(1_000_000), // 10d ago
       updated_at: BigInt(Date.now() - 86400000 * 10) * BigInt(1_000_000)
+    },
+    {
+      key: 'user_frank',
+      data: {
+        user_handle: 'frank',
+        display_name: 'Frank Miller',
+        user_ulid: 'user_frank',
+        avatar_url: 'https://i.pravatar.cc/100?img=7'
+      },
+      created_at: BigInt(Date.now() - 86400000 * 35) * BigInt(1_000_000),
+      updated_at: BigInt(Date.now() - 86400000 * 35) * BigInt(1_000_000)
+    },
+    {
+      key: 'user_grace',
+      data: {
+        user_handle: 'grace',
+        display_name: 'Grace Wilson',
+        user_ulid: 'user_grace',
+        avatar_url: 'https://i.pravatar.cc/100?img=8'
+      },
+      created_at: BigInt(Date.now() - 86400000 * 40) * BigInt(1_000_000),
+      updated_at: BigInt(Date.now() - 86400000 * 40) * BigInt(1_000_000)
+    },
+    {
+      key: 'user_henry',
+      data: {
+        user_handle: 'henry',
+        display_name: 'Henry Moore',
+        user_ulid: 'user_henry',
+        avatar_url: 'https://i.pravatar.cc/100?img=9'
+      },
+      created_at: BigInt(Date.now() - 86400000 * 45) * BigInt(1_000_000),
+      updated_at: BigInt(Date.now() - 86400000 * 45) * BigInt(1_000_000)
+    },
+    {
+      key: 'user_iris',
+      data: {
+        user_handle: 'iris',
+        display_name: 'Iris Taylor',
+        user_ulid: 'user_iris',
+        avatar_url: 'https://i.pravatar.cc/100?img=10'
+      },
+      created_at: BigInt(Date.now() - 86400000 * 50) * BigInt(1_000_000),
+      updated_at: BigInt(Date.now() - 86400000 * 50) * BigInt(1_000_000)
+    },
+    {
+      key: 'user_jack',
+      data: {
+        user_handle: 'jack',
+        display_name: 'Jack Anderson',
+        user_ulid: 'user_jack',
+        avatar_url: 'https://i.pravatar.cc/100?img=11'
+      },
+      created_at: BigInt(Date.now() - 86400000 * 55) * BigInt(1_000_000),
+      updated_at: BigInt(Date.now() - 86400000 * 55) * BigInt(1_000_000)
+    },
+    {
+      key: 'user_kelly',
+      data: {
+        user_handle: 'kelly',
+        display_name: 'Kelly Thomas',
+        user_ulid: 'user_kelly',
+        avatar_url: 'https://i.pravatar.cc/100?img=12'
+      },
+      created_at: BigInt(Date.now() - 86400000 * 60) * BigInt(1_000_000),
+      updated_at: BigInt(Date.now() - 86400000 * 60) * BigInt(1_000_000)
+    },
+    {
+      key: 'user_liam',
+      data: {
+        user_handle: 'liam',
+        display_name: 'Liam Jackson',
+        user_ulid: 'user_liam',
+        avatar_url: 'https://i.pravatar.cc/100?img=13'
+      },
+      created_at: BigInt(Date.now() - 86400000 * 65) * BigInt(1_000_000),
+      updated_at: BigInt(Date.now() - 86400000 * 65) * BigInt(1_000_000)
+    },
+    {
+      key: 'user_mia',
+      data: {
+        user_handle: 'mia',
+        display_name: 'Mia White',
+        user_ulid: 'user_mia',
+        avatar_url: 'https://i.pravatar.cc/100?img=14'
+      },
+      created_at: BigInt(Date.now() - 86400000 * 70) * BigInt(1_000_000),
+      updated_at: BigInt(Date.now() - 86400000 * 70) * BigInt(1_000_000)
+    },
+    {
+      key: 'user_noah',
+      data: {
+        user_handle: 'noah',
+        display_name: 'Noah Harris',
+        user_ulid: 'user_noah',
+        avatar_url: 'https://i.pravatar.cc/100?img=15'
+      },
+      created_at: BigInt(Date.now() - 86400000 * 75) * BigInt(1_000_000),
+      updated_at: BigInt(Date.now() - 86400000 * 75) * BigInt(1_000_000)
+    },
+    {
+      key: 'user_olivia',
+      data: {
+        user_handle: 'olivia',
+        display_name: 'Olivia Martin',
+        user_ulid: 'user_olivia',
+        avatar_url: 'https://i.pravatar.cc/100?img=16'
+      },
+      created_at: BigInt(Date.now() - 86400000 * 80) * BigInt(1_000_000),
+      updated_at: BigInt(Date.now() - 86400000 * 80) * BigInt(1_000_000)
+    },
+    {
+      key: 'user_paul',
+      data: {
+        user_handle: 'paul',
+        display_name: 'Paul Thompson',
+        user_ulid: 'user_paul',
+        avatar_url: 'https://i.pravatar.cc/100?img=17'
+      },
+      created_at: BigInt(Date.now() - 86400000 * 85) * BigInt(1_000_000),
+      updated_at: BigInt(Date.now() - 86400000 * 85) * BigInt(1_000_000)
+    },
+    {
+      key: 'user_quinn',
+      data: {
+        user_handle: 'quinn',
+        display_name: 'Quinn Garcia',
+        user_ulid: 'user_quinn',
+        avatar_url: 'https://i.pravatar.cc/100?img=18'
+      },
+      created_at: BigInt(Date.now() - 86400000 * 90) * BigInt(1_000_000),
+      updated_at: BigInt(Date.now() - 86400000 * 90) * BigInt(1_000_000)
+    },
+    {
+      key: 'user_ruby',
+      data: {
+        user_handle: 'ruby',
+        display_name: 'Ruby Martinez',
+        user_ulid: 'user_ruby',
+        avatar_url: 'https://i.pravatar.cc/100?img=19'
+      },
+      created_at: BigInt(Date.now() - 86400000 * 95) * BigInt(1_000_000),
+      updated_at: BigInt(Date.now() - 86400000 * 95) * BigInt(1_000_000)
+    },
+    {
+      key: 'user_sam',
+      data: {
+        user_handle: 'sam',
+        display_name: 'Sam Rodriguez',
+        user_ulid: 'user_sam',
+        avatar_url: 'https://i.pravatar.cc/100?img=20'
+      },
+      created_at: BigInt(Date.now() - 86400000 * 100) * BigInt(1_000_000),
+      updated_at: BigInt(Date.now() - 86400000 * 100) * BigInt(1_000_000)
+    },
+    {
+      key: 'user_tara',
+      data: {
+        user_handle: 'tara',
+        display_name: 'Tara Lewis',
+        user_ulid: 'user_tara',
+        avatar_url: 'https://i.pravatar.cc/100?img=21'
+      },
+      created_at: BigInt(Date.now() - 86400000 * 105) * BigInt(1_000_000),
+      updated_at: BigInt(Date.now() - 86400000 * 105) * BigInt(1_000_000)
+    },
+    {
+      key: 'user_uma',
+      data: {
+        user_handle: 'uma',
+        display_name: 'Uma Lee',
+        user_ulid: 'user_uma',
+        avatar_url: 'https://i.pravatar.cc/100?img=22'
+      },
+      created_at: BigInt(Date.now() - 86400000 * 110) * BigInt(1_000_000),
+      updated_at: BigInt(Date.now() - 86400000 * 110) * BigInt(1_000_000)
+    },
+    {
+      key: 'user_victor',
+      data: {
+        user_handle: 'victor',
+        display_name: 'Victor Walker',
+        user_ulid: 'user_victor',
+        avatar_url: 'https://i.pravatar.cc/100?img=23'
+      },
+      created_at: BigInt(Date.now() - 86400000 * 115) * BigInt(1_000_000),
+      updated_at: BigInt(Date.now() - 86400000 * 115) * BigInt(1_000_000)
+    },
+    {
+      key: 'user_wendy',
+      data: {
+        user_handle: 'wendy',
+        display_name: 'Wendy Hall',
+        user_ulid: 'user_wendy',
+        avatar_url: 'https://i.pravatar.cc/100?img=24'
+      },
+      created_at: BigInt(Date.now() - 86400000 * 120) * BigInt(1_000_000),
+      updated_at: BigInt(Date.now() - 86400000 * 120) * BigInt(1_000_000)
+    },
+    {
+      key: 'user_xander',
+      data: {
+        user_handle: 'xander',
+        display_name: 'Xander Allen',
+        user_ulid: 'user_xander',
+        avatar_url: 'https://i.pravatar.cc/100?img=25'
+      },
+      created_at: BigInt(Date.now() - 86400000 * 125) * BigInt(1_000_000),
+      updated_at: BigInt(Date.now() - 86400000 * 125) * BigInt(1_000_000)
+    },
+    {
+      key: 'user_yara',
+      data: {
+        user_handle: 'yara',
+        display_name: 'Yara Young',
+        user_ulid: 'user_yara',
+        avatar_url: 'https://i.pravatar.cc/100?img=26'
+      },
+      created_at: BigInt(Date.now() - 86400000 * 130) * BigInt(1_000_000),
+      updated_at: BigInt(Date.now() - 86400000 * 130) * BigInt(1_000_000)
+    },
+    {
+      key: 'demo_user',
+      data: {
+        user_handle: 'demo_user',
+        display_name: 'Demo User',
+        user_ulid: 'demo_user',
+        avatar_url: 'https://i.pravatar.cc/100?img=3'
+      },
+      created_at: BigInt(Date.now() - 86400000 * 135) * BigInt(1_000_000),
+      updated_at: BigInt(Date.now() - 86400000 * 135) * BigInt(1_000_000)
     }
   ] as UserDocument[]
   },
@@ -211,937 +702,7 @@ export const dummyData = {
       totalUsers: 47,
       trustedUsers: 23,
       totalVotes: 156
-    },
-
-    // Top users for tags (extended to 20+ users)
-    topUsers: [
-      {
-        userDocument: {
-          key: 'usr_demo_user_1',
-          data: {
-            user_handle: 'alice_crypto',
-            user_ulid: 'demo_user_1',
-            display_name: 'Alice Crypto',
-            avatar_url: 'https://i.pravatar.cc/100?img=1'
-          }
-        },
-        reputationDocument: {
-          key: 'rep_demo_1',
-          data: {
-            owner_ulid: 'demo_user_1',
-            tag_ulid: '___PREVIEW_DATA___',
-            reputation_total_effective: 250,
-            has_voting_power: true,
-            reputation_basis: 220,
-            reputation_rewards: 30,
-            last_calculation: '2024-01-15T10:30:00.000Z',
-            vote_weight: 1.0,
-            severity: 'low'
-          }
-        },
-        score: 250,
-        isTrusted: true
-      },
-      {
-        userDocument: {
-          key: 'usr_demo_user_2',
-          data: {
-            user_handle: 'bob_dev',
-            user_ulid: 'demo_user_2',
-            display_name: 'Bob Developer',
-            avatar_url: 'https://i.pravatar.cc/100?img=2'
-          }
-        },
-        reputationDocument: {
-          key: 'rep_demo_2',
-          data: {
-            owner_ulid: 'demo_user_2',
-            tag_ulid: '___PREVIEW_DATA___',
-            reputation_total_effective: 230,
-            has_voting_power: true,
-            reputation_basis: 210,
-            reputation_rewards: 20,
-            last_calculation: '2024-01-15T10:30:00.000Z',
-            vote_weight: 0.9,
-            severity: 'low'
-          }
-        },
-        score: 230,
-        isTrusted: true
-      },
-      {
-        userDocument: {
-          key: 'usr_demo_user_3',
-          data: {
-            user_handle: 'carol_ui',
-            user_ulid: 'demo_user_3',
-            display_name: 'Carol Designer',
-            avatar_url: 'https://i.pravatar.cc/100?img=4'
-          }
-        },
-        reputationDocument: {
-          key: 'rep_demo_3',
-          data: {
-            owner_ulid: 'demo_user_3',
-            tag_ulid: '___PREVIEW_DATA___',
-            reputation_total_effective: 210,
-            has_voting_power: true,
-            reputation_basis: 190,
-            reputation_rewards: 20,
-            last_calculation: '2024-01-15T10:30:00.000Z',
-            vote_weight: 0.8,
-            severity: 'low'
-          }
-        },
-        score: 210,
-        isTrusted: true
-      },
-      {
-        userDocument: {
-          key: 'usr_demo_user_4',
-          data: {
-            user_handle: 'david_smart',
-            user_ulid: 'demo_user_4',
-            display_name: 'David Contracts',
-            avatar_url: 'https://i.pravatar.cc/100?img=7'
-          }
-        },
-        reputationDocument: {
-          key: 'rep_demo_4',
-          data: {
-            owner_ulid: 'demo_user_4',
-            tag_ulid: '___PREVIEW_DATA___',
-            reputation_total_effective: 195,
-            has_voting_power: true,
-            reputation_basis: 180,
-            reputation_rewards: 15,
-            last_calculation: '2024-01-15T10:30:00.000Z',
-            vote_weight: 0.8,
-            severity: 'low'
-          }
-        },
-        score: 195,
-        isTrusted: true
-      },
-      {
-        userDocument: {
-          key: 'usr_demo_user_5',
-          data: {
-            user_handle: 'eve_protocol',
-            user_ulid: 'demo_user_5',
-            display_name: 'Eve Protocol',
-            avatar_url: 'https://i.pravatar.cc/100?img=8'
-          }
-        },
-        reputationDocument: {
-          key: 'rep_demo_5',
-          data: {
-            owner_ulid: 'demo_user_5',
-            tag_ulid: '___PREVIEW_DATA___',
-            reputation_total_effective: 180,
-            has_voting_power: true,
-            reputation_basis: 165,
-            reputation_rewards: 15,
-            last_calculation: '2024-01-15T10:30:00.000Z',
-            vote_weight: 0.7,
-            severity: 'low'
-          }
-        },
-        score: 180,
-        isTrusted: true
-      },
-      {
-        userDocument: {
-          key: 'usr_demo_user_6',
-          data: {
-            user_handle: 'frank_defi',
-            user_ulid: 'demo_user_6',
-            display_name: 'Frank DeFi',
-            avatar_url: 'https://i.pravatar.cc/100?img=9'
-          }
-        },
-        reputationDocument: {
-          key: 'rep_demo_6',
-          data: {
-            owner_ulid: 'demo_user_6',
-            tag_ulid: '___PREVIEW_DATA___',
-            reputation_total_effective: 165,
-            has_voting_power: true,
-            reputation_basis: 150,
-            reputation_rewards: 15,
-            last_calculation: '2024-01-15T10:30:00.000Z',
-            vote_weight: 0.7,
-            severity: 'low'
-          }
-        },
-        score: 165,
-        isTrusted: true
-      },
-      {
-        userDocument: {
-          key: 'usr_demo_user_7',
-          data: {
-            user_handle: 'grace_dao',
-            user_ulid: 'demo_user_7',
-            display_name: 'Grace DAO',
-            avatar_url: 'https://i.pravatar.cc/100?img=10'
-          }
-        },
-        reputationDocument: {
-          key: 'rep_demo_7',
-          data: {
-            owner_ulid: 'demo_user_7',
-            tag_ulid: '___PREVIEW_DATA___',
-            reputation_total_effective: 150,
-            has_voting_power: true,
-            reputation_basis: 140,
-            reputation_rewards: 10,
-            last_calculation: '2024-01-15T10:30:00.000Z',
-            vote_weight: 0.6,
-            severity: 'medium'
-          }
-        },
-        score: 150,
-        isTrusted: true
-      },
-      {
-        userDocument: {
-          key: 'usr_demo_user_8',
-          data: {
-            user_handle: 'henry_nft',
-            user_ulid: 'demo_user_8',
-            display_name: 'Henry NFT',
-            avatar_url: 'https://i.pravatar.cc/100?img=11'
-          }
-        },
-        reputationDocument: {
-          key: 'rep_demo_8',
-          data: {
-            owner_ulid: 'demo_user_8',
-            tag_ulid: '___PREVIEW_DATA___',
-            reputation_total_effective: 140,
-            has_voting_power: true,
-            reputation_basis: 130,
-            reputation_rewards: 10,
-            last_calculation: '2024-01-15T10:30:00.000Z',
-            vote_weight: 0.6,
-            severity: 'medium'
-          }
-        },
-        score: 140,
-        isTrusted: true
-      },
-      {
-        userDocument: {
-          key: 'usr_demo_user_9',
-          data: {
-            user_handle: 'iris_web3',
-            user_ulid: 'demo_user_9',
-            display_name: 'Iris Web3',
-            avatar_url: 'https://i.pravatar.cc/100?img=12'
-          }
-        },
-        reputationDocument: {
-          key: 'rep_demo_9',
-          data: {
-            owner_ulid: 'demo_user_9',
-            tag_ulid: '___PREVIEW_DATA___',
-            reputation_total_effective: 130,
-            has_voting_power: true,
-            reputation_basis: 120,
-            reputation_rewards: 10,
-            last_calculation: '2024-01-15T10:30:00.000Z',
-            vote_weight: 0.5,
-            severity: 'medium'
-          }
-        },
-        score: 130,
-        isTrusted: true
-      },
-      {
-        userDocument: {
-          key: 'usr_demo_user_10',
-          data: {
-            user_handle: 'jack_metaverse',
-            user_ulid: 'demo_user_10',
-            display_name: 'Jack Metaverse',
-            avatar_url: 'https://i.pravatar.cc/100?img=13'
-          }
-        },
-        reputationDocument: {
-          key: 'rep_demo_10',
-          data: {
-            owner_ulid: 'demo_user_10',
-            tag_ulid: '___PREVIEW_DATA___',
-            reputation_total_effective: 125,
-            has_voting_power: true,
-            reputation_basis: 115,
-            reputation_rewards: 10,
-            last_calculation: '2024-01-15T10:30:00.000Z',
-            vote_weight: 0.5,
-            severity: 'medium'
-          }
-        },
-        score: 125,
-        isTrusted: true
-      },
-      {
-        userDocument: {
-          key: 'usr_demo_user_11',
-          data: {
-            user_handle: 'kelly_gamefi',
-            user_ulid: 'demo_user_11',
-            display_name: 'Kelly GameFi',
-            avatar_url: 'https://i.pravatar.cc/100?img=14'
-          }
-        },
-        reputationDocument: {
-          key: 'rep_demo_11',
-          data: {
-            owner_ulid: 'demo_user_11',
-            tag_ulid: '___PREVIEW_DATA___',
-            reputation_total_effective: 120,
-            has_voting_power: true,
-            reputation_basis: 110,
-            reputation_rewards: 10,
-            last_calculation: '2024-01-15T10:30:00.000Z',
-            vote_weight: 0.5,
-            severity: 'medium'
-          }
-        },
-        score: 120,
-        isTrusted: true
-      },
-      {
-        userDocument: {
-          key: 'usr_demo_user_12',
-          data: {
-            user_handle: 'liam_validator',
-            user_ulid: 'demo_user_12',
-            display_name: 'Liam Validator',
-            avatar_url: 'https://i.pravatar.cc/100?img=15'
-          }
-        },
-        reputationDocument: {
-          key: 'rep_demo_12',
-          data: {
-            owner_ulid: 'demo_user_12',
-            tag_ulid: '___PREVIEW_DATA___',
-            reputation_total_effective: 115,
-            has_voting_power: true,
-            reputation_basis: 105,
-            reputation_rewards: 10,
-            last_calculation: '2024-01-15T10:30:00.000Z',
-            vote_weight: 0.4,
-            severity: 'medium'
-          }
-        },
-        score: 115,
-        isTrusted: true
-      },
-      {
-        userDocument: {
-          key: 'usr_demo_user_13',
-          data: {
-            user_handle: 'mia_bridge',
-            user_ulid: 'demo_user_13',
-            display_name: 'Mia Bridge',
-            avatar_url: 'https://i.pravatar.cc/100?img=16'
-          }
-        },
-        reputationDocument: {
-          key: 'rep_demo_13',
-          data: {
-            owner_ulid: 'demo_user_13',
-            tag_ulid: '___PREVIEW_DATA___',
-            reputation_total_effective: 110,
-            has_voting_power: false,
-            reputation_basis: 100,
-            reputation_rewards: 10,
-            last_calculation: '2024-01-15T10:30:00.000Z',
-            vote_weight: 0.4,
-            severity: 'medium'
-          }
-        },
-        score: 110,
-        isTrusted: false
-      },
-      {
-        userDocument: {
-          key: 'usr_demo_user_14',
-          data: {
-            user_handle: 'noah_oracle',
-            user_ulid: 'demo_user_14',
-            display_name: 'Noah Oracle',
-            avatar_url: 'https://i.pravatar.cc/100?img=17'
-          }
-        },
-        reputationDocument: {
-          key: 'rep_demo_14',
-          data: {
-            owner_ulid: 'demo_user_14',
-            tag_ulid: '___PREVIEW_DATA___',
-            reputation_total_effective: 105,
-            has_voting_power: false,
-            reputation_basis: 95,
-            reputation_rewards: 10,
-            last_calculation: '2024-01-15T10:30:00.000Z',
-            vote_weight: 0.4,
-            severity: 'medium'
-          }
-        },
-        score: 105,
-        isTrusted: false
-      },
-      {
-        userDocument: {
-          key: 'usr_demo_user_15',
-          data: {
-            user_handle: 'olivia_layer2',
-            user_ulid: 'demo_user_15',
-            display_name: 'Olivia Layer2',
-            avatar_url: 'https://i.pravatar.cc/100?img=18'
-          }
-        },
-        reputationDocument: {
-          key: 'rep_demo_15',
-          data: {
-            owner_ulid: 'demo_user_15',
-            tag_ulid: '___PREVIEW_DATA___',
-            reputation_total_effective: 100,
-            has_voting_power: false,
-            reputation_basis: 90,
-            reputation_rewards: 10,
-            last_calculation: '2024-01-15T10:30:00.000Z',
-            vote_weight: 0.3,
-            severity: 'medium'
-          }
-        },
-        score: 100,
-        isTrusted: false
-      },
-      {
-        userDocument: {
-          key: 'usr_demo_user_16',
-          data: {
-            user_handle: 'paul_zk',
-            user_ulid: 'demo_user_16',
-            display_name: 'Paul ZK',
-            avatar_url: 'https://i.pravatar.cc/100?img=19'
-          }
-        },
-        reputationDocument: {
-          key: 'rep_demo_16',
-          data: {
-            owner_ulid: 'demo_user_16',
-            tag_ulid: '___PREVIEW_DATA___',
-            reputation_total_effective: 95,
-            has_voting_power: false,
-            reputation_basis: 85,
-            reputation_rewards: 10,
-            last_calculation: '2024-01-15T10:30:00.000Z',
-            vote_weight: 0.3,
-            severity: 'medium'
-          }
-        },
-        score: 95,
-        isTrusted: false
-      },
-      {
-        userDocument: {
-          key: 'usr_demo_user_17',
-          data: {
-            user_handle: 'quinn_rollup',
-            user_ulid: 'demo_user_17',
-            display_name: 'Quinn Rollup',
-            avatar_url: 'https://i.pravatar.cc/100?img=20'
-          }
-        },
-        reputationDocument: {
-          key: 'rep_demo_17',
-          data: {
-            owner_ulid: 'demo_user_17',
-            tag_ulid: '___PREVIEW_DATA___',
-            reputation_total_effective: 90,
-            has_voting_power: false,
-            reputation_basis: 80,
-            reputation_rewards: 10,
-            last_calculation: '2024-01-15T10:30:00.000Z',
-            vote_weight: 0.3,
-            severity: 'medium'
-          }
-        },
-        score: 90,
-        isTrusted: false
-      },
-      {
-        userDocument: {
-          key: 'usr_demo_user_18',
-          data: {
-            user_handle: 'ruby_staking',
-            user_ulid: 'demo_user_18',
-            display_name: 'Ruby Staking',
-            avatar_url: 'https://i.pravatar.cc/100?img=21'
-          }
-        },
-        reputationDocument: {
-          key: 'rep_demo_18',
-          data: {
-            owner_ulid: 'demo_user_18',
-            tag_ulid: '___PREVIEW_DATA___',
-            reputation_total_effective: 85,
-            has_voting_power: false,
-            reputation_basis: 75,
-            reputation_rewards: 10,
-            last_calculation: '2024-01-15T10:30:00.000Z',
-            vote_weight: 0.3,
-            severity: 'medium'
-          }
-        },
-        score: 85,
-        isTrusted: false
-      },
-      {
-        userDocument: {
-          key: 'usr_demo_user_19',
-          data: {
-            user_handle: 'sam_consensus',
-            user_ulid: 'demo_user_19',
-            display_name: 'Sam Consensus',
-            avatar_url: 'https://i.pravatar.cc/100?img=22'
-          }
-        },
-        reputationDocument: {
-          key: 'rep_demo_19',
-          data: {
-            owner_ulid: 'demo_user_19',
-            tag_ulid: '___PREVIEW_DATA___',
-            reputation_total_effective: 80,
-            has_voting_power: false,
-            reputation_basis: 70,
-            reputation_rewards: 10,
-            last_calculation: '2024-01-15T10:30:00.000Z',
-            vote_weight: 0.2,
-            severity: 'high'
-          }
-        },
-        score: 80,
-        isTrusted: false
-      },
-      {
-        userDocument: {
-          key: 'usr_demo_user_20',
-          data: {
-            user_handle: 'tara_yield',
-            user_ulid: 'demo_user_20',
-            display_name: 'Tara Yield',
-            avatar_url: 'https://i.pravatar.cc/100?img=23'
-          }
-        },
-        reputationDocument: {
-          key: 'rep_demo_20',
-          data: {
-            owner_ulid: 'demo_user_20',
-            tag_ulid: '___PREVIEW_DATA___',
-            reputation_total_effective: 75,
-            has_voting_power: false,
-            reputation_basis: 65,
-            reputation_rewards: 10,
-            last_calculation: '2024-01-15T10:30:00.000Z',
-            vote_weight: 0.2,
-            severity: 'high'
-          }
-        },
-        score: 75,
-        isTrusted: false
-      }
-    ],
-
-    // Recent votes for tags (extended to 22 votes)
-    recentVotes: [
-      {
-        key: 'preview_vote_1',
-        data: {
-          owner_ulid: 'demo_user_1',
-          target_ulid: 'demo_user_2',
-          value: 1,
-          tag_ulid: '___PREVIEW_DATA___'
-        }
-      },
-      {
-        key: 'preview_vote_2',
-        data: {
-          owner_ulid: 'demo_user_3',
-          target_ulid: 'demo_user_1',
-          value: -1,
-          tag_ulid: '___PREVIEW_DATA___'
-        }
-      },
-      {
-        key: 'preview_vote_3',
-        data: {
-          owner_ulid: 'demo_user_2',
-          target_ulid: 'demo_user_3',
-          value: 1,
-          tag_ulid: '___PREVIEW_DATA___'
-        }
-      },
-      {
-        key: 'preview_vote_4',
-        data: {
-          owner_ulid: 'demo_user_4',
-          target_ulid: 'demo_user_5',
-          value: 1,
-          tag_ulid: '___PREVIEW_DATA___'
-        }
-      },
-      {
-        key: 'preview_vote_5',
-        data: {
-          owner_ulid: 'demo_user_5',
-          target_ulid: 'demo_user_6',
-          value: -1,
-          tag_ulid: '___PREVIEW_DATA___'
-        }
-      },
-      {
-        key: 'preview_vote_6',
-        data: {
-          owner_ulid: 'demo_user_6',
-          target_ulid: 'demo_user_7',
-          value: 1,
-          tag_ulid: '___PREVIEW_DATA___'
-        }
-      },
-      {
-        key: 'preview_vote_7',
-        data: {
-          owner_ulid: 'demo_user_7',
-          target_ulid: 'demo_user_8',
-          value: 1,
-          tag_ulid: '___PREVIEW_DATA___'
-        }
-      },
-      {
-        key: 'preview_vote_8',
-        data: {
-          owner_ulid: 'demo_user_8',
-          target_ulid: 'demo_user_9',
-          value: -1,
-          tag_ulid: '___PREVIEW_DATA___'
-        }
-      },
-      {
-        key: 'preview_vote_9',
-        data: {
-          owner_ulid: 'demo_user_9',
-          target_ulid: 'demo_user_10',
-          value: 1,
-          tag_ulid: '___PREVIEW_DATA___'
-        }
-      },
-      {
-        key: 'preview_vote_10',
-        data: {
-          owner_ulid: 'demo_user_10',
-          target_ulid: 'demo_user_11',
-          value: 1,
-          tag_ulid: '___PREVIEW_DATA___'
-        }
-      },
-      {
-        key: 'preview_vote_11',
-        data: {
-          owner_ulid: 'demo_user_11',
-          target_ulid: 'demo_user_12',
-          value: -1,
-          tag_ulid: '___PREVIEW_DATA___'
-        }
-      },
-      {
-        key: 'preview_vote_12',
-        data: {
-          owner_ulid: 'demo_user_12',
-          target_ulid: 'demo_user_13',
-          value: 1,
-          tag_ulid: '___PREVIEW_DATA___'
-        }
-      },
-      {
-        key: 'preview_vote_13',
-        data: {
-          owner_ulid: 'demo_user_13',
-          target_ulid: 'demo_user_14',
-          value: 1,
-          tag_ulid: '___PREVIEW_DATA___'
-        }
-      },
-      {
-        key: 'preview_vote_14',
-        data: {
-          owner_ulid: 'demo_user_14',
-          target_ulid: 'demo_user_15',
-          value: -1,
-          tag_ulid: '___PREVIEW_DATA___'
-        }
-      },
-      {
-        key: 'preview_vote_15',
-        data: {
-          owner_ulid: 'demo_user_15',
-          target_ulid: 'demo_user_16',
-          value: 1,
-          tag_ulid: '___PREVIEW_DATA___'
-        }
-      },
-      {
-        key: 'preview_vote_16',
-        data: {
-          owner_ulid: 'demo_user_16',
-          target_ulid: 'demo_user_17',
-          value: 1,
-          tag_ulid: '___PREVIEW_DATA___'
-        }
-      },
-      {
-        key: 'preview_vote_17',
-        data: {
-          owner_ulid: 'demo_user_17',
-          target_ulid: 'demo_user_18',
-          value: -1,
-          tag_ulid: '___PREVIEW_DATA___'
-        }
-      },
-      {
-        key: 'preview_vote_18',
-        data: {
-          owner_ulid: 'demo_user_18',
-          target_ulid: 'demo_user_19',
-          value: 1,
-          tag_ulid: '___PREVIEW_DATA___'
-        }
-      },
-      {
-        key: 'preview_vote_19',
-        data: {
-          owner_ulid: 'demo_user_19',
-          target_ulid: 'demo_user_20',
-          value: 1,
-          tag_ulid: '___PREVIEW_DATA___'
-        }
-      },
-      {
-        key: 'preview_vote_20',
-        data: {
-          owner_ulid: 'demo_user_20',
-          target_ulid: 'demo_user_1',
-          value: -1,
-          tag_ulid: '___PREVIEW_DATA___'
-        }
-      },
-      {
-        key: 'preview_vote_21',
-        data: {
-          owner_ulid: 'demo_user_1',
-          target_ulid: 'demo_user_15',
-          value: 1,
-          tag_ulid: '___PREVIEW_DATA___'
-        }
-      },
-      {
-        key: 'preview_vote_22',
-        data: {
-          owner_ulid: 'demo_user_8',
-          target_ulid: 'demo_user_3',
-          value: 1,
-          tag_ulid: '___PREVIEW_DATA___'
-        }
-      }
-    ] as VoteDocument[],
-
-    // User data map for tags (extended with all 20 users)
-    userData: new Map([
-      ['demo_user_1', {
-        key: 'usr_demo_user_1',
-        data: {
-          user_handle: 'alice_crypto',
-          user_ulid: 'demo_user_1',
-          display_name: 'Alice Crypto',
-          avatar_url: 'https://i.pravatar.cc/100?img=1'
-        }
-      }],
-      ['demo_user_2', {
-        key: 'usr_demo_user_2',
-        data: {
-          user_handle: 'bob_dev',
-          user_ulid: 'demo_user_2',
-          display_name: 'Bob Developer',
-          avatar_url: 'https://i.pravatar.cc/100?img=2'
-        }
-      }],
-      ['demo_user_3', {
-        key: 'usr_demo_user_3',
-        data: {
-          user_handle: 'carol_ui',
-          user_ulid: 'demo_user_3',
-          display_name: 'Carol Designer',
-          avatar_url: 'https://i.pravatar.cc/100?img=4'
-        }
-      }],
-      ['demo_user_4', {
-        key: 'usr_demo_user_4',
-        data: {
-          user_handle: 'david_smart',
-          user_ulid: 'demo_user_4',
-          display_name: 'David Contracts',
-          avatar_url: 'https://i.pravatar.cc/100?img=7'
-        }
-      }],
-      ['demo_user_5', {
-        key: 'usr_demo_user_5',
-        data: {
-          user_handle: 'eve_protocol',
-          user_ulid: 'demo_user_5',
-          display_name: 'Eve Protocol',
-          avatar_url: 'https://i.pravatar.cc/100?img=8'
-        }
-      }],
-      ['demo_user_6', {
-        key: 'usr_demo_user_6',
-        data: {
-          user_handle: 'frank_defi',
-          user_ulid: 'demo_user_6',
-          display_name: 'Frank DeFi',
-          avatar_url: 'https://i.pravatar.cc/100?img=9'
-        }
-      }],
-      ['demo_user_7', {
-        key: 'usr_demo_user_7',
-        data: {
-          user_handle: 'grace_dao',
-          user_ulid: 'demo_user_7',
-          display_name: 'Grace DAO',
-          avatar_url: 'https://i.pravatar.cc/100?img=10'
-        }
-      }],
-      ['demo_user_8', {
-        key: 'usr_demo_user_8',
-        data: {
-          user_handle: 'henry_nft',
-          user_ulid: 'demo_user_8',
-          display_name: 'Henry NFT',
-          avatar_url: 'https://i.pravatar.cc/100?img=11'
-        }
-      }],
-      ['demo_user_9', {
-        key: 'usr_demo_user_9',
-        data: {
-          user_handle: 'iris_web3',
-          user_ulid: 'demo_user_9',
-          display_name: 'Iris Web3',
-          avatar_url: 'https://i.pravatar.cc/100?img=12'
-        }
-      }],
-      ['demo_user_10', {
-        key: 'usr_demo_user_10',
-        data: {
-          user_handle: 'jack_metaverse',
-          user_ulid: 'demo_user_10',
-          display_name: 'Jack Metaverse',
-          avatar_url: 'https://i.pravatar.cc/100?img=13'
-        }
-      }],
-      ['demo_user_11', {
-        key: 'usr_demo_user_11',
-        data: {
-          user_handle: 'kelly_gamefi',
-          user_ulid: 'demo_user_11',
-          display_name: 'Kelly GameFi',
-          avatar_url: 'https://i.pravatar.cc/100?img=14'
-        }
-      }],
-      ['demo_user_12', {
-        key: 'usr_demo_user_12',
-        data: {
-          user_handle: 'liam_validator',
-          user_ulid: 'demo_user_12',
-          display_name: 'Liam Validator',
-          avatar_url: 'https://i.pravatar.cc/100?img=15'
-        }
-      }],
-      ['demo_user_13', {
-        key: 'usr_demo_user_13',
-        data: {
-          user_handle: 'mia_bridge',
-          user_ulid: 'demo_user_13',
-          display_name: 'Mia Bridge',
-          avatar_url: 'https://i.pravatar.cc/100?img=16'
-        }
-      }],
-      ['demo_user_14', {
-        key: 'usr_demo_user_14',
-        data: {
-          user_handle: 'noah_oracle',
-          user_ulid: 'demo_user_14',
-          display_name: 'Noah Oracle',
-          avatar_url: 'https://i.pravatar.cc/100?img=17'
-        }
-      }],
-      ['demo_user_15', {
-        key: 'usr_demo_user_15',
-        data: {
-          user_handle: 'olivia_layer2',
-          user_ulid: 'demo_user_15',
-          display_name: 'Olivia Layer2',
-          avatar_url: 'https://i.pravatar.cc/100?img=18'
-        }
-      }],
-      ['demo_user_16', {
-        key: 'usr_demo_user_16',
-        data: {
-          user_handle: 'paul_zk',
-          user_ulid: 'demo_user_16',
-          display_name: 'Paul ZK',
-          avatar_url: 'https://i.pravatar.cc/100?img=19'
-        }
-      }],
-      ['demo_user_17', {
-        key: 'usr_demo_user_17',
-        data: {
-          user_handle: 'quinn_rollup',
-          user_ulid: 'demo_user_17',
-          display_name: 'Quinn Rollup',
-          avatar_url: 'https://i.pravatar.cc/100?img=20'
-        }
-      }],
-      ['demo_user_18', {
-        key: 'usr_demo_user_18',
-        data: {
-          user_handle: 'ruby_staking',
-          user_ulid: 'demo_user_18',
-          display_name: 'Ruby Staking',
-          avatar_url: 'https://i.pravatar.cc/100?img=21'
-        }
-      }],
-      ['demo_user_19', {
-        key: 'usr_demo_user_19',
-        data: {
-          user_handle: 'sam_consensus',
-          user_ulid: 'demo_user_19',
-          display_name: 'Sam Consensus',
-          avatar_url: 'https://i.pravatar.cc/100?img=22'
-        }
-      }],
-      ['demo_user_20', {
-        key: 'usr_demo_user_20',
-        data: {
-          user_handle: 'tara_yield',
-          user_ulid: 'demo_user_20',
-          display_name: 'Tara Yield',
-          avatar_url: 'https://i.pravatar.cc/100?img=23'
-        }
-      }]
-    ])
+    }
   }
 };
 

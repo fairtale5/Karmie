@@ -12,7 +12,7 @@
     // Import icons
     import { Expand, CirclePlus, CircleMinus, X } from 'lucide-svelte';
     // Import centralized dummy data
-    import { dummyData } from '$lib/data/dummyProfileData';
+    import { dummyProfileData } from '$lib/data/dummyProfileData';
 
     // --- Preview Data Constants ---
     const PREVIEW_TAG_KEY = '___PREVIEW_DATA___';
@@ -177,8 +177,34 @@
         if (selectedTag?.key === PREVIEW_TAG_KEY) {
             loading = false;
             error = null;
-            votes = dummyData.tag.recentVotes;
-            userData = dummyData.tag.userData;
+            
+            // Use the master vote list (same as TagUserReputationCard)
+            votes = dummyProfileData.recentVotes;
+            
+            // Create new Map to avoid reactivity issues
+            const newUserData = new Map();
+            
+            // Use the master user list (same as TagUserReputationCard)
+            dummyProfileData.dummyUsers.forEach(dummyUser => {
+                newUserData.set(dummyUser.data.user_ulid, dummyUser);
+            });
+            
+            // Ensure the demo user themselves has an avatar by adding them to userData
+            if (!newUserData.has('demo_user')) {
+                const demoUserWithAvatar = {
+                    key: 'demo_user',
+                    data: {
+                        user_handle: 'demo_user',
+                        user_ulid: 'demo_user',
+                        display_name: 'Demo User',
+                        avatar_url: 'https://i.pravatar.cc/100?img=3'
+                    }
+                };
+                newUserData.set('demo_user', demoUserWithAvatar);
+            }
+            
+            // Set userData last to prevent reactivity loops
+            userData = newUserData;
             return;
         }
         
@@ -189,7 +215,7 @@
             // Clear data if no valid tag
             loading = false;
             votes = [];
-            userData.clear();
+            userData = new Map(); // Create new Map instead of clearing
         }
     });
 </script>
