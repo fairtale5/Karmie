@@ -243,7 +243,7 @@
           }
         }}
       >
-        {tagData?.userReputation && tagData.userReputation.score > 0 ? 'Contribute' : 'Join Community'}
+        To join, start voting!
       </button>
     {:else}
       <button class="btn preset-filled-primary-500 w-full" disabled>

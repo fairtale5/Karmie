@@ -18,9 +18,6 @@ export const load: PageLoad = async ({ params }) => {
     return {
       tagHandle,
       tag: dummyData.tag.previewTag,
-      userReputation: { score: 123, rank: 5, badges: ['Active', 'Top Voter'] },
-      topUsers: dummyData.tag.topUsers,
-      recentVotes: dummyData.tag.recentVotes,
       userRecentActivity: [],
       stats: dummyData.tag.stats,
       isPreview: true
@@ -53,22 +50,7 @@ export const load: PageLoad = async ({ params }) => {
           // Fetch tag-specific data
           const tagData = {
             tag,
-            userReputation: currentUserDoc ? { score: 123, rank: 5, badges: ['Active', 'Top Voter'] } : null,
-            topUsers: [
-              { username: 'alice', score: 200, bar: 1 },
-              { username: 'bob', score: 180, bar: 0.9 },
-              { username: 'carol', score: 150, bar: 0.75 }
-            ],
-            recentVotes: [
-              { author: 'alice', target: 'bob', value: 1, date: new Date().toISOString() },
-              { author: 'carol', target: 'alice', value: -1, date: new Date(Date.now() - 86400000).toISOString() }
-            ],
             userRecentActivity: currentUserDoc ? [] : [],
-            stats: {
-              totalUsers: 1234,
-              verifiedUsers: 567,
-              activeUsers: 89
-            },
             isPreview: false
           };
 
