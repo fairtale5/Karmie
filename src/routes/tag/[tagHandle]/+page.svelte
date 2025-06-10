@@ -132,7 +132,7 @@
       >
         <ArrowLeft size={20} />
       </button>
-      <span class="text-lg text-surface-500 whitespace-nowrap">You are exploring:</span>
+      <span class="text-lg whitespace-nowrap">You are exploring:</span>
       {#if loading}
         <div class="placeholder animate-pulse w-48 h-8 rounded"></div>
       {:else if tagData?.tag}
