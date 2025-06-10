@@ -235,9 +235,14 @@
         console.log('Current focus:', currentFocus);
         console.log('Setting userSearchResults to:', results.items);
         
+        // Filter out current user to prevent self-voting
+        const filteredResults = results.items.filter(user => 
+          !$authUserDoc || user.data.user_ulid !== $authUserDoc.data.user_ulid
+        );
+        
         // Force reactivity by using fresh array assignment
-        userSearchResults = [...results.items];
-        userSearchStatus = results.items.length > 0 ? 'found' : 'not_found';
+        userSearchResults = [...filteredResults];
+        userSearchStatus = filteredResults.length > 0 ? 'found' : 'not_found';
         
         console.log('After setting results - currentFocus:', currentFocus, 'userSearchResults.length:', userSearchResults.length);
       }, 300); // 300ms debounce
