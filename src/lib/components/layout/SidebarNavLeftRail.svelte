@@ -11,7 +11,7 @@
 		Menu,
 		MessageCircleQuestion
 	} from 'lucide-svelte';
-	import { GITHUB_URL } from '$lib/config';
+	import { GITHUB_URL } from '$lib/settings';
 	import { profileLink } from '$lib/stores/authUserData';
 
 	/**

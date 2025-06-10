@@ -4,7 +4,7 @@
 	// Use Code icon for GitHub link
 	// Use Twitter icon for Twitter link
 	import { Megaphone, Code, Twitter } from 'lucide-svelte';
-	import { GITHUB_URL } from '$lib/config';
+	import { GITHUB_URL } from '$lib/settings';
 </script>
 
 <!-- Top separator only, no box -->

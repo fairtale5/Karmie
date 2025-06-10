@@ -90,6 +90,12 @@ export const LOGIN_REDIRECT_URL = '/tag/ICP'; // Temporary change for stress tes
 export const LOGOUT_REDIRECT_URL = '/';
 
 /**
+ * GitHub repository URL
+ * Used in Footer, Sidebar navigation, and other external links
+ */
+export const GITHUB_URL = 'https://github.com/fairtale5/Reputator';
+
+/**
  * Frontend validation toggles for each document type
  * Set to true to enable validation, false to disable
  */
