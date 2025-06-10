@@ -320,8 +320,10 @@
                     </thead>
                     <tbody class="[&>tr]:hover:preset-tonal-primary">
                       {#each filteredVotes as vote (vote.key)}
-                        <tr>
-                          <td>
+                        {@const voteValue = vote.data.value ?? 0}
+                        {@const isPositive = voteValue > 0}
+                        <tr class="{isPositive ? 'bg-success-50/30 dark:bg-success-500/5' : 'bg-error-50/30 dark:bg-error-500/5'}">
+                          <td class="border-l-4 {isPositive ? 'border-success-500' : 'border-error-500'}">
                             {#if vote.data.owner_ulid && userData.get(vote.data.owner_ulid)}
                               {@const ownerUser = userData.get(vote.data.owner_ulid)!}
                               <div class="flex items-center gap-2">
