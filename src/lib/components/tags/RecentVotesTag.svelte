@@ -11,71 +11,11 @@
     import { Avatar, Popover } from '@skeletonlabs/skeleton-svelte';
     // Import icons
     import { Expand, CirclePlus, CircleMinus, X } from 'lucide-svelte';
+    // Import centralized dummy data
+    import { dummyData } from '$lib/data/dummyProfileData';
 
     // --- Preview Data Constants ---
     const PREVIEW_TAG_KEY = '___PREVIEW_DATA___';
-    
-    // Preview votes data
-    const previewVotes = [
-        {
-            key: 'preview_vote_1',
-            data: {
-                owner_ulid: 'demo_user_1',
-                target_ulid: 'demo_user_2',
-                value: 1,
-                tag_ulid: PREVIEW_TAG_KEY
-            }
-        },
-        {
-            key: 'preview_vote_2',
-            data: {
-                owner_ulid: 'demo_user_3',
-                target_ulid: 'demo_user_1',
-                value: -1,
-                tag_ulid: PREVIEW_TAG_KEY
-            }
-        },
-        {
-            key: 'preview_vote_3',
-            data: {
-                owner_ulid: 'demo_user_2',
-                target_ulid: 'demo_user_3',
-                value: 1,
-                tag_ulid: PREVIEW_TAG_KEY
-            }
-        }
-    ];
-
-    // Preview user data
-    const previewUserData = new Map([
-        ['demo_user_1', {
-            key: 'usr_demo_user_1',
-            data: {
-                user_handle: 'alice',
-                user_ulid: 'demo_user_1',
-                display_name: 'Alice Demo',
-                avatar_url: ''
-            }
-        }],
-        ['demo_user_2', {
-            key: 'usr_demo_user_2',
-            data: {
-                user_handle: 'bob',
-                user_ulid: 'demo_user_2',
-                display_name: 'Bob Demo',
-                avatar_url: ''
-            }
-        }],
-        ['demo_user_3', {
-            key: 'usr_demo_user_3',
-            data: {
-                user_handle: 'carol',
-                user_ulid: 'demo_user_3',
-                display_name: 'Carol Demo',
-                avatar_url: ''
-            }
-        }]
-    ]);
 
     // --- Component Interface Definition ---
     // These props define the component's external interface and data requirements
@@ -237,8 +177,8 @@
         if (selectedTag?.key === PREVIEW_TAG_KEY) {
             loading = false;
             error = null;
-            votes = previewVotes as VoteDocument[];
-            userData = previewUserData;
+            votes = dummyData.tag.recentVotes;
+            userData = dummyData.tag.userData;
             return;
         }
         

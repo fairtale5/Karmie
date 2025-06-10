@@ -5,6 +5,7 @@
   import type { TagDocument, VoteDocument, UserDocument, VoteData, UserData } from '$lib/types';
   import { Popover, Avatar } from '@skeletonlabs/skeleton-svelte';
   import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
+  import { dummyData } from '$lib/data/dummyProfileData';
 
   const { 
     tag, 
@@ -17,6 +18,9 @@
     isPreview?: boolean;
     cutoffTimestamp: bigint;
   } = $props();
+
+  // Preview data constants
+  const PREVIEW_TAG_KEY = '___PREVIEW_DATA___';
   
   // Internal state for votes and user data
   let votes = $state<VoteDocument[]>([]);
@@ -173,6 +177,17 @@
 
   // Reactive effect to fetch data when tag, user, or cutoff changes
   $effect(() => {
+    // Handle preview mode
+    if (tag?.key === PREVIEW_TAG_KEY) {
+      votesLoading = false;
+      votesError = null;
+      votes = dummyData.profile.recentVotes;
+      userData = dummyData.tag.userData;
+      userReputationScore = 123;
+      userRank = 5;
+      return;
+    }
+    
     if ($authUserDoc && tag?.data?.tag_ulid) {
       fetchUserVotesInTag();
     } else {
@@ -275,7 +290,7 @@
          <div class="flex-1 flex flex-col min-h-0">
            <h3 class="text-sm font-semibold mb-2 opacity-70">Recent Votes</h3>
            <div class="flex-1 overflow-y-auto max-h-80">
-            {#if votes.length > 0}
+            {#if votes && votes.length > 0}
               {@const filteredVotes = filterVotes(votes)}
               {#if filteredVotes.length > 0}
                 <div class="table-wrap">

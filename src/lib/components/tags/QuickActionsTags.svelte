@@ -29,23 +29,23 @@
 
   // Component state
   let activeAction: string | null = $state(null);
-  let selectedUser: UserDocument | null = null;
-  let tags: TagDocument[] = [];
-  let users: UserDocument[] = [];
-  let suggestedTags: TagDocument[] = []; // Tags sorted by user's reputation
-  let isLoading = true;
-  let error: string | null = null;
-  let tagSearchQuery = '';
-  let userSearchQuery = '';
-  let tagSearchStatus: 'idle' | 'loading' | 'found' | 'not_found' | 'error' = 'idle';
-  let userSearchStatus: 'idle' | 'loading' | 'found' | 'not_found' | 'error' = 'idle';
-  let tagSearchResults: TagDocument[] = [];
-  let userSearchResults: UserDocument[] = [];
+  let selectedUser: UserDocument | null = $state(null);
+  let tags: TagDocument[] = $state([]);
+  let users: UserDocument[] = $state([]);
+  let suggestedTags: TagDocument[] = $state([]); // Tags sorted by user's reputation
+  let isLoading = $state(true);
+  let error: string | null = $state(null);
+  let tagSearchQuery = $state('');
+  let userSearchQuery = $state('');
+  let tagSearchStatus: 'idle' | 'loading' | 'found' | 'not_found' | 'error' = $state('idle');
+  let userSearchStatus: 'idle' | 'loading' | 'found' | 'not_found' | 'error' = $state('idle');
+  let tagSearchResults: TagDocument[] = $state([]);
+  let userSearchResults: UserDocument[] = $state([]);
   let tagDebounceTimer: ReturnType<typeof setTimeout>;
   let userDebounceTimer: ReturnType<typeof setTimeout>;
-  let currentFocus: 'tag' | 'user' | 'vote' = 'tag';
-  let selectedVoteValue: number | null = null;
-  let isVoting = false;
+  let currentFocus: 'tag' | 'user' | 'vote' = $state('user');
+  let selectedVoteValue: number | null = $state(null);
+  let isVoting = $state(false);
   
   // Popover state for View Reports
   let reportsPopoverOpen = $state(false);
@@ -212,7 +212,8 @@
 
         console.log('Search results:', results);
         
-        tagSearchResults = results;
+        // Force reactivity by using fresh array assignment
+        tagSearchResults = [...results];
         tagSearchStatus = results.length > 0 ? 'found' : 'not_found';
       }, 300); // 300ms debounce
     } catch (e) {
@@ -251,9 +252,14 @@
         );
 
         console.log('User search results:', results);
+        console.log('Current focus:', currentFocus);
+        console.log('Setting userSearchResults to:', results.items);
         
-        userSearchResults = results.items;
+        // Force reactivity by using fresh array assignment
+        userSearchResults = [...results.items];
         userSearchStatus = results.items.length > 0 ? 'found' : 'not_found';
+        
+        console.log('After setting results - currentFocus:', currentFocus, 'userSearchResults.length:', userSearchResults.length);
       }, 300); // 300ms debounce
     } catch (e) {
       console.error('Error searching users:', e);
@@ -495,6 +501,7 @@
                     </div>
                   {:else if currentFocus === 'user' && userSearchResults.length > 0}
                     <div class="space-y-2 max-h-[300px] overflow-y-auto">
+                      <!-- Debug: currentFocus={currentFocus}, userSearchResults.length={userSearchResults.length} -->
                       {#each userSearchResults as user}
                         <button
                           class="card shadow bg-surface-100-900 border border-surface-200-800 p-3 w-full text-left hover:preset-tonal-primary transition-colors duration-200"

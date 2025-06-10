@@ -3,6 +3,7 @@
   import type { TagDocument } from '$lib/types';
   import { Users, ShieldCheck, Send } from 'lucide-svelte';
   import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
+  import { dummyData } from '$lib/data/dummyProfileData';
 
   const { 
     tag, 
@@ -11,6 +12,9 @@
     tag: TagDocument | null; 
     loading?: boolean;
   } = $props();
+
+  // Preview data constants
+  const PREVIEW_TAG_KEY = '___PREVIEW_DATA___';
 
   let stats = $state<{
     totalUsers: number | null;
@@ -65,6 +69,18 @@
 
   // Fetch stats when tag changes
   $effect(() => {
+    // Handle preview mode
+    if (tag?.key === PREVIEW_TAG_KEY) {
+      currentTagUlid = PREVIEW_TAG_KEY;
+      stats = {
+        totalUsers: dummyData.tag.stats.totalUsers,
+        trustedUsers: dummyData.tag.stats.trustedUsers,
+        totalVotes: dummyData.tag.stats.totalVotes,
+        loading: false
+      };
+      return;
+    }
+    
     const tagUlid = tag?.data?.tag_ulid;
     
     if (tagUlid && tagUlid !== currentTagUlid) {

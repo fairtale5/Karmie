@@ -5,69 +5,10 @@ import { authUserDoc } from '$lib/stores/authUserDoc';
 import { listDocs } from '@junobuild/core';
 import type { TagDocument } from '$lib/types';
 import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
+import { dummyData } from '$lib/data/dummyProfileData';
 
 // Disable prerendering for this dynamic route
 export const prerender = false;
-
-// Preview data constants
-const PREVIEW_TAG_KEY = '___PREVIEW_DATA___';
-const previewTagData: TagDocument = {
-  key: PREVIEW_TAG_KEY,
-  data: {
-    tag_handle: 'preview-mode',
-    description: 'Currently displaying sample data. Select or create a real tag to see live information and interact with the platform.',
-    reputation_threshold: 10,
-    vote_reward: 0.1,
-    min_users_for_threshold: 5,
-    time_periods: [
-      { months: 1, multiplier: 0.95 },
-      { months: 3, multiplier: 0.90 },
-      { months: 6, multiplier: 0.80 }
-    ]
-  }
-};
-
-// Preview data generators
-function generateInitialUserActivityPreview(): any[] {
-  const activities = [];
-  const peerNames = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel', 'india', 'juliet'];
-  for (let i = 0; i < 10; i++) {
-    activities.push({
-      id: `cast-preview-${i}`, 
-      type: 'cast', 
-      peerName: peerNames[i % peerNames.length],
-      value: i < 5 ? 1 : -1, 
-      date: new Date(Date.now() - Math.random() * 1000000000).toISOString()
-    });
-    activities.push({
-      id: `received-preview-${i}`, 
-      type: 'received', 
-      peerName: peerNames[(i + 2) % peerNames.length],
-      value: i < 2 ? 1 : -1, 
-      date: new Date(Date.now() - Math.random() * 1000000000).toISOString()
-    });
-  }
-  return activities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-}
-
-const previewData = {
-  userReputation: { score: 123, rank: 5, badges: ['Active', 'Top Voter'] },
-  topUsers: [
-    { username: 'alice', score: 200, bar: 1 },
-    { username: 'bob', score: 180, bar: 0.9 },
-    { username: 'carol', score: 150, bar: 0.75 }
-  ],
-  recentVotes: [
-    { author: 'alice', target: 'bob', value: 1, date: new Date().toISOString() },
-    { author: 'carol', target: 'alice', value: -1, date: new Date(Date.now() - 86400000).toISOString() }
-  ],
-  userRecentActivity: generateInitialUserActivityPreview(),
-  stats: {
-    totalUsers: 1234,
-    verifiedUsers: 567,
-    activeUsers: 89
-  }
-};
 
 export const load: PageLoad = async ({ params }) => {
   const tagHandle = params.tagHandle;
@@ -76,8 +17,12 @@ export const load: PageLoad = async ({ params }) => {
   if (tagHandle === 'preview-mode') {
     return {
       tagHandle,
-      tag: previewTagData,
-      ...previewData,
+      tag: dummyData.tag.previewTag,
+      userReputation: { score: 123, rank: 5, badges: ['Active', 'Top Voter'] },
+      topUsers: dummyData.tag.topUsers,
+      recentVotes: dummyData.tag.recentVotes,
+      userRecentActivity: [],
+      stats: dummyData.tag.stats,
       isPreview: true
     };
   }
@@ -118,7 +63,7 @@ export const load: PageLoad = async ({ params }) => {
               { author: 'alice', target: 'bob', value: 1, date: new Date().toISOString() },
               { author: 'carol', target: 'alice', value: -1, date: new Date(Date.now() - 86400000).toISOString() }
             ],
-            userRecentActivity: currentUserDoc ? generateInitialUserActivityPreview() : [],
+            userRecentActivity: currentUserDoc ? [] : [],
             stats: {
               totalUsers: 1234,
               verifiedUsers: 567,

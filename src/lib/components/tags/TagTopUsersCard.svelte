@@ -4,6 +4,7 @@
   import BaseCard from '$lib/components/common/BaseCard.svelte';
   import type { TagDocument, UserDocument, ReputationDocument, UserData } from '$lib/types';
   import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
+  import { dummyData } from '$lib/data/dummyProfileData';
 
   const { 
     tag, 
@@ -14,6 +15,9 @@
     loading?: boolean;
     isPreview?: boolean;
   } = $props();
+
+  // Preview data constants
+  const PREVIEW_TAG_KEY = '___PREVIEW_DATA___';
 
   // Internal state for real data fetching
   let topUsers = $state<Array<{
@@ -128,6 +132,15 @@
 
   // Reactive data fetching when tag changes
   $effect(() => {
+    // Handle preview mode
+    if (tag?.key === PREVIEW_TAG_KEY) {
+      currentTagUlid = PREVIEW_TAG_KEY;
+      componentLoading = false;
+      error = null;
+      topUsers = dummyData.tag.topUsers;
+      return;
+    }
+    
     const tagUlid = tag?.data?.tag_ulid;
     
     if (tagUlid && tagUlid !== currentTagUlid) {
