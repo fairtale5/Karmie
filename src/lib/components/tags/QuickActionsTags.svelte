@@ -285,8 +285,26 @@
     try {
         isVoting = true;
         
+        // Check if user is logged in
+        if (!$authUserDoc) {
+            toaster.error({
+                title: 'Login Required',
+                description: 'You must be logged in to cast votes. Please sign in to continue.'
+            });
+            return;
+        }
+        
+        // Check if this is preview mode
+        if (selectedTag?.key === '___PREVIEW_DATA___') {
+            toaster.warning({
+                title: 'Preview Mode',
+                description: 'This is a preview page. Voting is disabled in preview mode.'
+            });
+            return;
+        }
+        
         // Check if all required selections exist in memory
-        if (!selectedTag || !selectedUser || selectedVoteValue === undefined || !$authUserDoc) {
+        if (!selectedTag || !selectedUser || selectedVoteValue === undefined) {
             throw new Error('Please select a tag, user, and vote value');
         }
 

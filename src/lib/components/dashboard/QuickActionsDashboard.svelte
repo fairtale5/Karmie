@@ -274,8 +274,17 @@
     try {
         isVoting = true;
         
+        // Check if user is logged in
+        if (!$authUserDoc) {
+            toaster.error({
+                title: 'Login Required',
+                description: 'You must be logged in to cast votes. Please sign in to continue.'
+            });
+            return;
+        }
+        
         // Check if all required selections exist in memory
-        if (!selectedTag || !selectedUser || selectedVoteValue === undefined || !$authUserDoc) {
+        if (!selectedTag || !selectedUser || selectedVoteValue === undefined) {
             throw new Error('Please select a tag, user, and vote value');
         }
 
