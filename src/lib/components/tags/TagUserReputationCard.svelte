@@ -3,10 +3,11 @@
   import BaseCard from '$lib/components/common/BaseCard.svelte';
   import UserLink from '$lib/components/common/UserLink.svelte';
   import { authUserDoc } from '$lib/stores/authUserDoc';
-  import type { TagDocument, VoteDocument, UserDocument, VoteData, UserData } from '$lib/types';
+  import type { TagDocument, VoteDocument, UserDocument, VoteData, UserData, ReputationDocument } from '$lib/types';
   import { Popover, Avatar } from '@skeletonlabs/skeleton-svelte';
   import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
   import { dummyProfileData } from '$lib/data/dummyProfileData';
+  import { REPUTATION_SETTINGS } from '$lib/settings';
 
   const { 
     tag, 
@@ -51,6 +52,17 @@
 
   function getAvatarUrl(ulid: string): string {
     return `https://images.unsplash.com/photo-1617296538902-887900d9b592?ixid=M3w0Njc5ODF8MHwxfGFsbHx8fHx8fHx8fDE2ODc5NzExMDB8&ixlib=rb-4.0.3&w=128&h=128&auto=format&fit=crop`;
+  }
+
+  // Helper function to format reputation score (same as TopUsersCard)
+  function formatScore(score: number): string {
+    const { DECIMAL_PLACES, WHOLE_NUMBERS } = REPUTATION_SETTINGS.UI;
+    
+    if (WHOLE_NUMBERS) {
+      return Math.round(score).toString();
+    } else {
+      return score.toFixed(DECIMAL_PLACES);
+    }
   }
 
   // Filter votes based on toggle states and time
@@ -101,21 +113,40 @@
     }
   }
 
-  // Calculate user reputation from votes
-  function calculateReputation(votes: VoteDocument[]): { score: number; rank: number } {
-    // In preview mode, use demo_user as the active user
-    const activeUserUlid = tag?.key === PREVIEW_TAG_KEY ? 'demo_user' : $authUserDoc?.data?.user_ulid;
-    
-    if (!activeUserUlid) return { score: 0, rank: 0 };
-    
-    const score = votes
-      .filter(vote => vote.data.target_ulid === activeUserUlid)
-      .reduce((sum, vote) => sum + (vote.data.value ?? 0), 0);
-    
-    // For now, rank is placeholder - would need all users' scores to calculate properly
-    const rank = score > 0 ? Math.max(1, Math.floor(Math.random() * 50)) : 0;
-    
-    return { score, rank };
+  // Fetch user's actual reputation document for this tag
+  async function fetchUserReputation(userUlid: string, tagUlid: string): Promise<{ score: number; rank: number }> {
+    try {
+      // Query the user's reputation document for this tag
+      // Pattern: usr_{userUlid}_tag_{tagUlid}_
+      const reputationPattern = `usr_${userUlid}_tag_${tagUlid}_`;
+      const reputationResults = await queryDocsByKey('reputations', reputationPattern);
+      
+      if (reputationResults.items.length === 0) {
+        console.log('No reputation document found for user in this tag');
+        return { score: 0, rank: 0 };
+      }
+      
+      if (reputationResults.items.length > 1) {
+        console.warn('Multiple reputation documents found for user in tag, using first one');
+      }
+      
+      const reputationDoc = reputationResults.items[0] as ReputationDocument;
+      const score = reputationDoc.data.reputation_total_effective || 0;
+      
+      // To calculate rank, we need to get all users' scores in this tag
+      const allReputationResults = await queryDocsByKey('reputations', `tag_${tagUlid}_`);
+      const allScores = allReputationResults.items
+        .map(doc => (doc as ReputationDocument).data.reputation_total_effective || 0)
+        .sort((a, b) => b - a); // Sort descending
+      
+      // Find this user's rank (1-based)
+      const rank = allScores.findIndex(s => s <= score) + 1;
+      
+      return { score, rank: rank || 0 };
+    } catch (e) {
+      console.error('Error fetching user reputation:', e);
+      return { score: 0, rank: 0 };
+    }
   }
 
   // Main data fetching function
@@ -159,8 +190,8 @@
         return timeA < timeB ? 1 : timeA > timeB ? -1 : 0;
       });
 
-      // Calculate reputation
-      const reputation = calculateReputation(votes);
+      // Fetch actual reputation from database
+      const reputation = await fetchUserReputation(userUlid, tagUlid);
       userReputationScore = reputation.score;
       userRank = reputation.rank;
 
@@ -294,7 +325,7 @@
         <div class="grid grid-cols-2 gap-4 mb-4">
           <div class="p-3 bg-surface-200-800 rounded">
             <span class="text-sm opacity-70">Your Score</span>
-            <p class="text-2xl font-bold">{userReputationScore}</p>
+            <p class="text-2xl font-bold">{formatScore(userReputationScore)}</p>
           </div>
           <div class="p-3 bg-surface-200-800 rounded">
             <span class="text-sm opacity-70">Rank</span>
