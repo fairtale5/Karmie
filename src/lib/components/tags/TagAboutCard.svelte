@@ -2,7 +2,7 @@
   import { tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { Tabs } from '@skeletonlabs/skeleton-svelte';
-  import { Orbit, SlidersHorizontal } from 'lucide-svelte';
+  import { Hash, SlidersHorizontal } from 'lucide-svelte';
   import BaseCard from '$lib/components/common/BaseCard.svelte';
   import { authUserDoc } from '$lib/stores/authUserDoc';
   import type { TagDocument } from '$lib/types';
@@ -18,11 +18,11 @@
       <Tabs value={activeTab} onValueChange={async (e) => { activeTab = e.value; await tick();}}>
         {#snippet list()}
           <Tabs.Control value="about" disabled={loading || !tag}>
-            {#snippet lead()}<Orbit size={20} />{/snippet}
-            {#if tag}#{tag.data.tag_handle}{:else}About{/if}
+            {#snippet lead()}<Hash size={20} class="text-primary-600" />{/snippet}
+            {#if tag}{tag.data.tag_handle}{:else}About{/if}
           </Tabs.Control>
           <Tabs.Control value="settings" disabled={loading || !tag}>
-            {#snippet lead()}<SlidersHorizontal size={20} />{/snippet}
+            {#snippet lead()}<SlidersHorizontal size={20} class="text-primary-600" />{/snippet}
             Settings
           </Tabs.Control>
         {/snippet}
