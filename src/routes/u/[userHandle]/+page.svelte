@@ -7,6 +7,7 @@ import TrustedCommunities from '$lib/components/profile/TrustedCommunities.svelt
 import ActiveReputations from '$lib/components/profile/ActiveReputations.svelte';
 import RecentReviewsUser from '$lib/components/profile/RecentReviewsUser.svelte';
 import RecentVotesUser from '$lib/components/profile/RecentVotesUser.svelte';
+import NotLoggedInAlert from '$lib/components/common/NotLoggedInAlert.svelte';
 import { onMount } from 'svelte';
 import { initJuno } from '$lib/juno';
 import { toaster } from '$lib/skeletonui/toaster-skeleton';
@@ -131,6 +132,8 @@ $effect(() => {
 </script>
 
 <div class="p-4">
+  <NotLoggedInAlert />
+  
   {#if error_state}
     <div class="alert alert-error mb-6">{error_state}</div>
   {/if}
