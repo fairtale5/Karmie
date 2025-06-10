@@ -54,12 +54,12 @@ export const REPUTATION_SETTINGS = {
     // Time period multipliers for vote decay
     DEFAULT_TIME_PERIODS: [
         { months: 1, multiplier: 1.0 },     // Period 1: First month (baseline for very recent)
-        { months: 2, multiplier: 0.5 },     // Period 2: Months 2-3 (50% for recent)
-        { months: 3, multiplier: 0.35 },    // Period 3: Months 4-6 (35% for semi-recent)
+        { months: 2, multiplier: 0.6 },     // Period 2: Months 2-3 (60% for recent)
+        { months: 3, multiplier: 0.4 },     // Period 3: Months 4-6 (40% for semi-recent)
         { months: 6, multiplier: 0.3 },     // Period 4: Months 6-12 (30% for older)
-        { months: 12, multiplier: 0.2 },    // Period 5: Months 12-24 (20% for mature)
-        { months: 12, multiplier: 0.15 },   // Period 6: Months 24-36 (15% for historical)
-        { months: 12, multiplier: 0.1 },    // Period 7: Months 37-48 (10% for very old)
+        { months: 12, multiplier: 0.25 },   // Period 5: Months 12-24 (25% for mature)
+        { months: 12, multiplier: 0.2 },    // Period 6: Months 24-36 (20% for historical)
+        { months: 12, multiplier: 0.15 },   // Period 7: Months 37-48 (15% for very old)
         { months: 12, multiplier: 0.1 },    // Period 8: Months 48-60 (10% for ancient)
         { months: 999, multiplier: 0.05 }   // Period 9: Months 60+ (5% for archival)
     ] as TimePeriod[],
