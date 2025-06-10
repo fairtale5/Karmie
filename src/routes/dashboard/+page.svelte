@@ -1,6 +1,7 @@
 <script lang="ts">
 // Placeholder data for dashboard widgets
 import QuickActionsDashboard from '$lib/components/dashboard/QuickActionsDashboard.svelte';
+import BaseCard from '$lib/components/common/BaseCard.svelte';
 import { setPageMeta } from '$lib/stores/page';
 import { onMount } from 'svelte';
 
@@ -80,26 +81,33 @@ onMount(() => {
   <!-- Column 1 -->
   <div class="space-y-6">
     <!-- User Profile Card -->
-    <div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6 flex flex-col items-center">
-      <img src={user.avatarUrl} alt="avatar" class="rounded-full w-24 h-24 mb-4 mt-2 border-4 border-primary-500" />
-      <div class="text-2xl font-bold">{user.displayName}</div>
-      <div class="opacity-60 mb-2">@{user.handle}</div>
-      <div class="w-full mt-2">
-        <div class="font-semibold text-center mb-4">Most Active In:</div>
-        <div class="flex gap-2 justify-center flex-wrap">
-          {#each user.topTags as tag}
-            <span class="badge preset-tonal-primary">#{tag.name}: {tag.score}</span>
-          {/each}
+    <BaseCard underConstruction={true}>
+      {#snippet header()}
+        <h2 class="text-lg font-bold">User Profile</h2>
+      {/snippet}
+      <div class="flex flex-col items-center">
+        <img src={user.avatarUrl} alt="avatar" class="rounded-full w-24 h-24 mb-4 mt-2 border-4 border-primary-500" />
+        <div class="text-2xl font-bold">{user.displayName}</div>
+        <div class="opacity-60 mb-2">@{user.handle}</div>
+        <div class="w-full mt-2">
+          <div class="font-semibold text-center mb-4">Most Active In:</div>
+          <div class="flex gap-2 justify-center flex-wrap">
+            {#each user.topTags as tag}
+              <span class="badge preset-tonal-primary">#{tag.name}: {tag.score}</span>
+            {/each}
+          </div>
         </div>
       </div>
-    </div>
+    </BaseCard>
 
     <!-- Quick Actions -->
     <QuickActionsDashboard />
 
     <!-- Most Recent Tags -->
-    <div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
-      <div class="font-bold text-lg mb-2">Most Recent Tags</div>
+    <BaseCard underConstruction={true}>
+      {#snippet header()}
+        <h2 class="text-lg font-bold">Most Recent Tags</h2>
+      {/snippet}
       <ul class="space-y-1">
         {#each recentTags as tag}
           <li class="flex justify-between">
@@ -108,23 +116,25 @@ onMount(() => {
           </li>
         {/each}
       </ul>
-    </div>
+    </BaseCard>
   </div>
 
   <!-- Column 2 -->
   <div class="space-y-6">
     <!-- Reputation Change Users -->
-    <div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
-      <div class="flex justify-between items-center mb-2">
-        <div class="font-bold text-lg">Users: Most Reputation Change</div>
+    <BaseCard underConstruction={true}>
+      {#snippet header()}
+        <h2 class="text-lg font-bold">Users: Most Reputation Change</h2>
+      {/snippet}
+      {#snippet actions()}
         <div class="flex gap-2">
           <button class="btn preset-tonal-primary text-xs">24h</button>
           <button class="btn preset-tonal-primary text-xs">7d</button>
           <button class="btn preset-tonal-primary text-xs">30d</button>
           <button class="btn preset-tonal-primary text-xs">90d</button>
         </div>
-      </div>
-      <div class="flex gap-2 mb-2">
+      {/snippet}
+      <div class="flex gap-2 mb-4">
         <button class="btn preset-outlined-primary-500 text-xs">Gains</button>
         <button class="btn preset-outlined-primary-500 text-xs">Losses</button>
         <button class="btn preset-filled-primary-500 text-xs">Both</button>
@@ -155,19 +165,21 @@ onMount(() => {
           </tbody>
         </table>
       </div>
-    </div>
+    </BaseCard>
 
     <!-- Popular Tags -->
-    <div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
-      <div class="flex justify-between items-center mb-2">
-        <div class="font-bold text-lg">Popular Tags</div>
+    <BaseCard underConstruction={true}>
+      {#snippet header()}
+        <h2 class="text-lg font-bold">Popular Tags</h2>
+      {/snippet}
+      {#snippet actions()}
         <div class="flex gap-2">
           <button class="btn preset-tonal-primary text-xs">24h</button>
           <button class="btn preset-tonal-primary text-xs">7d</button>
           <button class="btn preset-tonal-primary text-xs">30d</button>
           <button class="btn preset-tonal-primary text-xs">90d</button>
         </div>
-      </div>
+      {/snippet}
       <div class="table-wrap">
         <table class="table caption-bottom">
           <thead>
@@ -188,11 +200,13 @@ onMount(() => {
           </tbody>
         </table>
       </div>
-    </div>
+    </BaseCard>
 
     <!-- Tag Trends -->
-    <div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
-      <div class="font-bold text-lg mb-2">Trending Tags</div>
+    <BaseCard underConstruction={true}>
+      {#snippet header()}
+        <h2 class="text-lg font-bold">Trending Tags</h2>
+      {/snippet}
       <div class="table-wrap">
         <table class="table caption-bottom">
           <thead>
@@ -213,14 +227,16 @@ onMount(() => {
           </tbody>
         </table>
       </div>
-    </div>
+    </BaseCard>
   </div>
 
   <!-- Column 3 -->
   <div class="space-y-6">
     <!-- Tags by Most Trusted Users -->
-    <div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
-      <div class="font-bold text-lg mb-2">Tags: Most Trusted Users</div>
+    <BaseCard underConstruction={true}>
+      {#snippet header()}
+        <h2 class="text-lg font-bold">Tags: Most Trusted Users</h2>
+      {/snippet}
       <div class="table-wrap">
         <table class="table caption-bottom">
           <thead>
@@ -241,11 +257,13 @@ onMount(() => {
           </tbody>
         </table>
       </div>
-    </div>
+    </BaseCard>
 
     <!-- User Milestones -->
-    <div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
-      <div class="font-bold text-lg mb-2">Your Milestones</div>
+    <BaseCard underConstruction={true}>
+      {#snippet header()}
+        <h2 class="text-lg font-bold">Your Milestones</h2>
+      {/snippet}
       <div class="table-wrap">
         <table class="table caption-bottom">
           <thead>
@@ -266,11 +284,13 @@ onMount(() => {
           </tbody>
         </table>
       </div>
-    </div>
+    </BaseCard>
 
     <!-- System Announcements -->
-    <div class="card shadow bg-surface-100-900 border border-surface-200-800 p-6">
-      <div class="font-bold text-lg mb-2">Announcements</div>
+    <BaseCard underConstruction={true}>
+      {#snippet header()}
+        <h2 class="text-lg font-bold">Announcements</h2>
+      {/snippet}
       <div class="table-wrap">
         <table class="table caption-bottom">
           <thead>
@@ -295,7 +315,7 @@ onMount(() => {
           </tbody>
         </table>
       </div>
-    </div>
+    </BaseCard>
   </div>
 </div>
 
