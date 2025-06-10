@@ -35,8 +35,6 @@
     let userData = $state<Map<string, UserDocument>>(new Map());  // Cache for user documents
 
     // Filter states - toggle filters for better user control
-    let showIncoming = $state(true);                    // Show all incoming votes
-    let showOutgoing = $state(true);                    // Show all outgoing votes  
     let showPositive = $state(true);                    // Show positive votes
     let showNegative = $state(true);                    // Show negative votes
 
@@ -61,21 +59,14 @@
     // Filter votes based on toggle states
     function filterVotes(votes: VoteDocument[]): VoteDocument[] {
         return votes.filter(vote => {
-            // For tag-level votes, we don't have specific user context for direction filtering
-            // Instead, we interpret "incoming/outgoing" as vote direction filters
-            // This allows users to filter the type of activity they want to see
+            // For tag-level votes, we only filter by vote value (positive/negative)
+            // Direction filters don't make sense without a specific user context
             const voteValue = vote.data.value ?? 0;
             const isPositive = voteValue > 0;
             const isNegative = voteValue < 0;
             
-            // Apply value filters
-            const valueMatch = (isPositive && showPositive) || (isNegative && showNegative);
-            
-            // For now, we'll just use the direction toggles as additional filters
-            // Later this could be enhanced to show different types of vote relationships
-            const directionMatch = showIncoming && showOutgoing; // Show all when both enabled
-            
-            return valueMatch && directionMatch;
+            // Apply value filters - show vote if it matches either positive or negative filter
+            return (isPositive && showPositive) || (isNegative && showNegative);
         });
     }
 
@@ -230,11 +221,6 @@
         <div class="flex items-center gap-2">
             <!-- Filter Controls -->
             <div class="flex gap-2">
-                <!-- Direction filters -->
-                <div class="flex gap-1">
-                    <button type="button" class="chip text-xs px-2 py-0.5 w-8 {showIncoming ? 'preset-filled-secondary-500' : 'preset-tonal-surface'}" onclick={() => showIncoming = !showIncoming}>In</button>
-                    <button type="button" class="chip text-xs px-2 py-0.5 w-8 {showOutgoing ? 'preset-filled-tertiary-500' : 'preset-tonal-surface'}" onclick={() => showOutgoing = !showOutgoing}>Out</button>
-                </div>
                 <!-- Value filters -->
                 <div class="flex gap-1">
                     <button type="button" class="chip text-xs px-1 py-0.5 w-6 flex justify-center items-center {showPositive ? 'preset-filled-success-500' : 'preset-tonal-surface'}" onclick={() => showPositive = !showPositive}>
