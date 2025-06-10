@@ -1,6 +1,6 @@
 use crate::logger;
 use junobuild_satellite::AssertSetDocContext;
-use crate::utils::structs::VoteData;
+use crate::utils::structs::{VoteData, UserData};
 use junobuild_utils::decode_doc_data;
 use crate::processors::document_queries::query_doc_by_key;
 use crate::validation::{validate_ulid_timestamp, CheckULIDisNew};
@@ -118,6 +118,48 @@ pub fn validate_vote_document(context: &AssertSetDocContext) -> Result<(), Strin
         logger!("error", "{}", err_msg);
         return Err(err_msg.to_string());
     }
+
+    // Step 7: Validate that owner_ulid matches the actual user creating the vote
+    logger!("debug", "[validate_vote_document] Verifying owner_ulid matches caller's user_ulid: {}", vote_data.owner_ulid);
+    
+    // Find the user document for the Principal creating this vote
+    let caller_principal = context.caller.to_string();
+    let user_key_pattern = format!("_prn_{}_", caller_principal);
+    let user_results = query_doc_by_key("users", &user_key_pattern)?;
+
+    if user_results.items.is_empty() {
+        let err_msg = format!("[validate_vote_document] No user document found for caller: {}", caller_principal);
+        logger!("error", "{}", err_msg);
+        return Err(err_msg);
+    }
+
+    // Get the caller's user document and extract their user_ulid
+    let (_, user_doc) = &user_results.items[0];
+    let caller_user_data: UserData = decode_doc_data(&user_doc.data)
+        .map_err(|e| {
+            let err_msg = format!("[validate_vote_document] Failed to decode caller's user data: {}", e);
+            logger!("error", "{}", err_msg);
+            err_msg
+        })?;
+
+    // Verify the vote's owner_ulid matches the caller's user_ulid
+    if let Some(caller_user_ulid) = &caller_user_data.user_ulid {
+        if *caller_user_ulid != vote_data.owner_ulid {
+            let err_msg = format!(
+                "[validate_vote_document] owner_ulid mismatch: vote claims to be from user '{}' but caller's user_ulid is '{}'",
+                vote_data.owner_ulid,
+                caller_user_ulid
+            );
+            logger!("error", "{}", err_msg);
+            return Err(err_msg);
+        }
+    } else {
+        let err_msg = "[validate_vote_document] Caller's user document missing user_ulid field";
+        logger!("error", "{}", err_msg);
+        return Err(err_msg.to_string());
+    }
+
+    logger!("debug", "[validate_vote_document] owner_ulid validation passed: {} matches caller's user_ulid", vote_data.owner_ulid);
 
     logger!("info", "[validate_vote_document] Vote validation passed: author={} voted {} on target={} in tag={}",
         vote_data.owner_ulid,

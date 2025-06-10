@@ -18,7 +18,7 @@
  * - Uses Juno's Principal ID for ownership
  * - Strict validation rules
  */
-export const IS_PLAYGROUND = true;  // Set to false for production
+export const IS_PLAYGROUND = false;  // Set to false for production
 
 export interface TimePeriod {
     months: number;

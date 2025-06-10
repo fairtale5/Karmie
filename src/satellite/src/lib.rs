@@ -351,7 +351,7 @@ async fn process_vote(context: &OnSetDocContext) -> Result<(), String> {
 }
 
 /// Configuration flag for playground mode
-pub const IS_PLAYGROUND: bool = true;  // Set to false for production
+pub const IS_PLAYGROUND: bool = false;  // Set to false for production
 
 
 #[assert_set_doc(collections = ["users", "votes", "tags", "reputations"])]

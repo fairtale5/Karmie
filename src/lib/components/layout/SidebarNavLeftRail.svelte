@@ -56,7 +56,7 @@
 			<Navigation.Tile id={$profileLink} href={$profileLink} labelExpanded="Profile" label="" selected={currentPath === $profileLink} labelClasses={currentPath === $profileLink ? 'text-primary-600-300' : ''}>
 				<User class={currentPath === $profileLink ? 'text-primary-600-300' : ''} />
 			</Navigation.Tile>
-			<!-- Separator -->
+			<!-- Hidden: Separator, New User and Admin pages are still accessible via direct URLs but not shown in navigation
 			<div
 				class="my-2 h-px mx-auto bg-surface-300 opacity-50"
 				class:w-[92%]={isExpanded}
@@ -68,6 +68,7 @@
 			<Navigation.Tile id="/admin" href="/admin" labelExpanded="Admin" label="" selected={currentPath === '/admin'} labelClasses={currentPath === '/admin' ? 'text-primary-600-300' : ''}>
 				<ShieldMinus class={currentPath === '/admin' ? 'text-primary-600-300' : ''} />
 			</Navigation.Tile>
+			-->
 		{/snippet}
 		{#snippet footer()}
 			<Navigation.Tile id="github" labelExpanded="GitHub" label="" href={GITHUB_URL} target="_blank"><Github /></Navigation.Tile>
