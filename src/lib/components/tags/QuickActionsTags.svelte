@@ -377,7 +377,8 @@
               arrowBackground="!bg-surface-200 dark:!bg-surface-800"
             >
               {#snippet trigger()}
-                <svelte:component this={action.icon} size={24} class="mb-1" />
+                {@const Icon = action.icon}
+                <Icon size={24} class="mb-1" />
                 <span class="text-xs">{action.name}</span>
               {/snippet}
               {#snippet content()}
@@ -396,13 +397,14 @@
             </Popover>
           </div>
         {:else}
+          {@const Icon = action.icon}
           <button 
             class="btn preset-outlined-primary-500 flex flex-col items-center p-2 transition-all duration-200"
             class:preset-tonal-primary={activeAction === action.name}
             class:!border-0={activeAction === action.name}
             onclick={() => handleActionClick(action.name)}
           >
-            <svelte:component this={action.icon} size={24} class="mb-1" />
+            <Icon size={24} class="mb-1" />
             <span class="text-xs">{action.name}</span>
           </button>
         {/if}

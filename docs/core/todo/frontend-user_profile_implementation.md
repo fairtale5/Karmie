@@ -1,7 +1,30 @@
 # User Profile Implementation
 
+## 🎯 Current Status Summary
+
+**MAJOR MILESTONE: Profile page architecture and data loading strategy completed!**
+
+✅ **Core Implementation Complete:**
+- Dynamic routing with `/u/[userHandle]` parameter
+- Complete 3-case data loading strategy in `+page.ts`
+- Error handling (404/500) with proper user feedback
+- Demo user integration with `dummyProfileData`
+- Current user profile (zero-latency with `authUserDoc` store)
+- Other user profiles (async fetch with `queryDocsByKey`)
+
+🚧 **Currently Working On:**
+- Connecting profile components to real data sources  
+- Component-level data integration for reputation stats, communities, activity
+
+📋 **Next Priority:**
+- Complete real data integration for remaining profile sections
+- Implement reputation calculations and vote history
+- Add Sigma.js graph visualization for reputation networks
+
+---
+
 ## ✅ Completed
-- [x] Set up URL structure (`/u/[handle]`)
+- [x] Set up URL structure (`/u/[userHandle]`) - **Updated to use userHandle parameter**
 - [x] Create profile page layout with 3-column grid
 - [x] Design profile card with avatar and basic info
 - [x] Add edit button for own profile
@@ -13,8 +36,9 @@
 - [x] Add active reputations list
 - [x] Update navigation to use user handle
 - [x] Fix TypeScript errors in Avatar components
-- [x] Configure dynamic route prerendering
+- [x] Configure dynamic route prerendering (disabled for dynamic routes)
 - [x] Implement `BaseCard.svelte` on a test component (Active Reputations on profile page) and verify it works.
+- [x] **Complete BaseCard.svelte implementation with full Svelte 5 syntax, proper TypeScript props, under-construction functionality, and Popover integration**
 - [x] Implement proper data loading with Juno initialization
 - [x] Add loading states and error handling
 - [x] Set up data flow for demo, current user, and other user cases
@@ -35,6 +59,11 @@
 - [x] Replace server-side page loader with client-side reactive data loading
 - [x] Fix race condition between Juno initialization and auth user document loading
 - [x] Add case-insensitive handle matching for user document queries
+- [x] **Implement complete PageLoad function with 3-case data loading strategy**
+- [x] **Add proper error handling (404/500) in page loader**
+- [x] **Integrate with dummyProfileData for consistent demo experience**
+- [x] **Set up async user data fetching with queryDocsByKey integration**
+- [x] **Configure route parameter handling for [userHandle] dynamic route**
 
 ## 🚧 In Progress
 - [ ] Connect remaining components to real data using `query_by_key.ts`
@@ -98,8 +127,10 @@
 - [ ] Profile completion rewards
 
 ## 📚 Related Files
-- `src/routes/u/[handle]/+page.svelte` - Main profile page
-- `src/lib/stores/authUserData.ts` - Profile navigation store
+- `src/routes/u/[userHandle]/+page.svelte` - Main profile page
+- `src/routes/u/[userHandle]/+page.ts` - **Page loader with 3-case data strategy**
+- `src/lib/stores/authUserDoc.ts` - Profile navigation store (corrected filename)
+- `src/lib/data/dummyProfileData.ts` - **Demo user data source**
 - `src/lib/types.ts` - Type definitions
 - `src/lib/docs-crud/query_by_key.ts` - Data fetching
 - `src/lib/docs-crud/user_update.ts` - Profile updates
@@ -128,15 +159,15 @@
 
 ---
 
-## 2 · Routing & Data Flow
+## 2 · Routing & Data Flow ✅ **IMPLEMENTED**
 
 | Route | Login State | Data Source | Notes |
 |-------|-------------|-------------|-------|
-| `/u/demo_user` | any | static dummy JSON | Never queries backend |
-| `/u/[handle]`  | logged-out | `queryDocsByKey('users', 'hdl_${handle}_')` | Partial key match; see `src/lib/docs-crud/query_by_key.ts` |
-| `/u/[handle]`  | logged-in & **handle == `$authUserDoc.data.user_handle`** | `$authUserDoc` (already in store) | Zero extra latency |
+| `/u/demo_user` | any | `dummyProfileData` static JSON | Never queries backend - **COMPLETED** |
+| `/u/[userHandle]`  | logged-out | `queryDocsByKey('users', 'hdl_${userHandle}_')` via `fetchUserData()` | Async fetch after Juno init - **COMPLETED** |
+| `/u/[userHandle]`  | logged-in & **userHandle == `$authUserDoc.data.user_handle`** | `$authUserDoc` (already in store) | Zero extra latency - **COMPLETED** |
 
-*Fallback:* If logged-in user visits another user's page, we still hit `queryDocsByKey`.
+*Implementation:* All cases handled in `+page.ts` with proper error handling (404/500) and fallback to async data fetching when needed.
 
 ---
 
@@ -245,29 +276,56 @@ Sidebar components simply bind to `profileLink`.
 
 ---
 
-## 6 · Page-Level Data Fetching (+page.ts)
+## 6 · Page-Level Data Fetching (+page.ts) ✅ **IMPLEMENTED**
 
-Pseudo-code outline:
+**Current implementation:** `src/routes/u/[userHandle]/+page.ts`
 
 ```ts
-export async function load({ params, fetch, depends }) {
-  const handle = params.handle;          // undefined on /u/demo_user
-  const { authUserDoc } = await getStores();
+export const load: PageLoad = async ({ params }) => {
+  const handle = params.userHandle;
+  const currentUserDoc = get(authUserDoc);
 
+  // Case 1: Demo user - return dummy data
   if (handle === 'demo_user') {
-    return { demo: true };
+    return {
+      handle,
+      user: dummyProfileData.user,
+      stats: dummyProfileData.communityStats,
+      trustedCommunities: dummyProfileData.trustedCommunities,
+      reputationStats: dummyProfileData.reputationStats,
+      activeReputations: dummyProfileData.activeReputations,
+      recentReviews: dummyProfileData.recentReviews
+    };
   }
 
-  if ($authUserDoc && handle === $authUserDoc.data.user_handle) {
-    return { userDoc: $authUserDoc };
+  // Case 2: Current user viewing own profile
+  if (currentUserDoc && handle === currentUserDoc.data.user_handle) {
+    return {
+      handle,
+      user: currentUserDoc,
+      // ... other dummy data for now
+    };
   }
 
-  // fallback: fetch user by handle
-  const res = await queryDocsByKey<UserData>('users', `hdl_${handle.toLowerCase()}_`);
-  if (!res.items.length) throw error(404, 'User not found');
-  return { userDoc: res.items[0] };
-}
+  // Case 3: Async fetch for other users
+  return {
+    handle,
+    fetchUserData: async () => {
+      const results = await queryDocsByKey<UserDocument>('users', `hdl_${handle}_`);
+      if (!results.items.length) throw error(404, 'User not found');
+      return { user: results.items[0], /* ... other data */ };
+    }
+  };
+};
 ```
+
+**Features completed:**
+- ✅ Parameter handling with `userHandle` 
+- ✅ 3-case data loading strategy
+- ✅ Error handling (404/500)
+- ✅ Integration with `dummyProfileData`
+- ✅ Async data fetching with `queryDocsByKey`
+- ✅ Prerendering disabled for dynamic routes
 
 ---
 
@@ -293,12 +351,12 @@ export async function load({ params, fetch, depends }) {
 
 ## 9 · Next Steps
 
-1. **Implement `BaseCard.svelte`** and replace hard-coded card wrappers in profile modules.
-2. Refactor existing modules into the shared card; add Construction icon & popup where `outlined` is true.
-3. Create `/src/routes/u/[handle]/+page.svelte` that consumes the loader above and renders cards.
-4. Duplicate route `/u/demo_user` with same component tree but `demo: true` flag.
-5. Update sidebar to use `profileLink` derived store.
-6. QA for dark/light themes, responsiveness, and focus states.
+1. ✅ **Implement `BaseCard.svelte`** and replace hard-coded card wrappers in profile modules. - **COMPLETED**
+2. ✅ **BaseCard component fully implemented** with under-construction indicators, Popover integration, and Svelte 5 syntax. - **COMPLETED**
+3. ✅ Create `/src/routes/u/[userHandle]/+page.svelte` that consumes the loader above and renders cards. - **COMPLETED**
+4. ✅ Single route handles both demo and real users via loader logic. - **COMPLETED**
+5. ✅ Update sidebar to use `profileLink` derived store. - **COMPLETED**
+6. 🚧 QA for dark/light themes, responsiveness, and focus states. - **NEEDS TESTING**
 
 ---
 
