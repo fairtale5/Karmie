@@ -12,8 +12,9 @@
 	import type { UserData } from '$lib/types';
 	import AppShell from '$lib/components/layout/AppShell.svelte';
 	import { setPageMeta, page as pageStore } from '$lib/stores/page';
-	import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
-	import { themeStore } from '$lib/stores/theme';
+import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
+import { themeStore } from '$lib/stores/theme';
+import { LOGIN_REDIRECT_URL } from '$lib/settings';
 
 	let user: User | null = null;
 	let checkedOnboarding = false;
@@ -116,8 +117,8 @@
 				if (isActiveLogin && isHomepage) {
 					// Active login from homepage - redirect based on user document
 					if (hasRequiredFields) {
-						console.log('Layout: Active login with complete user doc - redirecting to dashboard');
-						goto('/dashboard');
+						console.log('Layout: Active login with complete user doc - redirecting to login redirect URL');
+						goto(LOGIN_REDIRECT_URL);
 					} else {
 						console.log('Layout: Active login with incomplete user doc - redirecting to new user');
 						goto('/new/user');

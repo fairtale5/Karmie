@@ -7,6 +7,7 @@
   import { toaster } from '$lib/skeletonui/toaster-skeleton';
   import NotLoggedInAlert from '$lib/components/common/NotLoggedInAlert.svelte';
   import { createUserDoc } from '$lib/docs-crud/user_create';
+  import { LOGIN_REDIRECT_URL } from '$lib/settings';
   import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
   import { LoaderCircle, CheckCircle, XCircle } from 'lucide-svelte';
   import AvatarCropper from '$lib/components/onboarding/AvatarCropper.svelte';
@@ -225,7 +226,7 @@
       const userDoc = results.items[0];
       if (userDoc) {
         authUserDoc.set(userDoc);
-        goto('/dashboard');
+        goto(LOGIN_REDIRECT_URL);
       } else {
         throw new Error('Failed to fetch created user document');
       }

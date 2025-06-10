@@ -81,7 +81,8 @@ export const REPUTATION_SETTINGS = {
 /**
  * URL to redirect to after successful login
  */
-export const LOGIN_REDIRECT_URL = '/tags-hub';
+// export const LOGIN_REDIRECT_URL = '/dashboard'; // Original redirect for normal operation
+export const LOGIN_REDIRECT_URL = '/tag/ICP'; // Temporary change for stress testing - redirect users directly to ICP tag page
 
 /**
  * URL to redirect to after logout

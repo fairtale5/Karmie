@@ -8,6 +8,7 @@
 	import { authUserDoneInitializing } from '$lib/stores/authUser';
 	import { handleLogin, handleLogout } from '$lib/login';
 	import { setPageMeta } from '$lib/stores/page';
+	import { LOGIN_REDIRECT_URL } from '$lib/settings';
 	import { Accordion } from '@skeletonlabs/skeleton-svelte';
 	
 	/**
@@ -189,7 +190,7 @@
 						if (!userDoc || !hasRequiredFields) {
 							goto('/new/user');
 						} else {
-							goto('/dashboard');
+							goto(LOGIN_REDIRECT_URL);
 						}
 						
 						// Clean up subscription and resolve promise
