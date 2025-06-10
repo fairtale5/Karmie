@@ -128,7 +128,7 @@
         })
         .filter(item => item !== null)
         .sort((a, b) => b.score - a.score) // Sort by score descending
-        .slice(0, 10); // Limit to top 10 users
+        .slice(0, 250); // Limit to top 250 users
 
       topUsers = combinedData;
       
