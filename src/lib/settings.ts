@@ -74,7 +74,7 @@ export const REPUTATION_SETTINGS = {
     // UI settings
     UI: {
         DECIMAL_PLACES: 1,              // Number of decimal places to show for reputation scores
-        WHOLE_NUMBERS: true,            // Whether to show reputation as whole numbers
+        WHOLE_NUMBERS: false,           // Whether to show reputation as whole numbers
     } as UISettings
 };
 

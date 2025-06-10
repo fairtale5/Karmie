@@ -6,6 +6,7 @@
   import type { TagDocument, UserDocument, ReputationDocument, UserData } from '$lib/types';
   import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
   import { dummyProfileData } from '$lib/data/dummyProfileData';
+  import { REPUTATION_SETTINGS } from '$lib/settings';
 
   const { 
     tag, 
@@ -47,6 +48,17 @@
   // Helper function to get avatar URL
   function getAvatarUrl(ulid: string): string {
     return `https://images.unsplash.com/photo-1617296538902-887900d9b592?ixid=M3w0Njc5ODF8MHwxfGFsbHx8fHx8fHx8fDE2ODc5NzExMDB8&ixlib=rb-4.0.3&w=128&h=128&auto=format&fit=crop`;
+  }
+
+  // Helper function to format reputation score
+  function formatScore(score: number): string {
+    const { DECIMAL_PLACES, WHOLE_NUMBERS } = REPUTATION_SETTINGS.UI;
+    
+    if (WHOLE_NUMBERS) {
+      return Math.round(score).toString();
+    } else {
+      return score.toFixed(DECIMAL_PLACES);
+    }
   }
 
   // Helper function to fetch user data (following pattern from RecentVotes components)
@@ -256,7 +268,7 @@
                   </div>
                 </td>
                 <td class="text-right">
-                  <span class="badge preset-filled-secondary-500">{Math.round(user.score)}</span>
+                  <span class="badge preset-filled-secondary-500">{formatScore(user.score)}</span>
                 </td>
               </tr>
             {/each}
