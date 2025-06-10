@@ -222,33 +222,5 @@
     />
   </div>
 
-  <!-- Call to Action -->
-  <div class="mt-6">
-    {#if loading}
-      <div class="placeholder animate-pulse w-full h-12 rounded"></div>
-    {:else if tagData?.isPreview}
-      <button class="btn preset-filled-primary-500 w-full" disabled>
-        Currently in Preview Mode
-      </button>
-    {:else if tagData?.tag}
-      <button 
-        class="btn preset-filled-primary-500 w-full"
-        onclick={() => {
-          if ($authUserDoc) {
-            // Navigate to contribute/vote page
-            goto(`/tag/${tagData.tag.data.tag_handle}/vote`);
-          } else {
-            // Navigate to login
-            goto('/login');
-          }
-        }}
-      >
-        To join, start voting!
-      </button>
-    {:else}
-      <button class="btn preset-filled-primary-500 w-full" disabled>
-        Tag Not Available
-      </button>
-    {/if}
-  </div>
+
 </div> 
