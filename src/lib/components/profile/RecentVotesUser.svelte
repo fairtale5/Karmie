@@ -13,6 +13,8 @@
     import { dummyProfileData } from '$lib/data/dummyProfileData';
     // Import BaseCard component
     import BaseCard from '$lib/components/common/BaseCard.svelte';
+    // Import UserLink component for clickable usernames
+    import UserLink from '$lib/components/common/UserLink.svelte';
 
     // --- Component Interface Definition ---
     // These props define the component's external interface and data requirements
@@ -280,7 +282,7 @@
                                             >
                                                 {getInitials(ownerUser.data.user_handle)}
                                             </Avatar>
-                                            <span>{ownerUser.data.user_handle}</span>
+                                            <UserLink handle={ownerUser.data.user_handle} />
                                         </div>
                                     {:else}
                                         <span class="font-mono text-xs">{vote.data.owner_ulid}</span>
@@ -299,7 +301,7 @@
                                             >
                                                 {getInitials(targetUser.data.user_handle)}
                                             </Avatar>
-                                            <span>{targetUser.data.user_handle}</span>
+                                            <UserLink handle={targetUser.data.user_handle} />
                                         </div>
                                     {:else}
                                         <span class="font-mono text-xs">{vote.data.target_ulid}</span>

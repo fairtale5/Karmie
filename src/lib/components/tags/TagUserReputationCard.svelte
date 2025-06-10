@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Expand, X, CirclePlus, CircleMinus, Activity } from 'lucide-svelte';
   import BaseCard from '$lib/components/common/BaseCard.svelte';
+  import UserLink from '$lib/components/common/UserLink.svelte';
   import { authUserDoc } from '$lib/stores/authUserDoc';
   import type { TagDocument, VoteDocument, UserDocument, VoteData, UserData } from '$lib/types';
   import { Popover, Avatar } from '@skeletonlabs/skeleton-svelte';
@@ -333,7 +334,7 @@
                                 >
                                   {getInitials(ownerUser.data.user_handle)}
                                 </Avatar>
-                                <span class="text-sm">{ownerUser.data.user_handle}</span>
+                                <UserLink handle={ownerUser.data.user_handle} class="text-sm" />
                               </div>
                             {:else}
                               <span class="font-mono text-xs">{vote.data.owner_ulid}</span>
@@ -352,7 +353,7 @@
                                 >
                                   {getInitials(targetUser.data.user_handle)}
                                 </Avatar>
-                                <span class="text-sm">{targetUser.data.user_handle}</span>
+                                <UserLink handle={targetUser.data.user_handle} class="text-sm" />
                               </div>
                             {:else}
                               <span class="font-mono text-xs">{vote.data.target_ulid}</span>

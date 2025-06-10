@@ -2,6 +2,7 @@
   import { Expand, UserRoundPen, X, ShieldCheck } from 'lucide-svelte';
   import { Avatar, Popover } from '@skeletonlabs/skeleton-svelte';
   import BaseCard from '$lib/components/common/BaseCard.svelte';
+  import UserLink from '$lib/components/common/UserLink.svelte';
   import type { TagDocument, UserDocument, ReputationDocument, UserData } from '$lib/types';
   import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
   import { dummyProfileData } from '$lib/data/dummyProfileData';
@@ -238,7 +239,7 @@
                     </Avatar>
                     <div class="flex flex-col">
                       <span class="font-bold text-sm">{user.userDocument.data.display_name}</span>
-                      <span class="text-xs opacity-60">@{user.userDocument.data.user_handle}</span>
+                      <UserLink handle={user.userDocument.data.user_handle} showAt={true} class="text-xs opacity-60" />
                     </div>
                     <div class="flex items-center gap-1">
                       {#if i === 0}

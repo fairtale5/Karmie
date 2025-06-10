@@ -64,6 +64,7 @@
 - [x] **Integrate with dummyProfileData for consistent demo experience**
 - [x] **Set up async user data fetching with queryDocsByKey integration**
 - [x] **Configure route parameter handling for [userHandle] dynamic route**
+- [x] **Implement clickable usernames across all list components** - Added UserLink component for consistent navigation to user profiles
 
 ## 🚧 In Progress
 - [ ] Connect remaining components to real data using `query_by_key.ts`

@@ -9,6 +9,8 @@
     import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
     // Import Avatar component
     import { Avatar, Popover } from '@skeletonlabs/skeleton-svelte';
+    // Import UserLink component for clickable usernames
+    import UserLink from '$lib/components/common/UserLink.svelte';
     // Import icons
     import { Expand, CirclePlus, CircleMinus, X } from 'lucide-svelte';
     // Import centralized dummy data
@@ -311,7 +313,7 @@
                                         >
                                             {getInitials(user.data.user_handle)}
                                         </Avatar>
-                                        <span>{user.data.user_handle}</span>
+                                        <UserLink handle={user.data.user_handle} />
                                     </div>
                                 {:else}
                                     <span class="font-mono">{vote.data.owner_ulid}</span>
@@ -330,7 +332,7 @@
                                         >
                                             {getInitials(user.data.user_handle)}
                                         </Avatar>
-                                        <span>{user.data.user_handle}</span>
+                                        <UserLink handle={user.data.user_handle} />
                                     </div>
                                 {:else}
                                     <span class="font-mono">{vote.data.target_ulid}</span>
