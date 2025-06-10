@@ -2,7 +2,7 @@
     // Import query helper for document operations
     import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
     // Import type definitions that enforce data structure compliance
-    import type { VoteDocument, UserDocument, UserData, VoteData } from '$lib/types';
+    import type { VoteDocument, UserDocument, UserData, VoteData, TagDocument, TagData } from '$lib/types';
     // Import Svelte's lifecycle hook for component initialization
     import { onMount } from 'svelte';
     // Import Avatar component
@@ -29,6 +29,7 @@
     let loading = $state(true);                         // Loading state flag for UI feedback
     let error = $state<string | null>(null);            // Error state container
     let userData = $state<Map<string, UserDocument>>(new Map());  // Cache for user documents
+    let tagData = $state<Map<string, TagDocument>>(new Map());    // Cache for tag documents
     // Individual toggle filters - all enabled by default
     let showIncoming = $state(true);                    // Show votes received by user
     let showOutgoing = $state(true);                    // Show votes cast by user  
@@ -95,6 +96,30 @@
         }
     }
 
+    // Helper function to fetch tag data
+    async function fetchTagData(tagUlid: string) {
+        if (tagData.has(tagUlid)) return; // Skip if already cached
+        
+        try {
+            const keyPattern = `tag_${tagUlid}_`;
+            const results = await queryDocsByKey<TagData>('tags', keyPattern);
+            
+            // Ensure we have exactly one result
+            if (results.items.length === 0) {
+                console.warn(`No tag found for ULID: ${tagUlid}`);
+                return;
+            }
+            if (results.items.length > 1) {
+                throw new Error(`Multiple tags found for ULID: ${tagUlid}`);
+            }
+            
+            // Store the tag document
+            tagData.set(tagUlid, results.items[0] as TagDocument);
+        } catch (e) {
+            console.error(`Failed to fetch tag data for ${tagUlid}:`, e);
+        }
+    }
+
     // --- Data Fetching Logic ---
     // This function handles the asynchronous data retrieval from Juno
     async function fetchRecentVotes() {
@@ -115,6 +140,22 @@
                 dummyProfileData.dummyUsers.forEach(dummyUser => {
                     userData.set(dummyUser.data.user_ulid, dummyUser);
                 });
+                
+                // Pre-populate tagData with demo tag
+                const demoTag: TagDocument = {
+                    key: '___PREVIEW_DATA___',
+                    data: {
+                        tag_ulid: '___PREVIEW_DATA___',
+                        tag_handle: 'demo',
+                        description: 'Demo tag for preview purposes',
+                        owner_ulid: 'demo_user',
+                        time_periods: [],
+                        reputation_threshold: 10,
+                        vote_reward: 1,
+                        min_users_for_threshold: 3
+                    }
+                };
+                tagData.set('___PREVIEW_DATA___', demoTag);
                 
                 // Ensure the demo user themselves has an avatar by adding them to userData
                 // Create a demo user document with avatar if not already present
@@ -155,13 +196,18 @@
 
             // Fetch user data for all unique users in the votes
             const uniqueUsers = new Set<string>();
+            const uniqueTags = new Set<string>();
             votes.forEach(vote => {
                 if (vote.data.owner_ulid) uniqueUsers.add(vote.data.owner_ulid);
                 if (vote.data.target_ulid) uniqueUsers.add(vote.data.target_ulid);
+                if (vote.data.tag_ulid) uniqueTags.add(vote.data.tag_ulid);
             });
 
-            // Fetch user data for all unique users
-            await Promise.all(Array.from(uniqueUsers).map(fetchUserData));
+            // Fetch user data and tag data in parallel
+            await Promise.all([
+                ...Array.from(uniqueUsers).map(fetchUserData),
+                ...Array.from(uniqueTags).map(fetchTagData)
+            ]);
             
         } catch (e) {
             // Error handling with type checking
@@ -263,13 +309,15 @@
                             <tr>
                                 <th>From</th>
                                 <th>To</th>
-                                <th class="text-right flex justify-end">Value</th>
+                                <th>Tag</th>
                             </tr>
                         </thead>
                         <tbody class="[&>tr]:hover:preset-tonal-primary">
                             {#each filteredVotes as vote (vote.key)}
-                            <tr>
-                                <td>
+                            {@const voteValue = vote.data.value ?? 0}
+                            {@const isPositive = voteValue > 0}
+                            <tr class="{isPositive ? 'bg-success-50/30 dark:bg-success-500/5' : 'bg-error-50/30 dark:bg-error-500/5'}">
+                                <td class="border-l-4 {isPositive ? 'border-success-500' : 'border-error-500'}">
                                     {#if vote.data.owner_ulid && userData.get(vote.data.owner_ulid)}
                                         {@const ownerUser = userData.get(vote.data.owner_ulid)!}
                                         <div class="flex items-center gap-2">
@@ -307,14 +355,15 @@
                                         <span class="font-mono text-xs">{vote.data.target_ulid}</span>
                                     {/if}
                                 </td>
-                                <td class="text-right">
-                                    <span class="chip-icon preset-filled-{(vote.data.value ?? 0) > 0 ? 'success' : 'error'}-500 w-5 h-5">
-                                        {#if (vote.data.value ?? 0) > 0}
-                                            <CirclePlus size={19} />
-                                        {:else}
-                                            <CircleMinus size={19} />
-                                        {/if}
-                                    </span>
+                                <td>
+                                    {#if vote.data.tag_ulid && tagData.get(vote.data.tag_ulid)}
+                                        {@const tag = tagData.get(vote.data.tag_ulid)!}
+                                        <span class="chip variant-soft-primary text-xs px-2 py-1">
+                                            #{tag.data.tag_handle}
+                                        </span>
+                                    {:else}
+                                        <span class="font-mono text-xs opacity-60">{vote.data.tag_ulid}</span>
+                                    {/if}
                                 </td>
                             </tr>
                             {/each}
