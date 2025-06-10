@@ -53,15 +53,15 @@ export const REPUTATION_SETTINGS = {
 
     // Time period multipliers for vote decay
     DEFAULT_TIME_PERIODS: [
-        { months: 1, multiplier: 5 },       // Period 1: First month (5x bonus for very recent)
-        { months: 2, multiplier: 2.5 },     // Period 2: Months 2-3 (2.5x bonus for recent)
-        { months: 3, multiplier: 1.8 },     // Period 2: Months 4-6 (2.5x bonus for recent)
-        { months: 6, multiplier: 1.4 },     // Period 3: Months 6-12 (1.4x bonus for semi-recent)
-        { months: 12, multiplier: 1.0 },    // Period 4: Months 12-24 (baseline - normal weight)
-        { months: 12, multiplier: 0.8 },    // Period 5: Months 24-36 (0.8x for older content)
-        { months: 12, multiplier: 0.6 },    // Period 6: Months 37-48 (0.6x for mature content)
-        { months: 12, multiplier: 0.4 },    // Period 7: Months 48-60 (0.4x for historical)
-        { months: 999, multiplier: 0.2 }    // Period 8: Months 60+ Over 5 years (0.2x for very old content)
+        { months: 1, multiplier: 1.0 },     // Period 1: First month (baseline for very recent)
+        { months: 2, multiplier: 0.5 },     // Period 2: Months 2-3 (50% for recent)
+        { months: 3, multiplier: 0.35 },    // Period 3: Months 4-6 (35% for semi-recent)
+        { months: 6, multiplier: 0.3 },     // Period 4: Months 6-12 (30% for older)
+        { months: 12, multiplier: 0.2 },    // Period 5: Months 12-24 (20% for mature)
+        { months: 12, multiplier: 0.15 },   // Period 6: Months 24-36 (15% for historical)
+        { months: 12, multiplier: 0.1 },    // Period 7: Months 37-48 (10% for very old)
+        { months: 12, multiplier: 0.1 },    // Period 8: Months 48-60 (10% for ancient)
+        { months: 999, multiplier: 0.05 }   // Period 9: Months 60+ (5% for archival)
     ] as TimePeriod[],
 
     // Vote settings
