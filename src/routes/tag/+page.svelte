@@ -112,48 +112,66 @@
   }
 </script>
 
-<NotLoggedInAlert />
-
 <div class="p-4">
-  <!-- Header -->
-  <div class="flex justify-between items-center mb-6">
-    <div>
-      <h1 class="text-3xl font-bold mb-2">Explore Reputation #tags</h1>
-      <p class="text-surface-500">Each #tag represents a community, app, store, games, or other type of reputation system.</p>
-    </div>
-    {#if $authUserDoc}
-      <button 
-        class="btn preset-filled-primary-500"
-        onclick={() => goto('/tag/create')}
-      >
-        <Plus size={20} />
-        Create Tag
-      </button>
-    {/if}
-  </div>
-
+  <NotLoggedInAlert />
+  
   {#if error}
     <div class="alert alert-error mb-6">{error}</div>
   {/if}
 
-  <!-- Preview Mode Card -->
-  <BaseCard classes="mb-6 preset-outlined-warning-500">
-    {#snippet header()}
-      <h2 class="text-lg font-bold text-warning-500">See an Example</h2>
-    {/snippet}
-    
-    {#snippet children()}
-      <p class="mb-4">
-        Explore what an active reputation community looks like with sample data and interactions.
+  <!-- Intro Section - Responsive Layout -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+    <!-- Intro Text -->
+    <div class="lg:col-span-2">
+      <p class=" mb-4">
+        Each #tag represents a community, app, store, games, or other type of reputation system. 
+        Join existing communities or create your own to build trust and reputation.
       </p>
-      <button 
-        class="btn preset-filled-warning-500"
-        onclick={() => navigateToTag('preview-mode')}
-      >
-        View Example Community
-      </button>
-    {/snippet}
-  </BaseCard>
+      {#if $authUserDoc}
+        <button 
+          class="btn preset-filled-primary-500"
+          onclick={() => goto('/tag/create')}
+        >
+          <Plus size={20} />
+          Create New Tag
+        </button>
+      {:else}
+        <p class="text-sm italic">
+          Log in to create your own reputation community
+        </p>
+      {/if}
+    </div>
+
+    <!-- Example Card -->
+    <div class="lg:col-span-1">
+      <BaseCard classes="preset-outlined-warning-500">
+        {#snippet header()}
+          <h2 class="text-xl font-bold text-warning-500">See an Example</h2>
+        {/snippet}
+        
+        {#snippet children()}
+          <p class=" mb-4">
+            Explore what an active reputation community looks like with sample data and interactions. 
+            Perfect for understanding how the system works.
+          </p>
+          <button 
+            class="btn preset-filled-warning-500 w-full"
+            onclick={() => navigateToTag('preview-mode')}
+          >
+            View Example Community
+          </button>
+        {/snippet}
+      </BaseCard>
+    </div>
+  </div>
+
+  <!-- Section Header -->
+  <div class="mb-6">
+    <h2 class="text-xl font-semibold mb-2">All Community Tags</h2>
+    <p class="text-surface-500 text-sm">
+      Browse and join existing reputation communities on the platform.
+    </p>
+  </div>
 
   <!-- Tags Grid -->
   {#if loading}
@@ -201,49 +219,47 @@
           {/snippet}
           
           {#snippet children()}
-            <div onclick={() => navigateToTag(tag.data.tag_handle)}>
-              {#if tag.data.description}
-                <p class="text-sm opacity-80 mb-4 line-clamp-3">
-                  {tag.data.description}
-                </p>
-              {:else}
-                <p class="text-sm opacity-50 mb-4 italic">No description provided</p>
-              {/if}
-              
-              <div class="grid grid-cols-3 gap-2 mb-4">
-                <div class="text-center">
-                  <Users size={20} class="mx-auto mb-1 text-surface-500" />
-                  <p class="text-xs opacity-70">Total Users</p>
-                  {#if tag.stats?.loading}
-                    <div class="placeholder animate-pulse h-4 w-8 mx-auto rounded"></div>
-                  {:else}
-                    <p class="font-semibold text-sm">{tag.stats?.totalUsers ?? 0}</p>
-                  {/if}
-                </div>
-                <div class="text-center">
-                  							<ShieldCheck size={20} class="mx-auto mb-1 text-surface-500" />
-                  <p class="text-xs opacity-70">Trusted Users</p>
-                  {#if tag.stats?.loading}
-                    <div class="placeholder animate-pulse h-4 w-8 mx-auto rounded"></div>
-                  {:else}
-                    <p class="font-semibold text-sm">{tag.stats?.trustedUsers ?? 0}</p>
-                  {/if}
-                </div>
-                <div class="text-center">
-                  <Send size={20} class="mx-auto mb-1 text-surface-500" />
-                  <p class="text-xs opacity-70">Total Votes</p>
-                  {#if tag.stats?.loading}
-                    <div class="placeholder animate-pulse h-4 w-8 mx-auto rounded"></div>
-                  {:else}
-                    <p class="font-semibold text-sm">{tag.stats?.totalVotes ?? 0}</p>
-                  {/if}
-                </div>
+            {#if tag.data.description}
+              <p class="text-sm opacity-80 mb-4 line-clamp-3">
+                {tag.data.description}
+              </p>
+            {:else}
+              <p class="text-sm opacity-50 mb-4 italic">No description provided</p>
+            {/if}
+            
+            <div class="grid grid-cols-3 gap-2 mb-4">
+              <div class="text-center">
+                <Users size={20} class="mx-auto mb-1 text-surface-500" />
+                <p class="text-xs opacity-70">Total Users</p>
+                {#if tag.stats?.loading}
+                  <div class="placeholder animate-pulse h-4 w-8 mx-auto rounded"></div>
+                {:else}
+                  <p class="font-semibold text-sm">{tag.stats?.totalUsers ?? 0}</p>
+                {/if}
               </div>
-              
-              <button class="btn preset-filled-primary-500 w-full">
-                Explore Tag
-              </button>
+              <div class="text-center">
+                							<ShieldCheck size={20} class="mx-auto mb-1 text-surface-500" />
+                <p class="text-xs opacity-70">Trusted Users</p>
+                {#if tag.stats?.loading}
+                  <div class="placeholder animate-pulse h-4 w-8 mx-auto rounded"></div>
+                {:else}
+                  <p class="font-semibold text-sm">{tag.stats?.trustedUsers ?? 0}</p>
+                {/if}
+              </div>
+              <div class="text-center">
+                <Send size={20} class="mx-auto mb-1 text-surface-500" />
+                <p class="text-xs opacity-70">Total Votes</p>
+                {#if tag.stats?.loading}
+                  <div class="placeholder animate-pulse h-4 w-8 mx-auto rounded"></div>
+                {:else}
+                  <p class="font-semibold text-sm">{tag.stats?.totalVotes ?? 0}</p>
+                {/if}
+              </div>
             </div>
+            
+            <button class="btn preset-filled-primary-500 w-full" onclick={() => navigateToTag(tag.data.tag_handle)}>
+              Explore Tag
+            </button>
           {/snippet}
         </BaseCard>
       {/each}

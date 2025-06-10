@@ -113,10 +113,10 @@
   }
 </script>
 
-<NotLoggedInAlert />
-
 <!-- Main Container -->
 <div class="p-4">
+  <NotLoggedInAlert />
+  
   {#if error}
     <div class="alert alert-error mb-6">{error}</div>
   {/if}

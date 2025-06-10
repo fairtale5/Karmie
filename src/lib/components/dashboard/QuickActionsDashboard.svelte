@@ -380,7 +380,7 @@
               arrowBackground="!bg-surface-200 dark:!bg-surface-800"
             >
               {#snippet trigger()}
-                <svelte:component this={action.icon} size={24} class="mb-1" />
+                <action.icon size={24} class="mb-1" />
                 <span class="text-xs">{action.name}</span>
               {/snippet}
               {#snippet content()}
@@ -405,7 +405,7 @@
             class:!border-0={activeAction === action.name}
             onclick={() => handleActionClick(action.name)}
           >
-            <svelte:component this={action.icon} size={24} class="mb-1" />
+            <action.icon size={24} class="mb-1" />
             <span class="text-xs">{action.name}</span>
           </button>
         {/if}

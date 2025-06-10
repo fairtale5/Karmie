@@ -133,7 +133,7 @@
     
     {#snippet children()}
       <div class="flex items-center gap-3 mb-3">
-        <svelte:component this={statItem.icon} size={24} class="text-surface-500" />
+        <statItem.icon size={24} class="text-surface-500" />
         <div class="flex-1">
           {#if stats.loading}
             <div class="placeholder animate-pulse h-6 w-16 rounded"></div>

@@ -2,6 +2,7 @@
 // Placeholder data for dashboard widgets
 import QuickActionsDashboard from '$lib/components/dashboard/QuickActionsDashboard.svelte';
 import BaseCard from '$lib/components/common/BaseCard.svelte';
+import DashboardDummyDataAlert from '$lib/components/common/DashboardDummyDataAlert.svelte';
 import { setPageMeta } from '$lib/stores/page';
 import { onMount } from 'svelte';
 
@@ -75,6 +76,10 @@ onMount(() => {
   setPageMeta({ title: 'Dashboard' });
 });
 </script>
+
+<div class="p-4">
+  <DashboardDummyDataAlert />
+</div>
 
 <!-- Main dashboard grid -->
 <div class="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6 p-4">

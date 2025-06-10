@@ -8,6 +8,7 @@
 	import { authUserDoneInitializing } from '$lib/stores/authUser';
 	import { handleLogin, handleLogout } from '$lib/login';
 	import { setPageMeta } from '$lib/stores/page';
+	import { Accordion } from '@skeletonlabs/skeleton-svelte';
 	
 	/**
 	 * Component State
@@ -15,12 +16,92 @@
 	 * - user: Local reference to current auth state
 	 * - error: Holds any auth-related errors
 	 * - currentPath: Reactive reference to current URL path
+	 * - useCasesValue: Controls which accordion items are open
 	 */
 	let initialized = false;
 	let user: User | null = null;
-	let error: string | null = null;
-	$: currentPath = $page.url.pathname;
+	let error = $state<string | null>(null);
+	const currentPath = $derived($page.url.pathname);
 	
+	// Accordion state - start with first item open to draw attention
+	let useCasesValue = $state(['ecommerce']);
+
+	// Use case examples for the accordion
+	const useCases = [
+		{
+			id: 'ecommerce',
+			title: '🛒 E-commerce Marketplaces',
+			subtitle: 'Like eBay or Shopify, but completely bot-proof',
+			content: `Create marketplace platforms where buyer and seller reputations actually matter. Unlike traditional reviews that can be faked with bots, Karmie ensures only trusted community members can influence reputation scores. Perfect for:
+			
+			• **Online marketplaces** - Track seller reliability and buyer behavior
+			• **Peer-to-peer trading** - Build trust in decentralized exchanges
+			• **Service platforms** - Rate freelancers, contractors, and service providers
+			
+			**Example**: A seller with 95% positive #trustworthy votes from established community members carries far more weight than thousands of bot reviews.`
+		},
+		{
+			id: 'airdrops',
+			title: '🪂 Token Distribution & Airdrops',
+			subtitle: 'Ensure rewards reach real humans, not bots',
+			content: `Stop wasting tokens on bot farms and Sybil attacks. Use reputation as a filter to identify genuine community members who deserve rewards.
+			
+			• **Airdrop campaigns** - Only send tokens to users with #genuine reputation
+			• **Community rewards** - Distribute based on contribution history
+			• **Incentive programs** - Reward real engagement, not spam
+			
+			**Example**: Instead of dropping tokens to 10,000 wallets (90% bots), drop to 1,000 wallets with proven #community reputation - reaching 10x more real humans.`
+		},
+		{
+			id: 'social',
+			title: '🗣️ Web3 Social Media',
+			subtitle: 'Where expertise determines influence, not follower count',
+			content: `Build social platforms where domain experts have more influence in their areas of expertise, creating higher quality discussions and content curation.
+			
+			• **Topic-based influence** - Developers have more weight in #programming discussions
+			• **Expert curation** - Environmentalists shape #climate content
+			• **Quality over quantity** - Thoughtful contributions matter more than volume
+			
+			**Example**: A post about DeFi protocols gets more visibility when upvoted by users with high #defi reputation, while meme posts are boosted by #entertainment experts.`
+		},
+		{
+			id: 'gaming',
+			title: '🎮 Gaming Communities',
+			subtitle: 'Track player skills, teamwork, and community behavior',
+			content: `Create gaming environments where reputation follows players across games and platforms, building long-term community trust and skill recognition.
+			
+			• **Skill tracking** - Build #skill reputation through gameplay
+			• **Behavior monitoring** - Track #sportsmanship and #teamwork
+			• **Cross-game reputation** - Carry trust between different games
+			
+			**Example**: A player with high #leadership reputation in strategy games can be auto-nominated as team captain in new games, while toxic players lose influence over time.`
+		},
+		{
+			id: 'professional',
+			title: '💼 Professional Networks',
+			subtitle: 'Build verifiable expertise without traditional credentials',
+			content: `Enable professional communities where expertise is earned through peer recognition rather than just formal education or job titles.
+			
+			• **Skill validation** - Peers vouch for each other's #technical abilities
+			• **Project collaboration** - Find teammates based on reputation history
+			• **Knowledge sharing** - Experts gain influence in their domains
+			
+			**Example**: A developer gains #rust reputation by consistently providing helpful solutions, making their future advice carry more weight in Rust discussions.`
+		},
+		{
+			id: 'governance',
+			title: '🏛️ Community Governance',
+			subtitle: 'Democratic decision-making with weighted expertise',
+			content: `Create governance systems where voting power is earned through community contribution and expertise, not just token holdings.
+			
+			• **Proposal voting** - Weight votes by relevant expertise
+			• **Moderation decisions** - Trusted members help govern content
+			• **Resource allocation** - Community decides funding based on contribution history
+			
+			**Example**: A vote on platform technical improvements weighs #development reputation more heavily, while #design reputation influences UI/UX decisions.`
+		}
+	];
+
 	// Placeholder image imports (replace with your preferred images from /img/landing_page)
 	const features = [
 		{
@@ -150,7 +231,7 @@
 		{#if !user}
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-xl mx-auto mt-4">
 				<!-- Top row -->
-				<button on:click={() => handleLogin(currentPath)} class="btn preset-filled-primary-500 w-full text-lg">
+				<button onclick={() => login()} class="btn preset-filled-primary-500 w-full text-lg">
 					Login with Internet Identity
 				</button>
 				<a
@@ -180,9 +261,53 @@
 		{:else}
 			<div class="flex flex-col items-center gap-2 mb-4">
 				<span class="text-success-500 font-semibold">You are logged in.</span>
-				<button on:click={handleLogout} class="btn preset-outlined-primary-500 w-full sm:w-auto">Logout</button>
+				<button onclick={logout} class="btn preset-outlined-primary-500 w-full sm:w-auto">Logout</button>
 			</div>
 		{/if}
+	</div>
+</section>
+
+<!-- Use Cases Section -->
+<section class="section py-16">
+	<div class="container mx-auto max-w-4xl">
+		<div class="text-center mb-12">
+			<h2 class="preset-typo-title text-4xl font-bold mb-4">Real-World Use Cases</h2>
+			<p class="preset-typo-body-1 text-lg text-surface-600-400 max-w-2xl mx-auto">
+				See how Karmie's bot-resistant reputation system can transform your platform, community, or application.
+			</p>
+		</div>
+		
+		<div class="card shadow bg-surface-50-950 border border-surface-200-800 p-6">
+			<Accordion value={useCasesValue} onValueChange={(e) => (useCasesValue = e.value)} multiple>
+				{#each useCases as useCase, i}
+					<Accordion.Item value={useCase.id}>
+						{#snippet control()}
+							<div class="text-left">
+								<h3 class="preset-typo-title text-xl mb-1">{useCase.title}</h3>
+								<p class="text-sm text-surface-600-400">{useCase.subtitle}</p>
+							</div>
+						{/snippet}
+						{#snippet panel()}
+							<div class="prose max-w-none text-surface-700-300">
+								{@html useCase.content.replace(/\n/g, '<br>').replace(/•/g, '&bull;')}
+							</div>
+						{/snippet}
+					</Accordion.Item>
+					{#if i < useCases.length - 1}
+						<hr class="hr my-2" />
+					{/if}
+				{/each}
+			</Accordion>
+		</div>
+		
+		<div class="text-center mt-8">
+			<p class="text-sm text-surface-600-400 mb-4">
+				These are just a few examples. Any platform that needs to distinguish real users from bots can benefit from Karmie.
+			</p>
+			<button class="btn preset-filled-tertiary-500" disabled>
+				View Integration Guide (coming soon)
+			</button>
+		</div>
 	</div>
 </section>
 

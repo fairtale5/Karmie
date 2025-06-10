@@ -4,7 +4,7 @@
 </script>
 
 {#if $authUserDoneInitializing && !$authUser}
-  <div class="card preset-outlined-warning-500 grid grid-cols-1 items-center gap-4 p-4 lg:grid-cols-[auto_1fr_auto] my-4">
+  <div class="card preset-outlined-warning-500 grid grid-cols-1 items-center gap-4 p-4 lg:grid-cols-[auto_1fr_auto] mt-0 mb-6">
     <TriangleAlert class="text-warning-500" />
     <div>
       <p class="font-bold">Warning</p>
