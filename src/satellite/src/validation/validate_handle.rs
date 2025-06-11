@@ -3,20 +3,24 @@
 /// Requirements:
 /// - Length between 3 and 20 characters
 /// - Only alphanumeric characters and dashes
-/// - Must start with a letter
+/// - Cannot start or end with a dash
 /// - No consecutive dashes
-/// - No trailing dash
 pub fn validate_handle(username: &str) -> Result<(), String> {
     if username.len() < 3 || username.len() > 20 {
         return Err("[validate_handle] Handle must be between 3 and 20 characters.".to_string());
     }
 
-    let first_char = username.chars().next().unwrap();
-    if !first_char.is_alphabetic() {
-        return Err("[validate_handle] Handle must start with a letter.".to_string());
+    // Check if starts or ends with dash
+    if username.starts_with('-') {
+        return Err("[validate_handle] Handle cannot start with a dash.".to_string());
+    }
+    
+    if username.ends_with('-') {
+        return Err("[validate_handle] Handle cannot end with a dash.".to_string());
     }
 
-    let mut prev_char = '-';
+    // Check for valid characters and consecutive dashes
+    let mut prev_char = ' '; // Use space as initial value since it's not a dash
     for c in username.chars() {
         if !c.is_alphanumeric() && c != '-' {
             return Err("[validate_handle] Handle can only contain alphanumeric characters and dashes.".to_string());
@@ -25,10 +29,6 @@ pub fn validate_handle(username: &str) -> Result<(), String> {
             return Err("[validate_handle] Handle cannot contain consecutive dashes.".to_string());
         }
         prev_char = c;
-    }
-
-    if prev_char == '-' {
-        return Err("[validate_handle] Handle cannot end with a dash.".to_string());
     }
 
     Ok(())
@@ -44,14 +44,21 @@ mod tests {
         assert!(validate_handle("john").is_ok());
         assert!(validate_handle("john-doe").is_ok());
         assert!(validate_handle("john123").is_ok());
+        assert!(validate_handle("123john").is_ok()); // Starts with number
+        assert!(validate_handle("2024tag").is_ok()); // Starts with number
+        assert!(validate_handle("abc").is_ok()); // Minimum length
+        assert!(validate_handle("user1-test2").is_ok()); // Mixed alphanumeric with dash
 
         // Invalid usernames
         assert!(validate_handle("jo").is_err()); // Too short
-        assert!(validate_handle("john doe").is_ok()); // Invalid with spaces
+        assert!(validate_handle("john doe").is_err()); // Invalid with spaces
         assert!(validate_handle("johndoejohndoejohndoe1").is_err()); // Too long
-        assert!(validate_handle("123john").is_err()); // Starts with number
-        assert!(validate_handle("john--doe").is_err()); // Consecutive dashes
+        assert!(validate_handle("-john").is_err()); // Starts with dash
         assert!(validate_handle("john-").is_err()); // Ends with dash
+        assert!(validate_handle("john--doe").is_err()); // Consecutive dashes
         assert!(validate_handle("john@doe").is_err()); // Invalid character
+        assert!(validate_handle("@handle").is_err()); // Starts with special character
+        assert!(validate_handle("_user").is_err()); // Starts with underscore
+        assert!(validate_handle("user_name").is_err()); // Contains underscore
     }
 } 
