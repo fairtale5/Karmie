@@ -13,8 +13,9 @@
 	import AppShell from '$lib/components/layout/AppShell.svelte';
 	import { setPageMeta, page as pageStore } from '$lib/stores/page';
 import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
-import { themeStore } from '$lib/stores/theme';
-import { LOGIN_REDIRECT_URL } from '$lib/settings';
+	import { themeStore } from '$lib/stores/theme';
+	import { LOGIN_REDIRECT_URL } from '$lib/settings';
+	import StressTestWelcomeModal from '$lib/components/modals/StressTestWelcomeModal.svelte';
 
 	let user: User | null = null;
 	let checkedOnboarding = false;
@@ -187,6 +188,9 @@ HOW: This executes before the page renders, preventing theme flash
 
 <!-- Global Skeleton Toaster for toast notifications -->
 <Toaster {toaster} />
+
+<!-- Stress Test Welcome Modal -->
+<StressTestWelcomeModal />
 
 <AppShell title="Karmie">
 	<slot />

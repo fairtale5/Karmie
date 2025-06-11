@@ -101,4 +101,15 @@ export const GITHUB_URL = 'https://github.com/fairtale5/Reputator';
  */
 export const VALIDATE_USER_DOC = true;
 export const VALIDATE_TAG_DOC = true;
-export const VALIDATE_VOTE_DOC = true; 
+export const VALIDATE_VOTE_DOC = true;
+
+/**
+ * Stress Test Configuration
+ */
+export const STRESS_TEST = {
+    // Replace with actual tweet URL when available
+    TWEET_URL: "https://twitter.com/fairtal3/status/PLACEHOLDER_TWEET_ID",
+    
+    // Modal storage key (change this to reset all users' modal state)
+    STORAGE_KEY: "stress-test-modal-shown-v1"
+} as const; 
