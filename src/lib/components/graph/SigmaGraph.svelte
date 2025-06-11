@@ -136,19 +136,16 @@
 
 	/**
 	 * HOW: Centers the graph view and resets zoom level
-	 * - Calculates bounding box of all nodes
-	 * - Animates camera to show entire graph
+	 * - Uses Sigma.js built-in reset to show all nodes optimally
+	 * - Animates camera to show entire graph with proper centering
 	 * - Provides consistent view regardless of layout changes
 	 */
 	function centerGraph() {
 		if (!sigmaInstance) return;
 		
-		// HOW: Use Sigma.js camera animation for smooth centering
+		// HOW: Use Sigma.js camera reset to center on all nodes
 		const camera = sigmaInstance.getCamera();
-		camera.animate(
-			{ x: 0, y: 0, ratio: 1 },
-			{ duration: 500 }
-		);
+		camera.animatedReset({ duration: 500 });
 	}
 
 	/**
