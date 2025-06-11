@@ -10,7 +10,7 @@ import { deleteUserDoc } from '$lib/docs-crud/user_delete';
 import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
 import { toaster } from '$lib/skeletonui/toaster-skeleton';
 import { goto } from '$app/navigation';
-import { signOut, countDocs, listDocs } from '@junobuild/core';
+import { signOut, countDocs } from '@junobuild/core';
 
 interface CommunityStats {
   totalVotesGiven: number;
@@ -85,8 +85,8 @@ async function fetchCommunityStats() {
       }
     });
     
-    // 3. Count reputations where user has voting power (trusted communities)
-    const reputationsResults = await listDocs({
+    // 3. Count active communities (all reputations for user)
+    const activeCommunities = await countDocs({
       collection: 'reputations',
       filter: {
         matcher: {
@@ -95,27 +95,26 @@ async function fetchCommunityStats() {
       }
     });
     
-    let trustedCount = 0;
-    let totalReputation = 0;
-    let reputationCount = 0;
+    // 4. Count trusted communities (need to filter by has_voting_power, so use queryDocsByKey)
+    // countDocs doesn't support data field filtering, so we query and count in JavaScript
+    const trustedReputationsResults = await queryDocsByKey('reputations', `usr_${userUlid}_`);
+    const trustedCount = trustedReputationsResults.items.filter((rep: any) => rep.data.has_voting_power).length;
     
-    // Filter reputations based on voting power and calculate stats
-    reputationsResults.items.forEach((reputation: any) => {
-      reputationCount++;
+    // For average score, we need the actual reputation values, so use queryDocsByKey
+    const reputationsForAverage = await queryDocsByKey('reputations', `usr_${userUlid}_`);
+    let totalReputation = 0;
+    reputationsForAverage.items.forEach((reputation: any) => {
       totalReputation += reputation.data.reputation_total_effective || 0;
-      
-      if (reputation.data.has_voting_power) {
-        trustedCount++;
-      }
     });
+    const averageScore = Number(activeCommunities) > 0 ? Math.round((totalReputation / Number(activeCommunities)) * 10) / 10 : 0;
     
     // Update stats
     stats = {
       totalVotesGiven: Number(votesGivenCount),
       totalVotesReceived: Number(votesReceivedCount),
       trustedCommunities: trustedCount,
-      activeCommunities: reputationCount,
-      averageScore: reputationCount > 0 ? Math.round((totalReputation / reputationCount) * 10) / 10 : 0
+      activeCommunities: Number(activeCommunities),
+      averageScore: averageScore
     };
     
   } catch (error) {
@@ -135,19 +134,8 @@ async function fetchActiveReputations() {
     activeReputationsLoading = true;
     const userUlid = user.data.user_ulid;
     
-    // 1. Get all reputation documents for this user
-    const reputationsResults = await listDocs({
-      collection: 'reputations',
-      filter: {
-        matcher: {
-          key: `usr_${userUlid}_`
-        },
-        order: {
-          desc: true,
-          field: 'created_at' // We'll sort by reputation score in JS
-        }
-      }
-    });
+    // 1. Get all reputation documents for this user using queryDocsByKey
+    const reputationsResults = await queryDocsByKey('reputations', `usr_${userUlid}_`);
     
     // 2. Sort by reputation_total_effective and take top 3
     const sortedReputations = reputationsResults.items
