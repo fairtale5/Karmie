@@ -130,7 +130,7 @@
       {#if $authUserDoc}
         <button 
           class="btn preset-filled-primary-500"
-          onclick={() => goto('/tag/create')}
+          onclick={() => goto('/new/tag')}
         >
           <Plus size={20} />
           Create New Tag
@@ -199,7 +199,7 @@
           <div class="text-center">
             <button 
               class="btn preset-filled-primary-500"
-              onclick={() => goto('/tag/create')}
+              onclick={() => goto('/new/tag')}
             >
               Create First Tag
             </button>
