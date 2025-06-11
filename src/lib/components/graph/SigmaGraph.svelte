@@ -317,6 +317,31 @@
 			labelColor: { color: '#1a1a1a' },
 			labelSize: 12,
 			labelWeight: 'normal',
+			// HOW: Custom hover rendering for theme compatibility
+			defaultDrawNodeHover: (context, data, settings) => {
+				// Get theme-appropriate colors
+				const isDarkMode = document.documentElement.getAttribute('data-mode') === 'dark';
+				const hoverBackgroundColor = isDarkMode ? '#1e293b' : '#f1f5f9'; // surface colors
+				const hoverTextColor = isDarkMode ? '#f8fafc' : '#1e293b'; // contrasting text
+				
+				// Draw hover background circle
+				context.fillStyle = hoverBackgroundColor;
+				context.strokeStyle = hoverTextColor;
+				context.lineWidth = 2;
+				context.beginPath();
+				context.arc(data.x, data.y, data.size + 3, 0, Math.PI * 2);
+				context.fill();
+				context.stroke();
+				
+				// Draw hover label with better contrast
+				if (data.label) {
+					context.fillStyle = hoverTextColor;
+					context.font = `bold ${settings.labelSize + 2}px ${settings.labelFont}`;
+					context.textAlign = 'center';
+					context.textBaseline = 'middle';
+					context.fillText(data.label, data.x, data.y - data.size - 15);
+				}
+			},
 		});
 
 		// HOW: Set up interaction event listeners
