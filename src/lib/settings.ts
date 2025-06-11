@@ -108,7 +108,7 @@ export const VALIDATE_VOTE_DOC = true;
  */
 export const STRESS_TEST = {
     // Replace with actual tweet URL when available
-    TWEET_URL: "https://twitter.com/fairtal3/status/PLACEHOLDER_TWEET_ID",
+    TWEET_URL: "https://x.com/fairtal3/status/1932700435103801501",
     
     // Modal storage key (change this to reset all users' modal state)
     STORAGE_KEY: "stress-test-modal-shown-v1"
