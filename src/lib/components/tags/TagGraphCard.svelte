@@ -146,7 +146,7 @@
   {/snippet}
   
   {#snippet children()}
-    <div class="w-full h-64 bg-surface-200-800 rounded">
+    <div class="w-full h-[454px] bg-surface-200-800 rounded">
       {#if loading || graphLoading}
         <div class="w-full h-full flex items-center justify-center">
           <div class="placeholder animate-pulse w-3/4 h-8 rounded"></div>

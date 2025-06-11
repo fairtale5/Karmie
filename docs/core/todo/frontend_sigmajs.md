@@ -21,6 +21,7 @@
 - Integrate graph component into user profile pages  
 - Integrate graph component into main dashboard
 - Backend data integration (replace dummy data with real reputation data)
+- **Add avatar images to nodes** (backend already provides avatar URLs)
 - Performance optimization for larger datasets
 - Advanced filtering and search capabilities
 
@@ -361,6 +362,75 @@ graph.addEdge('user1', 'topic1', { type: 'arrow', edgeCategory: 'upvote', weight
 - ForceAtlas2 layout calculation can be expensive for large graphs (>1000 nodes)
 - Consider pre-computing layouts server-side for production data
 - Use `adjustSizes: true` to prevent node overlap in dense graphs
+
+### Avatar Images Implementation
+**Status:** Backend ready, frontend TODO
+
+**Backend Support:** ✅ Already implemented
+- `GraphNode.avatar_url: Option<String>` field exists
+- `fetch_user_node_data()` function populates avatar URLs from user data
+- Backend serves avatar URLs with graph data
+
+**Frontend Implementation Path:**
+
+1. **Install @sigma/node-image package:**
+```bash
+npm install @sigma/node-image
+```
+
+2. **Update SigmaGraph.svelte to use NodeImageProgram:**
+```ts
+import { NodeImageProgram } from "@sigma/node-image";
+
+const renderer = new Sigma(graph, container, {
+  defaultNodeType: "image",
+  nodeProgramClasses: {
+    image: NodeImageProgram,
+  },
+});
+```
+
+3. **Update node data structure to include image property:**
+```ts
+// In graphData.ts or when processing backend data
+graph.addNode("user1", {
+  x: 0,
+  y: 0,
+  size: 20,
+  label: "Alice",
+  image: "https://example.com/avatars/alice.jpg", // from backend avatar_url
+});
+```
+
+**Example Implementation (from Sigma.js docs):**
+```ts
+import { NodeImageProgram } from "@sigma/node-image";
+import Graph from "graphology";
+import Sigma from "sigma";
+
+const graph = new Graph();
+
+graph.addNode("a", {
+  x: 0,
+  y: 0,
+  size: 20,
+  label: "Jim",
+  image: "https://upload.wikimedia.org/wikipedia/commons/7/7f/Jim_Morrison_1969.JPG",
+});
+
+const renderer = new Sigma(graph, container, {
+  defaultNodeType: "image",
+  nodeProgramClasses: {
+    image: NodeImageProgram,
+  },
+});
+```
+
+**Integration Notes:**
+- Backend GraphNode struct already includes `avatar_url: Option<String>`
+- Dummy data generator should include placeholder avatar URLs for testing
+- Consider fallback to circle nodes for users without avatars
+- May need image loading error handling and default avatar fallbacks
 
 ---
 
