@@ -298,7 +298,7 @@ interface ReputationDocument {
         tag_ulid: string;                     // ULID of the tag this reputation is for
         basis_reputation: number;            // Reputation from received votes
         voting_rewards_reputation: number;   // Reputation from casting votes
-        effective_reputation: number;        // Final/cached reputation score (used as the user's reputation in this tag)
+        reputation_total_effective: number;  // Final/cached reputation score (used as the user's reputation in this tag)
         last_calculation: bigint;            // Timestamp of last reputation calculation (nanoseconds)
         vote_weight: number;                 // User's voting weight in this tag (0.0 to 1.0)
         has_voting_power: boolean;           // Whether the user has sufficient reputation to have voting power
@@ -313,7 +313,7 @@ interface ReputationDocument {
 - **tag_ulid**: ULID of the tag this reputation is for (uppercase, no prefix)
 - **basis_reputation**: Reputation points earned from received votes
 - **voting_rewards_reputation**: Reputation points earned from casting votes (vote rewards)
-- **effective_reputation**: The final, cached reputation score for this user in this tag (used for all calculations and display)
+- **reputation_total_effective**: The final, cached reputation score for this user in this tag (used for all calculations and display)
 - **last_calculation**: Timestamp (nanoseconds) of the last time this reputation was recalculated
 - **vote_weight**: User's voting weight in this tag (float, 0.0 to 1.0)
 - **has_voting_power**: Boolean indicating if the user meets the threshold for voting power in this tag
@@ -323,7 +323,7 @@ interface ReputationDocument {
 
 - Only the fields above are present in the actual code and persisted documents.
 - Fields such as `activity_score`, `received_votes`, `cast_votes`, `last_vote_at`, and `last_received_at` are **not** present in the current implementation and should not be relied upon.
-- The `effective_reputation` field in code serves the same purpose as the `reputation` field described in earlier documentation.
+- The `reputation_total_effective` field in code serves the same purpose as the `reputation` field described in earlier documentation.
 - All timestamps are in nanoseconds.
 - ULIDs are always uppercase and without prefixes in the data fields.
 
@@ -342,7 +342,7 @@ interface ReputationDocument {
         tag_ulid: "01ARZ3NDEKTSV4RRFFQ69G5FAW",
         basis_reputation: 10.0,
         voting_rewards_reputation: 2.5,
-        effective_reputation: 12.5,
+        reputation_total_effective: 12.5,
         last_calculation: 1234567890n,
         vote_weight: 0.85,
         has_voting_power: true,

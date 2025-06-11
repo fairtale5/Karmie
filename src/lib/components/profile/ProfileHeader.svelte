@@ -10,7 +10,7 @@ import { deleteUserDoc } from '$lib/docs-crud/user_delete';
 import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
 import { toaster } from '$lib/skeletonui/toaster-skeleton';
 import { goto } from '$app/navigation';
-import { signOut } from '@junobuild/core';
+import { signOut, countDocs, listDocs } from '@junobuild/core';
 
 interface CommunityStats {
   totalVotesGiven: number;
@@ -22,8 +22,26 @@ interface CommunityStats {
 
 const { user } = $props<{ user: UserDocument }>();
 
-// For now, use dummy stats. Later this should fetch real community stats based on user
-let stats: CommunityStats = dummyProfileData.communityStats;
+// Real community stats - will be populated from queries
+let stats: CommunityStats = $state({
+  totalVotesGiven: 0,
+  totalVotesReceived: 0,
+  trustedCommunities: 0,
+  activeCommunities: 0,
+  averageScore: 0
+});
+
+let statsLoading = $state(true);
+
+// Real "Most Active In" data
+interface ActiveReputation {
+  tag_handle: string;
+  score: number;
+  tag_ulid: string;
+}
+
+let activeReputations = $state<ActiveReputation[]>([]);
+let activeReputationsLoading = $state(true);
 
 // Edit mode state
 let editMode = $state(false);
@@ -40,6 +58,150 @@ let handleHelpOpen = $state(false);
 
 // Check if current user owns this profile
 const isOwner = $derived($authUserDoc?.key === user.key);
+
+// Fetch real community stats for the user
+async function fetchCommunityStats() {
+  try {
+    statsLoading = true;
+    const userUlid = user.data.user_ulid;
+    
+    // 1. Count votes given (where user is the voter)
+    const votesGivenCount = await countDocs({
+      collection: 'votes',
+      filter: {
+        matcher: {
+          key: `usr_${userUlid}_`
+        }
+      }
+    });
+    
+    // 2. Count votes received (where user is the target)
+    const votesReceivedCount = await countDocs({
+      collection: 'votes',
+      filter: {
+        matcher: {
+          key: `tar_${userUlid}_`
+        }
+      }
+    });
+    
+    // 3. Count reputations where user has voting power (trusted communities)
+    const reputationsResults = await listDocs({
+      collection: 'reputations',
+      filter: {
+        matcher: {
+          key: `usr_${userUlid}_`
+        }
+      }
+    });
+    
+    let trustedCount = 0;
+    let totalReputation = 0;
+    let reputationCount = 0;
+    
+    // Filter reputations based on voting power and calculate stats
+    reputationsResults.items.forEach((reputation: any) => {
+      reputationCount++;
+      totalReputation += reputation.data.reputation_total_effective || 0;
+      
+      if (reputation.data.has_voting_power) {
+        trustedCount++;
+      }
+    });
+    
+    // Update stats
+    stats = {
+      totalVotesGiven: Number(votesGivenCount),
+      totalVotesReceived: Number(votesReceivedCount),
+      trustedCommunities: trustedCount,
+      activeCommunities: reputationCount,
+      averageScore: reputationCount > 0 ? Math.round((totalReputation / reputationCount) * 10) / 10 : 0
+    };
+    
+  } catch (error) {
+    console.error('Failed to fetch community stats:', error);
+    toaster.error({ 
+      title: 'Failed to load stats', 
+      description: 'Could not load community statistics' 
+    });
+  } finally {
+    statsLoading = false;
+  }
+}
+
+// Fetch real "Most Active In" reputations
+async function fetchActiveReputations() {
+  try {
+    activeReputationsLoading = true;
+    const userUlid = user.data.user_ulid;
+    
+    // 1. Get all reputation documents for this user
+    const reputationsResults = await listDocs({
+      collection: 'reputations',
+      filter: {
+        matcher: {
+          key: `usr_${userUlid}_`
+        },
+        order: {
+          desc: true,
+          field: 'created_at' // We'll sort by reputation score in JS
+        }
+      }
+    });
+    
+    // 2. Sort by reputation_total_effective and take top 3
+    const sortedReputations = reputationsResults.items
+      .map((rep: any) => ({
+        tag_ulid: rep.data.tag_ulid,
+        reputation_score: Number(rep.data.reputation_total_effective || 0)
+      }))
+      .filter(rep => rep.reputation_score > 0) // Only include reputations with scores > 0
+      .sort((a, b) => b.reputation_score - a.reputation_score)
+      .slice(0, 3); // Take top 3
+    
+    // 3. For each reputation, fetch the corresponding tag to get the tag_handle
+    const activeRepsWithTags: ActiveReputation[] = [];
+    
+    for (const rep of sortedReputations) {
+      try {
+        // Query tags collection for this specific tag_ulid
+        const tagResults = await queryDocsByKey('tags', `tag_${rep.tag_ulid}_`);
+        
+        if (tagResults.items.length > 0) {
+          const tagDoc = tagResults.items[0] as any;
+          activeRepsWithTags.push({
+            tag_handle: tagDoc.data.tag_handle,
+            score: Math.round(rep.reputation_score * 10) / 10, // Round to 1 decimal
+            tag_ulid: rep.tag_ulid
+          });
+        }
+      } catch (tagError) {
+        console.warn(`Failed to fetch tag for ULID ${rep.tag_ulid}:`, tagError);
+        // Continue with other tags even if one fails
+      }
+    }
+    
+    activeReputations = activeRepsWithTags;
+    
+  } catch (error) {
+    console.error('Failed to fetch active reputations:', error);
+    toaster.error({ 
+      title: 'Failed to load reputations', 
+      description: 'Could not load most active communities' 
+    });
+    activeReputations = [];
+  } finally {
+    activeReputationsLoading = false;
+  }
+}
+
+// Fetch stats when component loads or user changes
+$effect(() => {
+  if (user?.data?.user_ulid) {
+    fetchCommunityStats();
+    fetchActiveReputations();
+  }
+});
 
 // Initialize edit fields when entering edit mode
 function startEdit() {
@@ -364,36 +526,65 @@ function closeHandleHelp() {
     <div class="w-full mt-2">
       <div class="font-semibold text-center mb-4">Most Active In:</div>
       <div class="flex gap-2 justify-center flex-wrap">
-        {#each dummyProfileData.activeReputations.slice(0, 3) as reputation}
-          <span class="badge preset-tonal-primary">#{reputation.tag}: {reputation.score}</span>
-        {/each}
+        {#if activeReputationsLoading}
+          <!-- Loading skeleton badges -->
+          {#each Array(3) as _}
+            <div class="h-6 w-20 bg-surface-300-700 animate-pulse rounded-full"></div>
+          {/each}
+        {:else if activeReputations.length > 0}
+          <!-- Real reputation data -->
+          {#each activeReputations as reputation}
+            <span class="badge preset-tonal-primary">#{reputation.tag_handle}: {reputation.score}</span>
+          {/each}
+        {:else}
+          <!-- No reputations message -->
+          <span class="text-sm opacity-60">No active reputations yet</span>
+        {/if}
       </div>
     </div>
 
     <!-- Main Reputation Score -->
+    <!-- 
     <div class="mt-6 p-4 bg-surface-200-800 rounded-lg w-full">
       <div class="text-sm opacity-70">Main Reputation Score</div>
       <div class="text-3xl font-bold text-primary-500">{stats.averageScore}</div>
       <div class="text-xs opacity-60">Aggregate of all reputations</div>
     </div>
+    -->
 
     <!-- Community Stats -->
     <div class="grid grid-cols-2 gap-4 w-full mt-4">
       <div class="p-3 bg-surface-200-800 rounded">
         <div class="text-sm opacity-70">Votes Given</div>
-        <div class="text-xl font-bold text-primary-500">{stats.totalVotesGiven}</div>
+        {#if statsLoading}
+          <div class="h-7 bg-surface-300-700 animate-pulse rounded mt-1"></div>
+        {:else}
+          <div class="text-xl font-bold text-primary-500">{stats.totalVotesGiven}</div>
+        {/if}
       </div>
       <div class="p-3 bg-surface-200-800 rounded">
         <div class="text-sm opacity-70">Votes Received</div>
-        <div class="text-xl font-bold text-primary-500">{stats.totalVotesReceived}</div>
+        {#if statsLoading}
+          <div class="h-7 bg-surface-300-700 animate-pulse rounded mt-1"></div>
+        {:else}
+          <div class="text-xl font-bold text-primary-500">{stats.totalVotesReceived}</div>
+        {/if}
       </div>
       <div class="p-3 bg-surface-200-800 rounded">
         <div class="text-sm opacity-70">Trusted In</div>
-        <div class="text-xl font-bold text-primary-500">{stats.trustedCommunities}</div>
+        {#if statsLoading}
+          <div class="h-7 bg-surface-300-700 animate-pulse rounded mt-1"></div>
+        {:else}
+          <div class="text-xl font-bold text-primary-500">{stats.trustedCommunities}</div>
+        {/if}
       </div>
       <div class="p-3 bg-surface-200-800 rounded">
         <div class="text-sm opacity-70">Active In</div>
-        <div class="text-xl font-bold text-primary-500">{stats.activeCommunities}</div>
+        {#if statsLoading}
+          <div class="h-7 bg-surface-300-700 animate-pulse rounded mt-1"></div>
+        {:else}
+          <div class="text-xl font-bold text-primary-500">{stats.activeCommunities}</div>
+        {/if}
       </div>
     </div>
   </div>
