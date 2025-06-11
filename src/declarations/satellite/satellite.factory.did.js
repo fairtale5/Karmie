@@ -5,7 +5,28 @@
 export const idlFactory = ({ IDL }) => {
   const Result = IDL.Variant({ 'Ok' : IDL.Bool, 'Err' : IDL.Text });
   const Result_1 = IDL.Variant({ 'Ok' : IDL.Text, 'Err' : IDL.Text });
-  const Result_2 = IDL.Variant({ 'Ok' : IDL.Float64, 'Err' : IDL.Text });
+  const GraphEdge = IDL.Record({
+    'weight' : IDL.Float64,
+    'source_count' : IDL.Nat32,
+    'source' : IDL.Text,
+    'is_bidirectional' : IDL.Bool,
+    'target' : IDL.Text,
+    'vote_value' : IDL.Int32,
+    'target_count' : IDL.Opt(IDL.Nat32),
+    'tag_ulid' : IDL.Opt(IDL.Text),
+  });
+  const GraphNode = IDL.Record({
+    'avatar_url' : IDL.Opt(IDL.Text),
+    'ulid' : IDL.Text,
+    'reputation' : IDL.Opt(IDL.Float64),
+    'label' : IDL.Text,
+  });
+  const GraphData = IDL.Record({
+    'edges' : IDL.Vec(GraphEdge),
+    'nodes' : IDL.Vec(GraphNode),
+  });
+  const Result_2 = IDL.Variant({ 'Ok' : GraphData, 'Err' : IDL.Text });
+  const Result_3 = IDL.Variant({ 'Ok' : IDL.Float64, 'Err' : IDL.Text });
   const ReputationData = IDL.Record({
     'last_calculation' : IDL.Nat64,
     'reputation_basis' : IDL.Float64,
@@ -16,7 +37,7 @@ export const idlFactory = ({ IDL }) => {
     'reputation_total_effective' : IDL.Float64,
     'owner_ulid' : IDL.Text,
   });
-  const Result_3 = IDL.Variant({ 'Ok' : ReputationData, 'Err' : IDL.Text });
+  const Result_4 = IDL.Variant({ 'Ok' : ReputationData, 'Err' : IDL.Text });
   return IDL.Service({
     'build_version' : IDL.Func([], [IDL.Text], ['query']),
     'check_username_availability_scan' : IDL.Func(
@@ -44,17 +65,18 @@ export const idlFactory = ({ IDL }) => {
         [Result_1],
         ['query'],
       ),
+    'get_graph_data' : IDL.Func([IDL.Text, IDL.Text], [Result_2], ['query']),
     'get_user_reputation' : IDL.Func(
-        [IDL.Text, IDL.Text],
-        [Result_2],
-        ['query'],
-      ),
-    'get_user_reputation_full' : IDL.Func(
         [IDL.Text, IDL.Text],
         [Result_3],
         ['query'],
       ),
-    'recalculate_reputation' : IDL.Func([IDL.Text, IDL.Text], [Result_2], []),
+    'get_user_reputation_full' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [Result_4],
+        ['query'],
+      ),
+    'recalculate_reputation' : IDL.Func([IDL.Text, IDL.Text], [Result_3], []),
     'validate_document_key' : IDL.Func(
         [IDL.Text, IDL.Text],
         [Result],

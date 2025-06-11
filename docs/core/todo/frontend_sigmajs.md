@@ -1,5 +1,29 @@
 # 🧠 Rendering Interactive Graphs with Sigma.js, Graphology, and ForceAtlas2 (for SvelteKit & Modern JS Apps)
 
+## 📌 Implementation Status
+
+**✅ COMPLETED - Phase 1 (Basic Graph Visualization):**
+- Sigma.js, Graphology, and ForceAtlas2 packages installed and integrated
+- `SigmaGraph.svelte` component with theme integration (Skeleton UI)
+- Dummy reputation data generator (`graphData.ts`) with users, topics, and voting relationships
+- Interactive features: node clicking, layout controls, pan/zoom
+- Theme toggle integration with Skeleton UI's color scheme
+- Working test implementation at `/graph` route (to be removed)
+
+**🔧 IN PROGRESS - Styling & UX Issues:**
+- Dark mode hover text visibility (white text on light background issue)
+- Font styling conflicts between hover labels and regular text
+- Node color theming needs better utilization of secondary/tertiary colors
+- Edge weight-based opacity and styling refinement needed
+
+**📋 TODO - Phase 2 (Integration & Deployment):**
+- Remove `/graph` test page
+- Integrate graph component into user profile pages  
+- Integrate graph component into main dashboard
+- Backend data integration (replace dummy data with real reputation data)
+- Performance optimization for larger datasets
+- Advanced filtering and search capabilities
+
 ## 📌 Overview
 
 To render and explore interactive graphs in a modern web app like **SvelteKit**, you need **three core tools** that work together:
@@ -11,6 +35,35 @@ To render and explore interactive graphs in a modern web app like **SvelteKit**,
 | **Sigma.js**                      | Displays the graph visually on the web (canvas/WebGL renderer) |
 
 Together, these allow you to build performant, scalable, and responsive graph visualizations in a fully reactive JS environment.
+
+---
+
+## 🏗️ Current Implementation
+
+**Files Created:**
+- `src/lib/components/graph/SigmaGraph.svelte` - Main graph component with Skeleton UI theme integration
+- `src/lib/components/graph/graphData.ts` - Dummy data generator for testing
+- `src/routes/graph/+page.svelte` - Test page (scheduled for removal)
+
+**Component Features:**
+```svelte
+<SigmaGraph {graphData} {config} />
+```
+
+**Props:**
+- `graphData: GraphData` - Contains nodes and edges arrays
+- `config: GraphConfig` - Layout and display configuration options
+
+**Current Limitations:**
+- Uses dummy data (not connected to backend)
+- Hover text visibility issues in dark mode
+- Limited color customization for nodes/edges
+- Fixed at test route (not integrated into main app flow)
+
+**Known Issues:**
+- Node hover labels use white text that's invisible against light backgrounds in dark mode
+- Font weight/size makes hover text hard to distinguish from node labels
+- Theme integration needs better use of CSS custom properties for colors
 
 ---
 
@@ -264,6 +317,50 @@ You can optionally re-run ForceAtlas2 if positions aren't precomputed.
 * 🔄 Aggregate edges (votes) by `(owner, target)` to avoid clutter.
 * 🧍 Node `size` = reputation score, `color` = topic cluster.
 * 📡 Load graphs in chunks if they get large (e.g., monthly slices).
+
+---
+
+## 🐛 Implementation Notes & Troubleshooting
+
+### Node Type Compatibility
+**Issue:** Sigma.js only supports built-in node types (`circle`, `square`) and will throw errors for custom types.
+**Solution:** Use `type: 'circle'` for all nodes and add custom `nodeCategory` property for business logic.
+
+```ts
+// ❌ This fails
+graph.addNode('user1', { type: 'user', label: 'Alice' });
+
+// ✅ This works  
+graph.addNode('user1', { type: 'circle', nodeCategory: 'user', label: 'Alice' });
+```
+
+### Edge Type Compatibility
+**Issue:** Sigma.js only supports built-in edge types (`line`, `arrow`) and will throw errors for custom types.
+**Solution:** Use `type: 'arrow'` for directional relationships and add custom `edgeCategory` property.
+
+```ts
+// ❌ This fails
+graph.addEdge('user1', 'topic1', { type: 'upvote', weight: 1 });
+
+// ✅ This works
+graph.addEdge('user1', 'topic1', { type: 'arrow', edgeCategory: 'upvote', weight: 1 });
+```
+
+### Theme Integration Issues
+**Current Problems:**
+- Hover text uses hardcoded white color, invisible on light backgrounds in dark mode
+- Need better utilization of Skeleton UI CSS custom properties
+- Font styling conflicts between hover and regular text
+
+**Planned Fixes:**
+- Use `getComputedStyle()` to access theme colors dynamically
+- Implement proper contrast calculation for hover text
+- Utilize secondary/tertiary theme colors for node categorization
+
+### Performance Considerations
+- ForceAtlas2 layout calculation can be expensive for large graphs (>1000 nodes)
+- Consider pre-computing layouts server-side for production data
+- Use `adjustSizes: true` to prevent node overlap in dense graphs
 
 ---
 

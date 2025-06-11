@@ -5,6 +5,26 @@ import type { Principal } from '@dfinity/principal';
 import type { ActorMethod } from '@dfinity/agent';
 import type { IDL } from '@dfinity/candid';
 
+export interface GraphData {
+  'edges' : Array<GraphEdge>,
+  'nodes' : Array<GraphNode>,
+}
+export interface GraphEdge {
+  'weight' : number,
+  'source_count' : number,
+  'source' : string,
+  'is_bidirectional' : boolean,
+  'target' : string,
+  'vote_value' : number,
+  'target_count' : [] | [number],
+  'tag_ulid' : [] | [string],
+}
+export interface GraphNode {
+  'avatar_url' : [] | [string],
+  'ulid' : string,
+  'reputation' : [] | [number],
+  'label' : string,
+}
 export interface ReputationData {
   'last_calculation' : bigint,
   'reputation_basis' : number,
@@ -19,9 +39,11 @@ export type Result = { 'Ok' : boolean } |
   { 'Err' : string };
 export type Result_1 = { 'Ok' : string } |
   { 'Err' : string };
-export type Result_2 = { 'Ok' : number } |
+export type Result_2 = { 'Ok' : GraphData } |
   { 'Err' : string };
-export type Result_3 = { 'Ok' : ReputationData } |
+export type Result_3 = { 'Ok' : number } |
+  { 'Err' : string };
+export type Result_4 = { 'Ok' : ReputationData } |
   { 'Err' : string };
 export interface _SERVICE {
   'build_version' : ActorMethod<[], string>,
@@ -36,9 +58,10 @@ export interface _SERVICE {
     [string, string, string],
     Result_1
   >,
-  'get_user_reputation' : ActorMethod<[string, string], Result_2>,
-  'get_user_reputation_full' : ActorMethod<[string, string], Result_3>,
-  'recalculate_reputation' : ActorMethod<[string, string], Result_2>,
+  'get_graph_data' : ActorMethod<[string, string], Result_2>,
+  'get_user_reputation' : ActorMethod<[string, string], Result_3>,
+  'get_user_reputation_full' : ActorMethod<[string, string], Result_4>,
+  'recalculate_reputation' : ActorMethod<[string, string], Result_3>,
   'validate_document_key' : ActorMethod<[string, string], Result>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;

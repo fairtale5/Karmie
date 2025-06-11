@@ -215,6 +215,9 @@ use crate::core::{
 // Import username availability checker
 use crate::processors::username_availability::check_username_availability_v2;
 
+// Import graph processors and types
+use crate::processors::graph_processors::{self, GraphData};
+
 // =============================================================================
 // Module Declarations
 // =============================================================================
@@ -765,6 +768,24 @@ pub fn validate_document_key(key: String, doc_type: String) -> Result<bool, Stri
         },
         _ => Err(format!("Unknown document type: {}", doc_type))
     }
+}
+
+/// Gets graph visualization data based on query type and identifier
+/// 
+/// Single endpoint for all graph data needs with flexible querying:
+/// - query_type="tag": Returns votes within a specific tag
+/// - query_type="user": Returns votes involving a specific user 
+/// - query_type="all": Returns all votes across all tags
+/// 
+/// # Arguments
+/// * `ulid` - The identifier (tag ULID, user ULID, or empty for "all")
+/// * `query_type` - The query type: "tag", "user", or "all"
+/// 
+/// # Returns
+/// * `Result<GraphData, String>` - Graph data ready for Sigma.js visualization
+#[query]
+pub async fn get_graph_data(ulid: String, query_type: String) -> Result<GraphData, String> {
+    graph_processors::get_graph_data(ulid, query_type).await
 }
 
 include_satellite!();

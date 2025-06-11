@@ -27,6 +27,31 @@ The challenge was how to bootstrap new communities, as early on, no one has enou
 - Custom functions written in **Rust**
 - Any ICP app can access its API remotely and integrate it into their own apps
 
+### Graph Visualization
+The system includes interactive graph visualization to show vote relationships between users:
+
+#### Smart Edge Rendering
+To keep graphs clean and readable, we use smart edge consolidation:
+- **Bidirectional Same Sentiment**: Single double-ended arrow (straight for positive, curved for negative)
+- **Bidirectional Conflicting**: Two separate arrows with different curvatures
+- **Unidirectional**: Single directional arrow
+
+#### Visual Encoding
+- **Green edges** = positive votes (+1)
+- **Red edges** = negative votes (-1) 
+- **Edge thickness** = vote count/weight
+- **Node size** = user reputation
+- **Edge labels** = vote counts and direction indicators (+/- with counts)
+
+*Note: Advanced curved edges for negative votes and double-ended arrows for mutual relationships are planned for future implementation.*
+
+#### Implementation
+- **Frontend**: Sigma.js with ForceAtlas2 layout algorithm for natural positioning
+- **Backend**: Rust functions that intelligently process votes into graph data
+- **Integration**: Real-time loading in tag pages and dashboard views
+
+This approach reduces visual clutter (max 2 edges between users instead of 4) while preserving all relationship information.
+
 ### Custom Reputations
 Anyone can create new **#reputations** (like Twitter hashtags). This means there can be reputations for:
 - A specific app
@@ -137,6 +162,11 @@ Our Satellite includes custom functions for:
   - `Footer.svelte` - Site footer component
   - `AvatarCropper.svelte` - Profile image handling
   - `SkeletonLoader.svelte` - Loading states
+  - **Graph Components** (`/src/lib/components/graph/`)
+    - `SigmaGraph.svelte` - Interactive graph visualization with Sigma.js
+    - `graphData.ts` - Graph data structures and dummy data generation
+  - **Tag Components** (`/src/lib/components/tags/`)
+    - `TagGraphCard.svelte` - Tag-specific graph visualization card
   - Various UI elements and shared components
 - **Types** (`/src/lib/types.ts`)
   - TypeScript interfaces for data models
@@ -157,6 +187,8 @@ Our Satellite includes custom functions for:
 - **Keys** (`/src/lib/keys/`)
   - Document key management
   - Key generation utilities
+- **Utils** (`/src/lib/utils/`)
+  - `graphApi.ts` - Graph data API functions and type definitions
 
 ##### App Configuration
 - `app.html` - HTML template
@@ -186,6 +218,7 @@ Our Satellite includes custom functions for:
 - Data processing and document operations
 - `document_keys.rs` - Key generation and management for documents
 - `document_queries.rs` - Database query helpers
+- `graph_processors.rs` - Graph data generation for visualization
 - `ulid_generator.rs` - ULID generation for unique identifiers
 - `ulid_timestamp_extract.rs` - Timestamp extraction from ULIDs
 - `ulid_type.rs` - ULID type definitions and utilities

@@ -50,7 +50,10 @@
 	},
 	"dependencies": {
 		"@junobuild/core": "^0.1.13",
+		"graphology": "^0.26.0",
+		"graphology-layout-forceatlas2": "^0.10.1",
 		"lucide-svelte": "^0.511.0",
+		"sigma": "^3.0.2",
 		"svelte-easy-crop": "^4.0.1",
 		"ulid": "^3.0.0"
 	}
