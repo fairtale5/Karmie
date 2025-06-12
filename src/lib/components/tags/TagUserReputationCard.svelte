@@ -14,12 +14,14 @@
     tag, 
     loading = false,
     isPreview = false,
-    cutoffTimestamp
+    cutoffTimestamp,
+    refreshKey = 0
   }: { 
     tag: TagDocument | null; 
     loading?: boolean;
     isPreview?: boolean;
     cutoffTimestamp: bigint;
+    refreshKey?: number;
   } = $props();
 
   // Preview data constants
@@ -209,6 +211,9 @@
 
   // Reactive effect to fetch data when tag, user, or cutoff changes
   $effect(() => {
+    // Track refreshKey to ensure effect re-runs when data needs to be refreshed
+    refreshKey;
+    
     // Handle preview mode
     if (tag?.key === PREVIEW_TAG_KEY) {
       votesLoading = false;

@@ -10,11 +10,13 @@
   const { 
     tag, 
     loading = false,
-    isPreview = false
+    isPreview = false,
+    refreshKey = 0
   }: { 
     tag: TagDocument | null; 
     loading?: boolean;
     isPreview?: boolean;
+    refreshKey?: number;
   } = $props();
 
   // Component state
@@ -53,6 +55,9 @@
 
   // HOW: Effect to load graph data when tag becomes available
   $effect(() => {
+    // Track refreshKey to ensure effect re-runs when data needs to be refreshed
+    refreshKey;
+    
     if (tag && !isPreview && !graphData && !graphLoading) {
       console.log('[TagGraphCard] Tag became available, loading graph data reactively...');
       loadGraphData();

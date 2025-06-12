@@ -22,10 +22,11 @@ import { getUserAvatar } from '$lib/utils/avatar';
 
     // --- Component Interface Definition ---
     // These props define the component's external interface and data requirements
-    const { selectedTag, cutoffTimestamp, limit = 250 } = $props<{
+    const { selectedTag, cutoffTimestamp, limit = 250, refreshKey = 0 } = $props<{
         selectedTag: TagDocument | null;  // Current tag context from parent
         cutoffTimestamp: bigint;         // Time boundary for vote filtering
         limit?: number;                   // Maximum number of votes to display
+        refreshKey?: number;              // Refresh trigger for re-fetching data
     }>();
 
     // --- Internal State Management ---
@@ -159,6 +160,9 @@ import { getUserAvatar } from '$lib/utils/avatar';
 
     // --- Reactive Data Flow ---
     $effect(() => {
+        // Track refreshKey to ensure effect re-runs when data needs to be refreshed
+        refreshKey;
+        
         // Handle preview mode
         if (selectedTag?.key === PREVIEW_TAG_KEY) {
             loading = false;

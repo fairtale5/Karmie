@@ -7,10 +7,12 @@
 
   const { 
     tag, 
-    loading = false
+    loading = false,
+    refreshKey = 0
   }: { 
     tag: TagDocument | null; 
     loading?: boolean;
+    refreshKey?: number;
   } = $props();
 
   // Preview data constants
@@ -69,6 +71,9 @@
 
   // Fetch stats when tag changes
   $effect(() => {
+    // Track refreshKey to ensure effect re-runs when data needs to be refreshed
+    refreshKey;
+    
     // Handle preview mode
     if (tag?.key === PREVIEW_TAG_KEY) {
       currentTagUlid = PREVIEW_TAG_KEY;

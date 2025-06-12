@@ -15,8 +15,9 @@
   import { page } from '$app/stores';
 
   // Props
-  let { selectedTag = $bindable(null) } = $props<{
+  let { selectedTag = $bindable(null), onVoteComplete } = $props<{
     selectedTag?: TagDocument | null;
+    onVoteComplete?: () => void;
   }>();
 
   // Quick action buttons configuration
@@ -313,10 +314,10 @@
             throw new Error('Please select a tag, user, and vote value');
         }
 
-        // Debug logging
-        console.log('[QuickActions] Auth User Doc:', $authUserDoc);
-        console.log('[QuickActions] Selected User:', selectedUser);
-        console.log('[QuickActions] Selected Tag:', selectedTag);
+        // Debug logging with $inspect for reactive state
+        $inspect($authUserDoc).with(doc => console.log('[QuickActions] Auth User Doc:', doc));
+        $inspect(selectedUser).with(user => console.log('[QuickActions] Selected User:', user));
+        $inspect(selectedTag).with(tag => console.log('[QuickActions] Selected Tag:', tag));
 
         // Create vote document with empty key to satisfy TypeScript
         const voteDoc = {
@@ -367,6 +368,9 @@
                 })
             }
         );
+
+        // Success! Trigger refresh across all components
+        onVoteComplete?.();
 
         // Reset only vote value to allow quick re-voting
         // Keep tag and user selected for better UX

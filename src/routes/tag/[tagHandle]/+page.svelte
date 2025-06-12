@@ -26,6 +26,9 @@
   // Time filter state
   let cutoffTimestamp = $state(BigInt(new Date('2025-01-01T00:00:00Z').getTime()) * BigInt(1_000_000));
   
+  // Data refresh counter for triggering component re-fetches after votes
+  let dataRefreshKey = $state(0);
+  
   const timePeriods = [
     { label: '24h', ms: 24 * 60 * 60 * 1000 },
     { label: '7d', ms: 7 * 24 * 60 * 60 * 1000 },
@@ -111,6 +114,11 @@
       goto(`/tag/${newHandle}`);
     }
   }
+
+  function handleVoteComplete() {
+    console.log('Vote completed, refreshing all components...');
+    dataRefreshKey++;
+  }
 </script>
 
 <!-- Main Container -->
@@ -179,7 +187,10 @@
       <TagAboutCard tag={tagData?.tag} loading={loading} />
 
       <!-- Quick Actions -->
-      <QuickActionsTags selectedTag={tagData?.tag} />
+      <QuickActionsTags 
+        selectedTag={tagData?.tag} 
+        onVoteComplete={handleVoteComplete}
+      />
     </div>
 
     <!-- User Activity -->
@@ -188,6 +199,7 @@
       loading={loading}
       isPreview={tagData?.isPreview}
       cutoffTimestamp={cutoffTimestamp}
+      refreshKey={dataRefreshKey}
     />
 
     <!-- Graph Preview -->
@@ -195,6 +207,7 @@
       tag={tagData?.tag} 
       loading={loading}
       isPreview={tagData?.isPreview}
+      refreshKey={dataRefreshKey}
     />
   </div>
 
@@ -203,6 +216,7 @@
     <TagStatsCard 
       tag={tagData?.tag} 
       loading={loading}
+      refreshKey={dataRefreshKey}
     />
   </div>
 
@@ -211,7 +225,8 @@
     <!-- Recent Votes -->
     <RecentVotesTag 
       selectedTag={tagData?.tag} 
-      cutoffTimestamp={cutoffTimestamp} 
+      cutoffTimestamp={cutoffTimestamp}
+      refreshKey={dataRefreshKey}
     />
 
     <!-- Top Users -->
@@ -219,6 +234,7 @@
       tag={tagData?.tag} 
       loading={loading}
       isPreview={tagData?.isPreview}
+      refreshKey={dataRefreshKey}
     />
   </div>
 
