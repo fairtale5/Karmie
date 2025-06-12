@@ -12,6 +12,9 @@ import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
 import { toaster } from '$lib/skeletonui/toaster-skeleton';
 import { goto } from '$app/navigation';
 import { signOut, countDocs } from '@junobuild/core';
+import AvatarCropper from '$lib/components/onboarding/AvatarCropper.svelte';
+import { uploadAvatarFile } from '$lib/utils/avatarUpload';
+import { authUser } from '$lib/stores/authUser';
 
 interface CommunityStats {
   totalVotesGiven: number;
@@ -53,6 +56,15 @@ let deleteConfirmOpen = $state(false);
 let editDisplayName = $state('');
 let editDescription = $state('');
 let editAvatarUrl = $state('');
+
+// Avatar editing state
+let showAvatarCropper = $state(false);
+let avatarFile = $state<File | null>(null);
+let avatarUrlToSave = $state('');
+let avatarUploadComplete = $state(false);
+let croppingInProgress = $state(false);
+let avatarUploadPromise: Promise<any> | null = null;
+let uploadState = $state<'idle' | 'uploading' | 'success' | 'failed'>('idle');
 
 // Popover states
 let handleHelpOpen = $state(false);
@@ -197,6 +209,16 @@ function startEdit() {
   editDisplayName = user.data.display_name || '';
   editDescription = user.data.description || '';
   editAvatarUrl = user.data.avatar_url || '';
+  
+  // Reset avatar editing state
+  showAvatarCropper = false;
+  avatarFile = null;
+  avatarUrlToSave = '';
+  avatarUploadComplete = false;
+  croppingInProgress = false;
+  avatarUploadPromise = null;
+  uploadState = 'idle';
+  
   editMode = true;
 }
 
@@ -205,6 +227,72 @@ function cancelEdit() {
   editDisplayName = '';
   editDescription = '';
   editAvatarUrl = '';
+  
+  // Reset avatar editing state
+  showAvatarCropper = false;
+  avatarFile = null;
+  avatarUrlToSave = '';
+  avatarUploadComplete = false;
+  croppingInProgress = false;
+  avatarUploadPromise = null;
+  uploadState = 'idle';
+}
+
+// Avatar management functions
+function startAvatarEdit() {
+  showAvatarCropper = true;
+}
+
+/**
+ * Upload avatar file to storage
+ */
+async function uploadAvatar(file: File) {
+  if (!$authUser?.key) {
+    throw new Error('User not authenticated');
+  }
+  
+  uploadState = 'uploading';
+  const filename = `avatar_${$authUser.key}.webp`;
+  
+  avatarUploadPromise = uploadAvatarFile(file, filename)
+    .then(url => {
+      avatarUrlToSave = url;
+      uploadState = 'success';
+      avatarUploadComplete = true;
+      console.log('Avatar upload result:', url);
+    })
+    .catch(err => {
+      avatarUrlToSave = '';
+      uploadState = 'failed';
+      avatarUploadComplete = false;
+      throw err;
+    });
+  
+  await avatarUploadPromise;
+}
+
+/**
+ * Handle avatar cropping result
+ */
+async function handleCrop(blob: Blob | null) {
+  if (!blob) {
+    // User removed the avatar
+    avatarUploadPromise = null;
+    avatarUrlToSave = '';
+    avatarUploadComplete = false;
+    uploadState = 'idle';
+    avatarFile = null;
+    return;
+  }
+  
+  if (!$authUser?.key) {
+    toaster.error({ title: 'Authentication error', description: 'Please log in to upload avatar' });
+    return;
+  }
+  
+  const file = new File([blob], `avatar_${$authUser.key}.webp`, { type: 'image/webp' });
+  avatarFile = file;
+  await uploadAvatar(file);
 }
 
 async function saveProfile() {
@@ -215,6 +303,25 @@ async function saveProfile() {
 
   loading = true;
   try {
+    // Handle avatar upload if needed
+    if (avatarFile) {
+      if (uploadState === 'uploading') {
+        // Upload in progress - wait for it
+        await avatarUploadPromise;
+      } else if (uploadState === 'failed') {
+        // Upload failed previously - retry with same file
+        await uploadAvatar(avatarFile);
+      }
+      
+      // Final validation
+      if (avatarFile && !avatarUrlToSave) {
+        throw new Error('Avatar upload failed. Please try again.');
+      }
+    }
+    
+    // Determine final avatar URL - prioritize new upload over text field
+    const finalAvatarUrl = avatarUrlToSave || editAvatarUrl.trim();
+    
     await toaster.promise(
       updateUserDoc({
         key: user.key,
@@ -223,7 +330,7 @@ async function saveProfile() {
           user_handle: user.data.user_handle, // Keep the same handle
           display_name: editDisplayName.trim(),
           description: editDescription.trim(),
-          avatar_url: editAvatarUrl.trim(),
+          avatar_url: finalAvatarUrl,
           user_ulid: user.data.user_ulid // Keep the same ULID
         }
       }),
@@ -272,10 +379,19 @@ async function saveProfile() {
       // Fallback: just update the data fields we know changed
       user.data.display_name = editDisplayName.trim();
       user.data.description = editDescription.trim();
-      user.data.avatar_url = editAvatarUrl.trim();
+      user.data.avatar_url = finalAvatarUrl;
     }
     
     editMode = false;
+    
+    // Reset avatar editing state after successful save
+    showAvatarCropper = false;
+    avatarFile = null;
+    avatarUrlToSave = '';
+    avatarUploadComplete = false;
+    croppingInProgress = false;
+    avatarUploadPromise = null;
+    uploadState = 'idle';
   } catch (e) {
     console.error('Failed to update profile:', e);
   } finally {
@@ -343,21 +459,66 @@ function closeHandleHelp() {
 
     <!-- Avatar section -->
     {#if editMode}
-      {@const editAvatar = getUserAvatar({ ...user, data: { ...user.data, avatar_url: editAvatarUrl.trim() || user.data.avatar_url } })}
-      <div class="relative my-4 w-24 h-24">
-        <Avatar 
-          src={editAvatar.src}
-          name={editAvatar.name}
-          size="w-24 h-24"
-          rounded="rounded-full"
-          border="border-4 border-primary-500"
-          shadow="shadow-lg"
-        >
-          {editAvatar.initials}
-        </Avatar>
-        <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
-          <Edit3 class="w-6 h-6 text-white" />
-        </div>
+      <div class="my-4 flex flex-col items-center">
+        {#if showAvatarCropper && $authUser}
+          <!-- Avatar cropper replaces the avatar when editing -->
+          <div class="w-full max-w-sm mb-4">
+            <AvatarCropper
+              initialUrl={user.data.avatar_url}
+              bind:avatarFile={avatarFile}
+              cropped={handleCrop}
+              change={(url) => {/* Preview handled internally */}}
+              croppingChange={v => croppingInProgress = v}
+            />
+          </div>
+          
+          <!-- Status messages -->
+          {#if croppingInProgress}
+            <div class="mb-2">
+              <span class="text-warning-500 text-sm font-medium">Crop your image or remove it to save profile</span>
+            </div>
+          {:else if uploadState === 'uploading'}
+            <div class="mb-2">
+              <span class="text-primary-500 text-sm font-medium flex items-center">
+                <LoaderCircle class="animate-spin mr-2 w-4 h-4" />
+                Uploading avatar...
+              </span>
+            </div>
+          {:else if uploadState === 'success'}
+            <div class="mb-2">
+              <span class="text-success-500 text-sm font-medium">Avatar ready to save!</span>
+            </div>
+          {:else if uploadState === 'failed'}
+            <div class="mb-2">
+              <span class="text-error-500 text-sm font-medium">Avatar upload failed. Will retry on save.</span>
+            </div>
+          {/if}
+        {:else}
+          <!-- Avatar display with click-to-edit -->
+          {@const currentAvatarUrl = avatarUrlToSave || editAvatarUrl.trim() || user.data.avatar_url}
+          {@const editAvatar = getUserAvatar({ ...user, data: { ...user.data, avatar_url: currentAvatarUrl } })}
+          <div class="relative w-24 h-24 mb-4">
+            <Avatar 
+              src={editAvatar.src}
+              name={editAvatar.name}
+              size="w-24 h-24"
+              rounded="rounded-full"
+              border="border-4 border-primary-500"
+              shadow="shadow-lg"
+            >
+              {editAvatar.initials}
+            </Avatar>
+            <button 
+              class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full opacity-0 hover:opacity-100 transition-opacity cursor-pointer"
+              onclick={startAvatarEdit}
+              disabled={loading}
+              title="Click to change avatar"
+            >
+              <Edit3 class="w-6 h-6 text-white" />
+            </button>
+          </div>
+          <span class="text-xs opacity-60 mb-2">Click avatar to upload new image</span>
+        {/if}
       </div>
     {:else}
       {@const avatar = getUserAvatar(user)}
@@ -434,8 +595,8 @@ function closeHandleHelp() {
       <p class="text-center opacity-80 mb-4 whitespace-pre-line">{user.data.description}</p>
     {/if}
 
-    <!-- Avatar URL field in edit mode -->
-    {#if editMode}
+    <!-- Avatar URL field in edit mode (hidden when cropper is active) -->
+    {#if editMode && !showAvatarCropper}
       <div class="w-full mb-4">
         <label class="label">
           <span class="label-text text-sm opacity-70">Avatar URL (optional)</span>
@@ -456,7 +617,7 @@ function closeHandleHelp() {
         <button 
           class="btn preset-filled-primary-500" 
           onclick={saveProfile}
-          disabled={loading || !editDisplayName.trim()}
+          disabled={loading || !editDisplayName.trim() || croppingInProgress}
         >
           {#if loading}
             <LoaderCircle class="animate-spin mr-2 w-4 h-4" />

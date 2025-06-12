@@ -174,7 +174,9 @@ async function getCroppedImg(imageSrc: string, crop: { x: number; y: number; wid
         "image/gif": [".gif"]
       }}
       maxFiles={1}
-      classes="w-full"
+      classes="w-full max-w-full"
+      interfaceBorderColor="border-surface-200-600"
+      interfaceClasses="w-full bg-surface-500-800 hover:bg-primary-500/10 hover:border-primary-500 transition-colors"
       fileName="max-w-[200px] truncate"
       onFileReject={(err) => toaster.error({ title: 'File rejected', description: err })}
       onApiReady={(api) => fileUploadApi = api}
