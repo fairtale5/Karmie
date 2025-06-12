@@ -22,6 +22,63 @@
   let loading = $state(true);
   let error = $state<string | null>(null);
 
+  // Sorting options
+  const sortOptions = [
+    { label: 'Votes', key: 'votes' },
+    { label: 'Trusted', key: 'trusted' },
+    { label: 'Users', key: 'users' },
+    { label: 'Newest', key: 'newest' },
+    { label: 'Oldest', key: 'oldest' }
+  ];
+  
+  let selectedSort = $state(sortOptions[0]); // Default to votes
+
+  function sortTags(tagsToSort: typeof tags) {
+    return [...tagsToSort].sort((a, b) => {
+      switch (selectedSort.key) {
+        case 'votes':
+          // Sort by total votes (descending, null/undefined treated as 0)
+          const aVotes = a.stats?.totalVotes ?? 0;
+          const bVotes = b.stats?.totalVotes ?? 0;
+          return bVotes - aVotes;
+        
+        case 'trusted':
+          // Sort by trusted users (descending, null/undefined treated as 0)
+          const aTrusted = a.stats?.trustedUsers ?? 0;
+          const bTrusted = b.stats?.trustedUsers ?? 0;
+          return bTrusted - aTrusted;
+        
+        case 'users':
+          // Sort by total users (descending, null/undefined treated as 0)
+          const aUsers = a.stats?.totalUsers ?? 0;
+          const bUsers = b.stats?.totalUsers ?? 0;
+          return bUsers - aUsers;
+        
+        case 'newest':
+          // Sort by creation date (newest first)
+          const bCreated = b.created_at ?? BigInt(0);
+          const aCreated = a.created_at ?? BigInt(0);
+          return Number(bCreated - aCreated);
+        
+        case 'oldest':
+          // Sort by creation date (oldest first)
+          const aCreatedOld = a.created_at ?? BigInt(0);
+          const bCreatedOld = b.created_at ?? BigInt(0);
+          return Number(aCreatedOld - bCreatedOld);
+        
+        default:
+          return 0;
+      }
+    });
+  }
+
+  // Reactive sorted tags
+  let sortedTags = $derived(sortTags(tags));
+
+  function setSortOption(option: typeof sortOptions[0]) {
+    selectedSort = option;
+  }
+
   async function fetchTagStats(tag: TagDocument) {
     // First, get the tag's ulid for proper querying
     const tagUlid = tag.data.tag_ulid || tag.key;
@@ -166,11 +223,28 @@
   </div>
 
   <!-- Section Header -->
-  <div class="mb-6">
-    <h2 class="text-xl font-semibold mb-2">All Community Tags</h2>
-    <p class="text-surface-500 text-sm">
-      Browse and join existing reputation communities on the platform.
-    </p>
+  <div class="flex flex-row items-start justify-between flex-wrap gap-4 mb-6">
+    <!-- Left side: Title and description -->
+    <div>
+      <h2 class="text-xl font-semibold mb-2">All Community Tags</h2>
+      <p class="text-sm opacity-70">
+        Browse and join existing reputation communities on the platform.
+      </p>
+    </div>
+
+    <!-- Right side: Sort options -->
+    <div class="flex gap-2 flex-wrap">
+      <span class="text-sm opacity-70 self-center mr-2">Sort by:</span>
+      {#each sortOptions as option}
+        <button
+          class={`btn text-xs ${selectedSort.key === option.key ? 'preset-filled-primary-500' : 'preset-tonal-primary'}`}
+          onclick={() => setSortOption(option)}
+          disabled={loading}
+        >
+          {option.label}
+        </button>
+      {/each}
+    </div>
   </div>
 
   <!-- Tags Grid -->
@@ -180,7 +254,7 @@
         <div class="placeholder animate-pulse h-48 rounded"></div>
       {/each}
     </div>
-  {:else if tags.length === 0}
+  {:else if sortedTags.length === 0}
     <BaseCard>
       {#snippet header()}
         <h2 class="text-lg font-bold">No Tags Found</h2>
@@ -209,7 +283,7 @@
     </BaseCard>
   {:else}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {#each tags as tag (tag.key)}
+      {#each sortedTags as tag (tag.key)}
         <BaseCard classes="cursor-pointer hover:scale-105 transition-transform">
           {#snippet header()}
             <div class="flex items-center gap-2">
