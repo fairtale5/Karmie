@@ -7,6 +7,7 @@
   import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
   import { dummyProfileData } from '$lib/data/dummyProfileData';
   import { REPUTATION_SETTINGS } from '$lib/settings';
+  import { getUserAvatar } from '$lib/utils/avatar';
 
   const { 
     tag, 
@@ -40,15 +41,7 @@
     expandPopoverOpen = false;
   }
 
-  // Helper function to get user initials from handle
-  function getInitials(handle: string): string {
-    return handle.slice(0, 2).toUpperCase();
-  }
 
-  // Helper function to get avatar URL
-  function getAvatarUrl(ulid: string): string {
-    return `https://images.unsplash.com/photo-1617296538902-887900d9b592?ixid=M3w0Njc5ODF8MHwxfGFsbHx8fHx8fHx8fDE2ODc5NzExMDB8&ixlib=rb-4.0.3&w=128&h=128&auto=format&fit=crop`;
-  }
 
   // Helper function to format reputation score
   function formatScore(score: number): string {
@@ -237,17 +230,18 @@
           </thead>
           <tbody class="[&>tr]:hover:preset-tonal-primary">
             {#each topUsers as user, i (user.userDocument.key)}
+              {@const userAvatar = getUserAvatar(user.userDocument)}
               <tr>
                 <td>
                   <div class="flex items-center gap-2">
                     <Avatar 
-                      name={user.userDocument.data.user_handle}
-                      src={user.userDocument.data.avatar_url || getAvatarUrl(user.userDocument.data.user_ulid)}
+                      name={userAvatar.name}
+                      src={userAvatar.src}
                       size="w-8 h-8"
                       rounded="rounded-full"
                       background="bg-transparent"
                     >
-                      {getInitials(user.userDocument.data.user_handle)}
+                      {userAvatar.initials}
                     </Avatar>
                     <div class="flex flex-col">
                       <span class="font-bold text-sm">{user.userDocument.data.display_name}</span>

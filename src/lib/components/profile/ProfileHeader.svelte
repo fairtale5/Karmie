@@ -1,5 +1,6 @@
 <script lang="ts">
 import { Avatar, Popover } from '@skeletonlabs/skeleton-svelte';
+import { getUserAvatar } from '$lib/utils/avatar';
 import type { UserDocument, UserData } from '$lib/types';
 import BaseCard from '$lib/components/common/BaseCard.svelte';
 import { dummyProfileData } from '$lib/data/dummyProfileData';
@@ -342,22 +343,36 @@ function closeHandleHelp() {
 
     <!-- Avatar section -->
     {#if editMode}
+      {@const editAvatar = getUserAvatar({ ...user, data: { ...user.data, avatar_url: editAvatarUrl.trim() || user.data.avatar_url } })}
       <div class="relative my-4 w-24 h-24">
-        <img 
-          src={editAvatarUrl || user.data.avatar_url} 
-          alt="avatar" 
-          class="rounded-full w-24 h-24 border-4 border-primary-500 object-cover"
-        />
+        <Avatar 
+          src={editAvatar.src}
+          name={editAvatar.name}
+          size="w-24 h-24"
+          rounded="rounded-full"
+          border="border-4 border-primary-500"
+          shadow="shadow-lg"
+        >
+          {editAvatar.initials}
+        </Avatar>
         <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
           <Edit3 class="w-6 h-6 text-white" />
         </div>
       </div>
     {:else}
-      <img 
-        src={user.data.avatar_url} 
-        alt="avatar" 
-        class="rounded-full w-24 h-24 my-4 border-4 border-primary-500 object-cover"
-      />
+      {@const avatar = getUserAvatar(user)}
+      <div class="my-4">
+        <Avatar 
+          src={avatar.src}
+          name={avatar.name}
+          size="w-24 h-24"
+          rounded="rounded-full"
+          border="border-4 border-primary-500"
+          shadow="shadow-lg"
+        >
+          {avatar.initials}
+        </Avatar>
+      </div>
     {/if}
 
     <!-- Display name section -->

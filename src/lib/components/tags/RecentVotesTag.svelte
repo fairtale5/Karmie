@@ -9,6 +9,7 @@
     import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
     // Import Avatar component
     import { Avatar, Popover } from '@skeletonlabs/skeleton-svelte';
+import { getUserAvatar } from '$lib/utils/avatar';
     // Import UserLink component for clickable usernames
     import UserLink from '$lib/components/common/UserLink.svelte';
     // Import icons
@@ -46,15 +47,7 @@
         expandPopoverOpen = false;
     }
 
-    // Helper function to get user initials from handle
-    function getInitials(handle: string): string {
-        return handle.slice(0, 2).toUpperCase();
-    }
 
-    // Helper function to get avatar URL
-    function getAvatarUrl(ulid: string): string {
-        return `https://images.unsplash.com/photo-1617296538902-887900d9b592?ixid=M3w0Njc5ODF8MHwxfGFsbHx8fHx8fHx8fDE2ODc5NzExMDB8&ixlib=rb-4.0.3&w=128&h=128&auto=format&fit=crop`;
-    }
 
     // Filter votes based on toggle states
     function filterVotes(votes: VoteDocument[]): VoteDocument[] {
@@ -291,15 +284,16 @@
                             <td class="border-l-4 {isPositive ? 'border-success-500' : 'border-error-500'}">
                                 {#if vote.data.owner_ulid && userData.get(vote.data.owner_ulid)}
                                     {@const user = userData.get(vote.data.owner_ulid)!}
+                                    {@const userAvatar = getUserAvatar(user)}
                                     <div class="flex items-center gap-2">
                                         <Avatar 
-                                            name={user.data.user_handle}
-                                            src={user.data.avatar_url || getAvatarUrl(user.data.user_ulid)} 
+                                            name={userAvatar.name}
+                                            src={userAvatar.src} 
                                             size="w-6"
                                             rounded="rounded-full"
                                             background="bg-transparent"
                                         >
-                                            {getInitials(user.data.user_handle)}
+                                            {userAvatar.initials}
                                         </Avatar>
                                         <UserLink handle={user.data.user_handle} />
                                     </div>
@@ -310,15 +304,16 @@
                             <td>
                                 {#if vote.data.target_ulid && userData.get(vote.data.target_ulid)}
                                     {@const user = userData.get(vote.data.target_ulid)!}
+                                    {@const userAvatar = getUserAvatar(user)}
                                     <div class="flex items-center gap-2">
                                         <Avatar 
-                                            name={user.data.user_handle}
-                                            src={user.data.avatar_url || getAvatarUrl(user.data.user_ulid)} 
+                                            name={userAvatar.name}
+                                            src={userAvatar.src} 
                                             size="w-6"
                                             rounded="rounded-full"
                                             background="bg-transparent"
                                         >
-                                            {getInitials(user.data.user_handle)}
+                                            {userAvatar.initials}
                                         </Avatar>
                                         <UserLink handle={user.data.user_handle} />
                                     </div>
