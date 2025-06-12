@@ -11,6 +11,7 @@
   import { queryDocsByKey } from '$lib/docs-crud/query_by_key';
   import { LoaderCircle, CheckCircle, XCircle } from 'lucide-svelte';
   import AvatarCropper from '$lib/components/onboarding/AvatarCropper.svelte';
+  import { uploadAvatarFile } from '$lib/utils/avatarUpload';
 
   // Form state using runes
   let user_handle = $state('');
@@ -28,6 +29,7 @@
   let avatarUploadComplete = $state(false);
   let saveProfileRequested = $state(false);
   let avatarFile = $state<File | null>(null);
+  let uploadState = $state<'idle' | 'uploading' | 'success' | 'failed'>('idle');
 
   /**
    * Single source of truth for the avatar file.
@@ -139,11 +141,34 @@
   }
 
   /**
+   * Single upload function used by both handleCrop and saveProfile retry logic
+   */
+  async function uploadAvatar(file: File) {
+    uploadState = 'uploading';
+    const filename = `avatar_${principalString}.webp`;
+    
+    avatarUploadPromise = uploadAvatarFile(file, filename)
+      .then(url => {
+        avatarUrlToSave = url;
+        uploadState = 'success';
+        avatarUploadComplete = true;
+        console.log('Avatar upload result:', url);
+      })
+      .catch(err => {
+        avatarUrlToSave = '';
+        uploadState = 'failed';
+        avatarUploadComplete = false;
+        throw err;
+      });
+    
+    await avatarUploadPromise;
+  }
+
+  /**
    * Handles the avatar cropping and upload process.
    *
    * This function is called when the user clicks 'Crop' in the avatar cropper.
    * It immediately starts uploading the cropped avatar image to the backend (Juno Storage).
-   * The upload result is logged to the console so we can inspect the returned object and determine the correct URL property.
    *
    * If the user clicks 'Save Profile' before the upload is complete, the save handler will wait for this promise to resolve.
    *
@@ -155,32 +180,14 @@
       avatarUploadPromise = null;
       avatarUrlToSave = '';
       avatarUploadComplete = false;
+      uploadState = 'idle';
       avatarFile = null;
       return;
     }
-    avatarUploadComplete = false;
-    // Use the user's principal (key) for the filename, so it is unique and stable
+    
     const file = new File([blob], `avatar_${principalString}.webp`, { type: 'image/webp' });
-    avatarUploadPromise = uploadFile({
-      data: file, // Pass the File object so the backend gets a name
-      collection: 'user_avatars',
-      filename: file.name // Explicitly set the filename for clarity
-    })
-      .then(result => {
-        // Log the upload result so we can inspect the returned object
-        console.log('Avatar upload result:', result);
-        // Use downloadUrl or fullPath for the avatar URL
-        avatarUrlToSave = result.downloadUrl || result.fullPath || '';
-        avatarUploadComplete = true;
-        avatarFile = file;
-      })
-      .catch(err => {
-        // Show an error toast if the upload fails
-        toaster.error({ title: 'Avatar upload failed', description: err.message });
-        avatarUrlToSave = '';
-        avatarUploadComplete = false;
-        avatarFile = null;
-      });
+    avatarFile = file;
+    await uploadAvatar(file);
   }
 
   /**
@@ -207,12 +214,26 @@
         throw new Error('Please log in to set up your profile.');
       }
       saveProfileRequested = true;
-      // If avatar upload is in progress, wait for it to finish
-      if (avatarUploadPromise) {
-        await avatarUploadPromise;
+      
+      // Smart avatar upload handling:
+      if (avatarFile) {  // User has selected/cropped an image
+        if (uploadState === 'uploading') {
+          // Upload in progress - wait for it
+          await avatarUploadPromise;
+        } else if (uploadState === 'failed') {
+          // Upload failed previously - retry with same file
+          await uploadAvatar(avatarFile);
+        }
+        // If uploadState === 'success', do nothing - already have avatarUrlToSave
+        
+        // Final validation
+        if (avatarFile && !avatarUrlToSave) {
+          throw new Error('Avatar upload failed. Please try again.');
+        }
       }
-      // Use the uploaded avatar URL if available, otherwise fallback to previous avatarUrl
-      const finalAvatarUrl = avatarUrlToSave || avatarUrl || '';
+      
+      // FIXED: Remove avatarUrl fallback (main bug fix)
+      const finalAvatarUrl = avatarUrlToSave || '';
       // Save the user document with the avatar URL
       await createUserDoc({
         user_handle: user_handle.trim(),
@@ -352,7 +373,9 @@
               }),
               error: (e) => ({
                 title: 'Failed to Create Profile',
-                description: e instanceof Error ? e.message : 'An unknown error occurred.'
+                description: e instanceof Error && e.message === 'Avatar upload failed. Please try again.' 
+                  ? 'Avatar upload failed. Click "Save Profile" again to retry.'
+                  : (e instanceof Error ? e.message : 'An unknown error occurred.')
               })
             });
           } catch (e) {

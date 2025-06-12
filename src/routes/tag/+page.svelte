@@ -226,10 +226,10 @@
   <div class="flex flex-row items-start justify-between flex-wrap gap-4 mb-6">
     <!-- Left side: Title and description -->
     <div>
-      <h2 class="text-xl font-semibold mb-2">All Community Tags</h2>
+    <h2 class="text-xl font-semibold mb-2">All Community Tags</h2>
       <p class="text-sm opacity-70">
-        Browse and join existing reputation communities on the platform.
-      </p>
+      Browse and join existing reputation communities on the platform.
+    </p>
     </div>
 
     <!-- Right side: Sort options -->
