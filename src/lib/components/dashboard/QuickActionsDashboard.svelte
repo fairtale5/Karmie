@@ -348,13 +348,10 @@
             }
         );
 
-        // Reset form after successful vote
-        selectedTag = null;
-        selectedUser = null;
+        // Reset only vote value to allow quick re-voting
+        // Keep tag and user selected for better UX
         selectedVoteValue = null;
-        tagSearchQuery = '';
-        userSearchQuery = '';
-        currentFocus = 'tag';
+        // Keep search queries and focus in vote mode for immediate re-voting
     } catch (error) {
         console.error('Error creating vote:', error);
     } finally {
