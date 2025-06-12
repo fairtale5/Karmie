@@ -1,25 +1,101 @@
 # Karmie
 
-A decentralized reputation system built on the Internet Computer using Juno and SvelteKit.
+[![Built with SvelteKit](https://img.shields.io/badge/SvelteKit-FF3E00?style=for-the-badge&logo=svelte&logoColor=white)](https://kit.svelte.dev)
+[![Powered by Juno](https://img.shields.io/badge/Juno-000000?style=for-the-badge&logo=internetcomputer&logoColor=white)](https://juno.build)
+[![Internet Computer](https://img.shields.io/badge/Internet_Computer-29ABE2?style=for-the-badge&logo=internetcomputer&logoColor=white)](https://internetcomputer.org)
 
-**Intro/Overview**
+## Table of Contents
+- [Overview](#overview)
+- [Who This Is For](#who-this-is-for)
+- [How It Works](#how-it-works)
+- [Architecture](#architecture)
+- [Database](#database)
+- [Development](#development)
+- [Documentation](#documentation)
 
-I wanted a reputation system that is:
-- Truly decentralized
-- Bot-resistant
-- Doesn't require KYC
+## Overview
 
-### How It Works
-Reputation is earned by being voted on by users who already have a reputation. The higher the reputation of the user voting on you, the greater the effect—both positive and negative.
+Karmie is a decentralized reputation system that helps communities build trust and identify valuable contributors. It's designed to be bot-resistant, transparent, and flexible enough to work across any platform or community.
 
-This means that bots, bad actors, and newcomers all start with a reputation of **0**. They can vote on others, but their votes won't have an effect until they reach the **minimum threshold** (which is customizable).
+### Why Karmie?
+- **Truly Decentralized**: Runs on the Internet Computer, no central authority
+- **Bot-Resistant**: Only trusted users can influence reputation
+- **Privacy-Focused**: No KYC required, just Internet Identity
+- **Flexible**: Create custom reputation tags for any use case
+- **Transparent**: All votes and calculations are on-chain
+- **Self-Protecting**: Bad actors are automatically neutralized
 
-Additionally, if the community downvotes a user, they lose their privileges, and all users they voted on also lose the reputation they gained from them. This makes it easy to identify and neutralize bad actors by downvoting them, undoing any damage they caused.
+## Who This Is For
+
+Karmie is perfect for any platform that needs to distinguish real users from bots and reward genuine contributions. Here are some key use cases:
+
+### 🛒 E-commerce Marketplaces
+- Create bot-proof marketplaces where buyer and seller reputations actually matter
+- Track seller reliability and buyer behavior
+- Build trust in peer-to-peer trading platforms
+- Rate freelancers, contractors, and service providers
+
+### 🪂 Token Distribution & Airdrops
+- Ensure rewards reach real humans, not bots
+- Filter airdrop recipients based on #genuine reputation
+- Distribute community rewards based on contribution history
+- Create incentive programs that reward real engagement
+
+### 🗣️ Web3 Social Media
+- Build platforms where expertise determines influence, not follower count
+- Give domain experts more weight in their areas of expertise
+- Create higher quality discussions and content curation
+- Enable topic-based influence (e.g., developers in #programming discussions)
+
+### 🎮 Gaming Communities
+- Track player skills, teamwork, and community behavior
+- Build #skill reputation through gameplay
+- Monitor #sportsmanship and #teamwork
+- Carry trust between different games
+
+### 💼 Professional Networks
+- Build verifiable expertise without traditional credentials
+- Enable peer validation of technical abilities
+- Find teammates based on reputation history
+- Give experts more influence in their domains
+
+### 🏛️ Community Governance
+- Create democratic decision-making with weighted expertise
+- Weight votes by relevant expertise
+- Enable trusted members to help govern content
+- Allocate resources based on contribution history
+
+## How It Works
+
+### Core Reputation Mechanics
+- Users gain reputation in two ways:
+  1. By being voted on by trusted users
+  2. By voting on others (earning voting rewards)
+- Each user's reputation is split across all their votes
+- Reputation tags have a minimum threshold of trusted users
+- Once a tag reaches this threshold of trusted users:
+  - Only trusted users' votes count
+  - Only trusted users receive voting rewards
+- This creates a self-protecting system where:
+  - Bad actors must earn trust from existing trusted users
+  - New users must prove themselves before gaining influence
+  - The community can easily identify and neutralize bad actors
+
+### Tag System
+- Anyone can create reputation tags (like Twitter hashtags)
+- Tags can be:
+  - App-specific (e.g., #myapp)
+  - Topic-based (e.g., #BTC, #startup)
+- Each tag has customizable rules:
+  - Decay rules for vote influence over time
+  - Minimum threshold for trusted users
+  - Minimum trusted users before stopping voting rewards
+  - Automatic re-enabling of rewards if community shrinks
 
 ### Bootstrapping New Communities
-The challenge was how to bootstrap new communities, as early on, no one has enough reputation to vote on others. To address this, I implemented a **"reward for voting"** system, which works in two phases:
-- **Early on**: Everyone receives rewards while the community is still small. At this stage, anyone can join and earn voting rewards.
-- **Later on**: Only trusted users who have already gained reputation receive rewards. This prevents bad actors from farming reputation through votes.
+The system handles the "cold start" problem through a two-phase reward system:
+1. **Early Phase**: Everyone receives voting rewards while the community is small
+2. **Mature Phase**: Only trusted users receive rewards, preventing reputation farming
 
 ### Technical Details
 - Runs in its own **canister**
@@ -87,10 +163,6 @@ I'm also developing a **web interface** for users to interact with the system, b
 - **Improve caching** further so older votes aren't always recalculated and can be fetched less frequently.
 - **Overarching reputations**: Apps can link their reputation systems together, allowing trusted users from one app to carry over trust to another. Each app remains independent but can participate in a **trusted circle** with custom rules for how influence is shared.
 
-
-
-
-
 ## Architecture
 
 ### Juno Platform
@@ -101,10 +173,11 @@ Juno is our all-in-one backend platform that provides:
 - **Authentication**: Built-in user authentication and authorization
 - **Analytics**: Usage tracking and performance monitoring
 
-### Application Structure
+### Project Structure
+
 Our app is split into two main parts:
 
-#### Frontend (`/src/routes`)
+#### Frontend (`/src`)
 - Built with SvelteKit
 - Deployed as static files through Juno Storage
 - Communicates with the Satellite through Juno's client SDK
@@ -114,165 +187,133 @@ Our app is split into two main parts:
   - Client-side validation
   - API calls to Satellite functions
 
-#### Backend (`/src/satellite`)
-- Runs as a Juno Satellite on the Internet Computer
-- Handles all business logic and data operations
-- Key components:
-  - Custom functions for reputation calculations
-  - Database operations for user data
-  - Event handling and validation
-  - Security rules and access control
+```
+src/
+├── app.css                    # Global styles
+├── app.html                   # HTML template
+├── app.d.ts                   # TypeScript declarations
+├── declarations/              # Type declarations
+├── routes/                    # SvelteKit routes
+│   ├── +page.svelte          # Home page
+│   ├── profile/              # Profile pages
+│   ├── admin/                # Admin pages
+│   ├── onboarding/           # User registration
+│   └── reputations/          # Reputation management
+└── lib/                      # Core frontend library
+    ├── auth/                 # Authentication
+    ├── components/           # UI components
+    │   ├── common/          # Shared components
+    │   ├── tags/            # Tag-related components
+    │   └── graph/           # Graph visualization
+    ├── data/                # Static data and types
+    ├── docs-crud/           # Document operations
+    ├── keys/                # Key management
+    ├── skeletonui/          # UI framework
+    ├── stores/              # State management
+    ├── utils/               # Helper functions
+    ├── juno.ts              # Juno client setup
+    ├── login.ts             # Login utilities
+    ├── settings.ts          # App configuration
+    └── types.ts             # TypeScript types
+```
 
-### Data Storage
-We use Juno's Datastore for different types of data:
-- **Users**: Profile information and reputation scores
-- **Events**: Reputation events and interactions
-- **Settings**: System configuration and rules
-- **Analytics**: Usage data and metrics
+### Backend (`/src/satellite`)
+Runs as a Juno Satellite on the Internet Computer, handling all business logic, data operations, and security.
 
-### Custom Functions
-Our Satellite includes custom functions for:
-- Reputation calculation and updates
-- User management and validation
-- Event processing and recording
-- Data aggregation and reporting
-
-## Project Structure
-
-### Source Code (`/src`)
-
-#### Frontend
-
-##### Routes (`/src/routes`)
-- Main application pages and user interface
-- Organized by feature area:
-  - `/` - Home page
-  - `/profile` - User profile page and settings
-  - `/admin` - Administrative functions 
-  - `/onboarding` - User registration and setup
-  - `/reputations` - Reputation management
-- Each route typically contains:
-  - `+page.svelte` - The page component with UI and interactions
-  - `+layout.svelte` - Shared layout for route group (when applicable)
-  - `+page.ts` or `+page.server.ts` - Data loading logic
-
-##### Library (`/src/lib`)
-- **Components** (`/src/lib/components/`)
-  - `Header.svelte` - Main navigation component
-  - `Footer.svelte` - Site footer component
-  - `AvatarCropper.svelte` - Profile image handling
-  - `SkeletonLoader.svelte` - Loading states
-  - **Graph Components** (`/src/lib/components/graph/`)
-    - `SigmaGraph.svelte` - Interactive graph visualization with Sigma.js
-    - `graphData.ts` - Graph data structures and dummy data generation
-  - **Tag Components** (`/src/lib/components/tags/`)
-    - `TagGraphCard.svelte` - Tag-specific graph visualization card
-  - Various UI elements and shared components
-- **Types** (`/src/lib/types.ts`)
-  - TypeScript interfaces for data models
-  - Type definitions for state and props
-- **Settings** (`/src/lib/settings.ts`)
-  - Application configuration
-  - Environment variables
-  - Feature flags and constants
-- **SkeletonUI** (`/src/lib/skeletonui/`)
-  - Skeleton UI framework components
-  - Theming and styling utilities
-- **Juno Integration** (`/src/lib/juno.ts`)
-  - Juno client SDK setup
-  - Authentication helpers
-- **Stores** (`/src/lib/stores/`)
-  - Svelte stores for state management
-  - Shared application state
-- **Keys** (`/src/lib/keys/`)
-  - Document key management
-  - Key generation utilities
-- **Utils** (`/src/lib/utils/`)
-  - `graphApi.ts` - Graph data API functions and type definitions
-
-##### App Configuration
-- `app.html` - HTML template
-- `app.css` - Global styles
-- `app.d.ts` - TypeScript declarations
-
-#### Backend (`/src/satellite`)
-
-##### Configuration Files
-- `Cargo.toml` - Rust dependencies and project settings
-- `satellite.did` - Candid interface definitions for Internet Computer
-- `satellite_extension.did` - Extended interface definitions
-
-##### Source Files (`/src/satellite/src`)
-- `lib.rs` - Main entry point and core functionality
-  - Satellite initialization
-  - API endpoints
-  - Event handlers
-  - Core business logic
-
-###### Core Logic (`/src/satellite/src/core/`)
-- Core business logic and domain-specific calculations
-- `reputation_calculations.rs` - Reputation scoring algorithms
-- `tag_calculations.rs` - Tag-based calculations and filtering
-
-###### Processors (`/src/satellite/src/processors/`)
-- Data processing and document operations
-- `document_keys.rs` - Key generation and management for documents
-- `document_queries.rs` - Database query helpers
-- `graph_processors.rs` - Graph data generation for visualization
-- `ulid_generator.rs` - ULID generation for unique identifiers
-- `ulid_timestamp_extract.rs` - Timestamp extraction from ULIDs
-- `ulid_type.rs` - ULID type definitions and utilities
-
-###### Assertion Logic (`/src/satellite/src/assert_set_doc/`)
-- Business rules and validations for document creation
-- `assert_doc_user.rs` - User document validation
-- `assert_doc_tag.rs` - Tag document validation
-- `assert_doc_vote.rs` - Vote document validation
-- `assert_doc_reputation.rs` - Reputation document validation
-
-###### Validation (`/src/satellite/src/validation/`)
-- Data validation for individual fields
-- `validate_handle.rs` - Username validation
-- `display_name.rs` - User display name validation
-- `description.rs` - Text description validation
-- `validate_tag_date.rs` - Date validation for tags
-- `ulid_timestamp_validate.rs` - ULID timestamp validation
-
-###### Utilities (`/src/satellite/src/utils/`)
-- Shared helper functions
-- `structs.rs` - Data structures shared across the satellite
-- `logger.rs` - Logging utilities
-- `time.rs` - Time-related helper functions
-- `normalize.rs` - String normalization utilities
+```
+src/satellite/
+├── lib.rs                    # Main entry point
+├── core/                     # Core business logic
+│   ├── reputation_calculations.rs
+│   └── tag_calculations.rs
+├── assert_set_doc/          # Document validation
+│   ├── assert_doc_user.rs
+│   ├── assert_doc_tag.rs
+│   ├── assert_doc_vote.rs
+│   └── assert_doc_reputation.rs
+├── validation/              # Field validation
+│   ├── validate_handle.rs
+│   ├── validate_tag_date.rs
+│   ├── display_name.rs
+│   ├── description.rs
+│   └── ulid_timestamp_validate.rs
+├── processors/              # Data processing
+│   ├── document_keys.rs
+│   ├── document_queries.rs
+│   ├── ulid_generator.rs
+│   ├── ulid_timestamp_extract.rs
+│   └── ulid_type.rs
+└── utils/                   # Utilities
+    ├── structs.rs
+    ├── logger.rs
+    ├── time.rs
+    └── normalize.rs
+```
 
 ### Documentation (`/docs`)
+Project documentation, architecture guides, and implementation details.
 
-#### Core Documentation (`/docs/core`)
-- Project-specific documentation
-- Architecture decisions
-- Implementation guides
-- Key files:
-  - `data-validation.md` - Data validation rules
-  - `resources.md` - External resources
-  - `skeleton_ui_integration.md` - UI setup guide
+```
+docs/
+├── README.md                # Main documentation
+├── core/                    # Core documentation
+│   ├── architecture/        # System architecture
+│   │   ├── database.md     # Database schema
+│   │   └── todo/          # Development tasks
+│   ├── data-validation.md  # Validation patterns
+│   └── resources.md        # External resources
+├── implementation/          # Implementation guides
+│   ├── reputation.md       # Reputation system
+│   └── juno_integration.md # Juno integration
+└── juno/                   # Juno documentation
+    └── docs/               # Official Juno docs
+```
 
-#### Implementation Docs (`/docs/implementation`)
-- Detailed implementation guides
-- Key files:
-  - `reputation.md` - Reputation system design
-  - `juno_integration.md` - Juno integration guide
+## Database (Juno Datastore)
 
-#### Resources (`/docs/resources`)
-- Reference documentation
-- Key files:
-  - `ic_and_juno_api_reference.md` - API documentation
-  - `juno_index.md` - Juno quick reference
+We use Juno's Datastore for data storage, which provides a document-based storage system with the following collections:
 
-#### Juno Docs (`/docs/juno`)
-- Juno-specific documentation
-- Build features
-- Integration guides
-- Best practices
+### Collections Overview
+| Collection | Purpose | Access Level |
+|------------|---------|--------------|
+| Users | User profiles and authentication | Public read, private write |
+| Tags | Reputation tag definitions | Public read, managed write |
+| Votes | Vote records | Public read, private write |
+| Reputations | Reputation scores | Public read, controller write |
+
+
+### Users Collection
+- Stores user profiles and authentication data
+- Key fields: username, display_name, user_ulid
+- Permissions: Public read, private write
+- Used for: User management, authentication, profile data
+
+### Tags Collection
+- Stores reputation tag definitions and rules
+- Key fields: tag_handle, description, time_periods, reputation_threshold
+- Permissions: Public read, managed write
+- Used for: Tag management, vote rules, reputation thresholds
+
+### Votes Collection
+- Records all votes cast by users
+- Key fields: owner_ulid, tag_ulid, target_ulid, value, weight
+- Permissions: Public read, private write
+- Used for: Vote tracking, reputation calculations
+
+### Reputations Collection
+- Stores calculated reputation scores
+- Key fields: owner_ulid, tag_ulid, reputation_total_effective
+- Permissions: Public read, controller write
+- Used for: Reputation tracking, voting power calculations
+
+### Key Features
+- All documents use ULID for unique identification
+- Documents are versioned for concurrency control
+- Timestamps are stored in nanoseconds
+- Keys follow a consistent format for efficient querying
+- Collections use appropriate access control levels
+
+For detailed schema information and validation rules, see [Database Schema](docs/core/architecture/database.md).
 
 ## Development
 
@@ -300,29 +341,28 @@ npm run preview
 juno deploy
 ```
 
-## Additional Documentation
+## Documentation
 
-### Core Documentation
-- [Project Overview](/docs/core/architecture/reputator-dApp-overview.md) - High-level system overview
-- [Database Architecture](/docs/core/architecture/database.md) - Database design and standards
-- [Data Validation](/docs/core/architecture/data-validation-reputator.md) - Validation rules and implementation
-- [Playground vs Production](/docs/core/architecture/playground_vs_production.md) - Environment differences
-
-### Development Guides
-- [Development Guide](/docs/core/development/development.md) - Development setup and workflow
-- [Testing Guide](/docs/core/development/testing.md) - Testing strategies and implementation
-- [Juno Integration](/docs/core/development/juno_integration.md) - Juno integration details
-- [Test Calculations](/docs/core/development/test-calculations.md) - Reputation calculation examples
-- [Description Migration](/docs/core/development/description_migration_track_temp.md) - Field format standards
-
-### Resources and References
+### For Developers
 - [API Reference](/docs/resources/ic_and_juno_api_reference.md) - Complete API documentation
-- [Juno Index](/docs/resources/juno_index.md) - Quick reference for Juno
-- [Data Validation (Juno)](/docs/resources/data-validation-juno.md) - Juno validation patterns
-- [Development Resources](/docs/resources/development.md) - Additional development resources
-- [Resource Links](/docs/resources/resources.md) - External resources and tools
+- [Juno Integration](/docs/core/development/juno_integration.md) - Integration details
+- [Development Guide](/docs/core/development/development.md) - Setup and workflow
+- [Testing Guide](/docs/core/development/testing.md) - Testing strategies
 
-### Project Guidelines
-- [Project Rules](.cursorrules) - AI assistant rules and project standards
-- [UI Guidelines](/docs/core/development/ui.md) - UI/UX standards and patterns
+### For Users
+- [Project Overview](/docs/core/architecture/reputator-dApp-overview.md) - System overview
+- [UI Guidelines](/docs/core/development/ui.md) - UI/UX standards
+- [Resource Links](/docs/resources/resources.md) - External resources
+
+### For Contributors
+- [Project Rules](.cursorrules) - AI assistant rules and standards
+- [Database Architecture](/docs/core/architecture/database.md) - Database design
+- [Data Validation](/docs/core/architecture/data-validation-reputator.md) - Validation rules
+- [Test Calculations](/docs/core/development/test-calculations.md) - Calculation examples
+
+### Additional Resources
+- [Juno Index](/docs/resources/juno_index.md) - Quick reference
+- [Data Validation (Juno)](/docs/resources/data-validation-juno.md) - Juno patterns
+- [Development Resources](/docs/resources/development.md) - Additional resources
+- [Playground vs Production](/docs/core/architecture/playground_vs_production.md) - Environment guide
 
