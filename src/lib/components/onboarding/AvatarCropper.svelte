@@ -164,27 +164,28 @@ async function getCroppedImg(imageSrc: string, crop: { x: number; y: number; wid
 
 <div class="avatar-cropper space-y-2">
   <!-- FileUpload dropzone (always visible) -->
-  <FileUpload
-    name="avatar"
-    accept={{
-      "image/png": [".png"],
-      "image/jpeg": [".jpg", ".jpeg"],
-      "image/webp": [".webp"],
-      "image/svg+xml": [".svg"],
-      "image/gif": [".gif"]
-    }}
-    maxFiles={1}
-    classes="w-full"
-    onFileReject={(err) => toaster.error({ title: 'File rejected', description: err })}
-    onApiReady={(api) => fileUploadApi = api}
-    onFileChange={(details) => {
-      if (!details.acceptedFiles.length) {
-        onRemove();
-      } else {
-        onFileUploadChange(details);
-      }
-    }}
-  />
+      <FileUpload
+      name="avatar"
+      accept={{
+        "image/png": [".png"],
+        "image/jpeg": [".jpg", ".jpeg"],
+        "image/webp": [".webp"],
+        "image/svg+xml": [".svg"],
+        "image/gif": [".gif"]
+      }}
+      maxFiles={1}
+      classes="w-full"
+      fileName="max-w-[200px] truncate"
+      onFileReject={(err) => toaster.error({ title: 'File rejected', description: err })}
+      onApiReady={(api) => fileUploadApi = api}
+      onFileChange={(details) => {
+        if (!details.acceptedFiles.length) {
+          onRemove();
+        } else {
+          onFileUploadChange(details);
+        }
+      }}
+    />
 </div>
 
 <!-- Cropper (only visible when a file is selected) -->
