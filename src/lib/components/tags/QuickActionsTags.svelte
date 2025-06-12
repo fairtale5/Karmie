@@ -350,8 +350,8 @@
             (async () => {
                 // Call vote_create.ts to create the vote document
                 await createVoteDoc(voteDoc);
-                // Add a small delay to ensure toast is visible
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // Add a delay to ensure backend processing is complete
+                await new Promise(resolve => setTimeout(resolve, 2000));
             })(),
             {
                 loading: {
