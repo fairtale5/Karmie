@@ -194,27 +194,39 @@ src/
 ├── app.d.ts                   # TypeScript declarations
 ├── declarations/              # Type declarations
 ├── routes/                    # SvelteKit routes
-│   ├── +page.svelte          # Home page
-│   ├── profile/              # Profile pages
-│   ├── admin/                # Admin pages
-│   ├── onboarding/           # User registration
-│   └── reputations/          # Reputation management
-└── lib/                      # Core frontend library
-    ├── auth/                 # Authentication
-    ├── components/           # UI components
-    │   ├── common/          # Shared components
-    │   ├── tags/            # Tag-related components
-    │   └── graph/           # Graph visualization
-    ├── data/                # Static data and types
-    ├── docs-crud/           # Document operations
-    ├── keys/                # Key management
-    ├── skeletonui/          # UI framework
-    ├── stores/              # State management
-    ├── utils/               # Helper functions
-    ├── juno.ts              # Juno client setup
-    ├── login.ts             # Login utilities
-    ├── settings.ts          # App configuration
-    └── types.ts             # TypeScript types
+│   ├── +layout.svelte         # Root layout
+│   ├── +layout.ts             # Layout logic
+│   ├── +page.svelte           # Home page
+│   ├── admin/                 # Admin pages
+│   ├── dashboard/             # Dashboard pages
+│   ├── graph/                 # Graph visualization pages
+│   ├── new/                   # New item creation
+│   │   ├── tag/               # Tag creation form
+│   │   └── user/              # User profile creation
+│   ├── tag/                   # Tag views and management
+│   └── u/                     # User profiles
+└── lib/                       # Core frontend library
+    ├── auth/                  # Authentication
+    ├── components/            # UI components
+    │   ├── common/            # Shared components
+    │   ├── content/           # Content display components
+    │   ├── dashboard/         # Dashboard components
+    │   ├── graph/             # Graph visualization
+    │   ├── layout/            # Layout components
+    │   ├── modals/            # Modal dialogs
+    │   ├── onboarding/        # User onboarding
+    │   ├── profile/           # User profile
+    │   └── tags/              # Tag-related components
+    ├── data/                  # Static data and types
+    ├── docs-crud/             # Document operations
+    ├── keys/                  # Key management
+    ├── skeletonui/            # UI framework
+    ├── stores/                # State management
+    ├── utils/                 # Helper functions
+    ├── juno.ts                # Juno client setup
+    ├── login.ts               # Login utilities
+    ├── settings.ts            # App configuration
+    └── types.ts               # TypeScript types
 ```
 
 ### Backend (`/src/satellite`)
@@ -222,32 +234,38 @@ Runs as a Juno Satellite on the Internet Computer, handling all business logic, 
 
 ```
 src/satellite/
-├── lib.rs                    # Main entry point
-├── core/                     # Core business logic
-│   ├── reputation_calculations.rs
-│   └── tag_calculations.rs
-├── assert_set_doc/          # Document validation
-│   ├── assert_doc_user.rs
-│   ├── assert_doc_tag.rs
-│   ├── assert_doc_vote.rs
-│   └── assert_doc_reputation.rs
-├── validation/              # Field validation
-│   ├── validate_handle.rs
-│   ├── validate_tag_date.rs
-│   ├── display_name.rs
-│   ├── description.rs
-│   └── ulid_timestamp_validate.rs
-├── processors/              # Data processing
-│   ├── document_keys.rs
-│   ├── document_queries.rs
-│   ├── ulid_generator.rs
-│   ├── ulid_timestamp_extract.rs
-│   └── ulid_type.rs
-└── utils/                   # Utilities
-    ├── structs.rs
-    ├── logger.rs
-    ├── time.rs
-    └── normalize.rs
+├── Cargo.toml                            # Rust dependencies
+├── satellite.did                         # Candid interface
+├── satellite_extension.did               # Extended interface
+└── src/                                  # Source code
+    ├── lib.rs                            # Main entry point
+    ├── core/                             # Core business logic
+    │   ├── reputation_calculations.rs    # Reputation score calculations
+    │   └── tag_calculations.rs           # Tag-specific calculations
+    ├── assert_set_doc/                   # Document validation
+    │   ├── assert_doc_user.rs            # User document validation
+    │   ├── assert_doc_tag.rs             # Tag document validation
+    │   ├── assert_doc_vote.rs            # Vote document validation
+    │   └── assert_doc_reputation.rs      # Reputation document validation
+    ├── validation/                       # Field validation
+    │   ├── validate_handle.rs            # Username/tag handle validation
+    │   ├── validate_tag_date.rs          # Tag time period validation
+    │   ├── display_name.rs               # Display name validation
+    │   ├── description.rs                # Description validation
+    │   └── ulid_timestamp_validate.rs    # ULID timestamp validation
+    ├── processors/                       # Data processing
+    │   ├── document_keys.rs              # Document key generation/validation
+    │   ├── document_queries.rs           # Document querying utilities
+    │   ├── ulid_generator.rs             # ULID generation
+    │   ├── ulid_timestamp_extract.rs     # ULID timestamp extraction
+    │   ├── ulid_type.rs                  # ULID type definitions
+    │   ├── username_availability.rs      # Username availability checks
+    │   └── graph_processors.rs           # Graph data processing
+    └── utils/                            # Utilities
+        ├── structs.rs                    # Data structure definitions
+        ├── logger.rs                     # Logging utilities
+        ├── time.rs                       # Time-related utilities
+        └── normalize.rs                  # String normalization
 ```
 
 ### Documentation (`/docs`)
@@ -255,18 +273,18 @@ Project documentation, architecture guides, and implementation details.
 
 ```
 docs/
-├── README.md                # Main documentation
-├── core/                    # Core documentation
-│   ├── architecture/        # System architecture
-│   │   ├── database.md     # Database schema
-│   │   └── todo/          # Development tasks
-│   ├── data-validation.md  # Validation patterns
-│   └── resources.md        # External resources
-├── implementation/          # Implementation guides
-│   ├── reputation.md       # Reputation system
-│   └── juno_integration.md # Juno integration
-└── juno/                   # Juno documentation
-    └── docs/               # Official Juno docs
+├── README.md                 # Main documentation
+├── core/                     # Core documentation
+│   ├── architecture/         # System architecture
+│   │   ├── database.md       # Database schema
+│   │   └── todo/             # Development tasks
+│   ├── data-validation.md    # Validation patterns
+│   └── resources.md          # External resources
+├── implementation/           # Implementation guides
+│   ├── reputation.md         # Reputation system
+│   └── juno_integration.md   # Juno integration
+└── juno/                     # Juno documentation
+    └── docs/                 # Official Juno docs
 ```
 
 ## Database (Juno Datastore)
