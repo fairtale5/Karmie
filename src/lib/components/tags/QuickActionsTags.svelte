@@ -47,6 +47,7 @@
   let currentFocus: 'tag' | 'user' | 'vote' = $state('user');
   let selectedVoteValue: number | null = $state(null);
   let isVoting = $state(false);
+  let toastSuccess = $state(false);
   
   // Popover state for View Reports
   let reportsPopoverOpen = $state(false);
@@ -69,6 +70,19 @@
       tagSearchStatus = 'found';
       tagSearchResults = [];
       currentFocus = 'user';
+    }
+  });
+
+  // Function to handle delayed refresh
+  $effect(() => {
+    if (toastSuccess) {
+      console.log('[QuickActions] Toast success detected, waiting 2s before refresh...');
+      setTimeout(() => {
+        console.log('[QuickActions] 2s delay complete, triggering refresh...');
+        onVoteComplete?.();
+        console.log('[QuickActions] Refresh triggered');
+        toastSuccess = false; // Reset the trigger
+      }, 2000);
     }
   });
 
@@ -274,7 +288,7 @@
   }
 
   function handleUserSelect(user: UserDocument) {
-    console.log('User selected:', user);
+    console.log('[snapshot] User selected:', $state.snapshot(user));
     selectedUser = user;
     userSearchQuery = user.data.user_handle;
     userSearchStatus = 'found';
@@ -314,10 +328,10 @@
             throw new Error('Please select a tag, user, and vote value');
         }
 
-        // Debug logging with $inspect for reactive state
-        $inspect($authUserDoc).with(doc => console.log('[QuickActions] Auth User Doc:', doc));
-        $inspect(selectedUser).with(user => console.log('[QuickActions] Selected User:', user));
-        $inspect(selectedTag).with(tag => console.log('[QuickActions] Selected Tag:', tag));
+        // Debug logging with snapshots
+        console.log('[QuickActions] Auth User Doc:', $state.snapshot($authUserDoc));
+        console.log('[QuickActions] Selected User:', $state.snapshot(selectedUser));
+        console.log('[QuickActions] Selected Tag:', $state.snapshot(selectedTag));
 
         // Create vote document with empty key to satisfy TypeScript
         const voteDoc = {
@@ -345,32 +359,32 @@
             throw new Error('Invalid tag ULID format');
         }
 
-        // Use toaster.promise() for consistent handling
+        // Create vote and show toast
         await toaster.promise(
             (async () => {
-                // Call vote_create.ts to create the vote document
-                await createVoteDoc(voteDoc);
-                // Add a delay to ensure backend processing is complete
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                console.log('[QuickActions] Starting vote creation...');
+                const result = await createVoteDoc(voteDoc);
+                console.log('[QuickActions] Vote created with result:', result);
+                return result;
             })(),
             {
                 loading: {
                     title: 'Recording Vote on the Blockchain',
                     description: 'Please wait while we store your vote on the ICP blockchain...'
                 },
-                success: () => ({
-                    title: 'Vote Recorded!',
-                    description: 'Your vote has been stored on-chain.'
-                }),
+                success: () => {
+                    toastSuccess = true; // Trigger the delayed refresh
+                    return {
+                        title: 'Vote Recorded!',
+                        description: 'Your vote has been stored on-chain.'
+                    };
+                },
                 error: (e) => ({
                     title: 'Failed to Record Vote',
                     description: e instanceof Error ? e.message : 'An unknown error occurred'
                 })
             }
         );
-
-        // Success! Trigger refresh across all components
-        onVoteComplete?.();
 
         // Reset only vote value to allow quick re-voting
         // Keep tag and user selected for better UX
