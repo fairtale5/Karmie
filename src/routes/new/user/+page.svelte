@@ -278,7 +278,29 @@
   {/if}
 
   <form class="card shadow bg-surface-100-900 border border-surface-200-800 p-5 space-y-5 max-w-md mx-auto mt-10"
-        onsubmit={handleSubmit}>
+        onsubmit={async (e) => {
+          e.preventDefault();
+          if (!$authUser) {
+            toaster.error({ title: 'You must be logged in to set up your profile.' });
+            return;
+          }
+          await toaster.promise(saveProfile(), {
+            loading: {
+              title: 'Creating Profile on the Blockchain',
+              description: 'Please wait while we create your user profile on the ICP blockchain.'
+            },
+            success: () => ({
+              title: 'Profile Created!',
+              description: 'Your profile has been stored on-chain.'
+            }),
+            error: (e) => ({
+              title: 'Failed to Create Profile',
+              description: e instanceof Error && e.message === 'Avatar upload failed. Please try again.' 
+                ? 'Avatar upload failed. Click "Save Profile" again to retry.'
+                : (e instanceof Error ? e.message : 'An unknown error occurred.')
+            })
+          });
+        }}>
     <fieldset class="space-y-2">
       <h2 class="h2">Set Up Your Profile</h2>
       <p class="opacity-60">Choose a username and display name. You can add an avatar later.</p>
@@ -353,39 +375,9 @@
       <button 
         type="submit" 
         class="btn preset-filled-primary-500 w-full" 
-        disabled={loading || !$authUser || croppingInProgress}
-        onclick={async (e) => {
-          e.preventDefault();
-          if (!$authUser) {
-            toaster.error({ title: 'You must be logged in to set up your profile.' });
-            return;
-          }
-          loading = true;
-          try {
-            await toaster.promise(saveProfile(), {
-              loading: {
-                title: 'Creating Profile on the Blockchain',
-                description: 'Please wait while we create your user profile on the ICP blockchain.'
-              },
-              success: () => ({
-                title: 'Profile Created!',
-                description: 'Your profile has been stored on-chain.'
-              }),
-              error: (e) => ({
-                title: 'Failed to Create Profile',
-                description: e instanceof Error && e.message === 'Avatar upload failed. Please try again.' 
-                  ? 'Avatar upload failed. Click "Save Profile" again to retry.'
-                  : (e instanceof Error ? e.message : 'An unknown error occurred.')
-              })
-            });
-          } catch (e) {
-            console.error('Save profile failed:', e);
-          } finally {
-            loading = false;
-          }
-        }}
+        disabled={!$authUser || croppingInProgress}
       >
-        {#if loading}
+        {#if saveProfileRequested}
           <LoaderCircle class="animate-spin mr-2" />
           Saving...
         {:else}

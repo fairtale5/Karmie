@@ -29,7 +29,7 @@ let tagBeingEdited = $state<Doc<TagData>>({
   }
 });
 
-let loading = $state(false);
+let saveTagRequested = $state(false);
 let errorGlobal = $state('');
 
 // Popover states
@@ -141,58 +141,6 @@ function closeTimePeriodsPopover() {
   timePeriodsPopoverOpen = false;
 }
 
-async function saveTag() {
-  errorGlobal = '';
-  loading = true;
-  try {
-    if (!tagBeingEdited.data.tag_handle || !tagBeingEdited.data.description) {
-      errorGlobal = 'Please fill in all required fields.';
-      loading = false;
-      return;
-    }
-
-    const userDoc = $authUserDoc;
-    if (!userDoc || !userDoc.data.user_ulid) {
-      errorGlobal = 'You must be logged in to create a tag.';
-      loading = false;
-      return;
-    }
-
-    // Set the user key from the auth doc
-    tagBeingEdited.data.owner_ulid = userDoc.data.user_ulid;
-
-    // Use toaster.promise() for consistent handling
-    await toaster.promise(
-      (async () => {
-        // Create the tag using our utility function
-        await createTagDoc(tagBeingEdited);
-        // Add a small delay to ensure toast is visible
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        // Navigate after success
-        goto('/tag');
-      })(),
-      {
-        loading: {
-          title: 'Creating Tag on the Blockchain',
-          description: 'Please wait while we store your tag on the ICP blockchain...'
-        },
-        success: () => ({
-          title: 'Tag Created!',
-          description: 'Your tag was created successfully.'
-        }),
-        error: (e) => ({
-          title: 'Error Creating Tag',
-          description: e instanceof Error ? e.message : 'Failed to create tag.'
-        })
-      }
-    );
-  } catch (e) {
-    errorGlobal = e instanceof Error ? e.message : 'Failed to create tag.';
-  } finally {
-    loading = false;
-  }
-}
-
 function addTimePeriod() {
   const periods = tagBeingEdited.data.time_periods as Array<{ months: number; multiplier: number }>;
   tagBeingEdited.data.time_periods = [
@@ -224,7 +172,51 @@ onMount(() => {
         Create a new tag to establish a reputation category that users can earn points in through votes and participation.
       </p>
     </div>
-    <form onsubmit={(e) => { e.preventDefault(); saveTag(); }} class="space-y-5">
+    <form onsubmit={async (e) => {
+      e.preventDefault();
+      errorGlobal = '';
+      await toaster.promise(
+        (async () => {
+          saveTagRequested = true;  // Set BEFORE the actual save operation
+          try {
+            if (!tagBeingEdited.data.tag_handle || !tagBeingEdited.data.description) {
+              throw new Error('Please fill in all required fields.');
+            }
+
+            const userDoc = $authUserDoc;
+            if (!userDoc || !userDoc.data.user_ulid) {
+              throw new Error('You must be logged in to create a tag.');
+            }
+
+            // Set the user key from the auth doc
+            tagBeingEdited.data.owner_ulid = userDoc.data.user_ulid;
+
+            // Create the tag using our utility function
+            await createTagDoc(tagBeingEdited);
+            // Add a small delay to ensure toast is visible
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Navigate after success
+            goto('/tag');
+          } finally {
+            saveTagRequested = false;
+          }
+        })(),
+        {
+          loading: {
+            title: 'Creating Tag on the Blockchain',
+            description: 'Please wait while we store your tag on the ICP blockchain...'
+          },
+          success: () => ({
+            title: 'Tag Created!',
+            description: 'Your tag was created successfully.'
+          }),
+          error: (e) => ({
+            title: 'Error Creating Tag',
+            description: e instanceof Error ? e.message : 'Failed to create tag.'
+          })
+        }
+      );
+    }} class="space-y-5">
       <div>
         <label class="label">
           <div class="flex items-center gap-1">
@@ -262,7 +254,7 @@ onMount(() => {
               required
               autocomplete="off"
               aria-describedby="tagname-status"
-              disabled={loading}
+              disabled={saveTagRequested}
               placeholder="Enter a unique tag name"
             />
             <span class="absolute right-2 top-1/2 -translate-y-1/2" aria-live="polite" id="tagname-status">
@@ -527,8 +519,8 @@ onMount(() => {
         <div class="alert alert-error preset-filled-error-500 text-white">{errorGlobal}</div>
       {/if}
       <div class="flex gap-4 justify-end mt-6">
-        <button type="submit" class="btn preset-filled-primary-500" disabled={loading}>
-          {#if loading}
+        <button type="submit" class="btn preset-filled-primary-500" disabled={saveTagRequested}>
+          {#if saveTagRequested}
             <LoaderCircle class="animate-spin mr-2" />
             Creating...
           {:else}
