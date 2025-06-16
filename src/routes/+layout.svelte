@@ -165,7 +165,7 @@ Flash Prevention Script and Page Meta
 HOW: This executes before the page renders, preventing theme flash
 - Immediately checks localStorage for saved theme
 - Applies theme class to document root before any content shows
-- Fallback to system preference if no saved theme exists
+- Defaults to dark mode if no saved theme exists
 -->
 <svelte:head>
 	<title>{meta.title ? `${meta.title} | Karmie` : 'Karmie'}</title>
@@ -179,8 +179,7 @@ HOW: This executes before the page renders, preventing theme flash
 			if (stored) {
 				document.documentElement.setAttribute('data-mode', stored);
 			} else {
-				const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-				document.documentElement.setAttribute('data-mode', prefersDark ? 'dark' : 'light');
+				document.documentElement.setAttribute('data-mode', 'dark');
 			}
 		})();
 	</script>

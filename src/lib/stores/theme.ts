@@ -16,10 +16,9 @@ function createThemeStore() {
 	return {
 		subscribe,
 		/**
-         * Initialize theme - check localStorage and system preference
-		 * HOW: Queries browser localStorage API, then falls back to CSS media query API
+         * Initialize theme - check localStorage only
+		 * HOW: Queries browser localStorage API, then defaults to dark
 		 * - localStorage.getItem() returns saved string or null
-		 * - window.matchMedia() queries browser's system preference via CSS media feature
 		 * - set() triggers Svelte's reactive system to update all subscribers
 		 */
 		init: () => {
@@ -32,11 +31,8 @@ function createThemeStore() {
 				return;
 			}
 
-			// HOW: CSS Media Query API accesses system-level dark mode preference
-			// window.matchMedia() returns MediaQueryList with .matches boolean
-			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-			const mode = prefersDark ? 'dark' : 'light';
-			set(mode);
+			// Default to dark mode
+			set('dark');
 		},
 
 		/**
