@@ -93,7 +93,7 @@ export const LOGOUT_REDIRECT_URL = '/';
  * GitHub repository URL
  * Used in Footer, Sidebar navigation, and other external links
  */
-export const GITHUB_URL = 'https://github.com/fairtale5/Reputator';
+export const GITHUB_URL = 'https://github.com/fairtale5/Karmie';
 
 /**
  * Frontend validation toggles for each document type

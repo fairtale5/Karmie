@@ -1,4 +1,4 @@
-https://github.com/fairtale5/Reputator/issues/25
+https://github.com/fairtale5/Karmie/issues/25
 
 # Fix: Dynamic Responsive Breakpoints for Sidebar-Aware Layout
 

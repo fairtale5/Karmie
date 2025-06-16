@@ -31,7 +31,7 @@ juno dev start
 
 
 ### Source Code
-The project is available at: https://github.com/fairtale5/Reputator
+The project is available at: https://github.com/fairtale5/Karmie
 
 ### Prerequisites
 - Node.js and npm
