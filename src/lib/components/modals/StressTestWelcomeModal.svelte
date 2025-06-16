@@ -52,9 +52,9 @@
     
     <header class="space-y-4 -mt-2">
       <div class="space-y-2">
-        <h2 class="h2 flex items-center gap-2 flex-wrap">
+        <h2 class="h2 flex items-center gap-2">
           <Zap class="text-warning-500 flex-shrink-0" size={32} />
-          <span>Welcome to the <span class="text-primary-500">Karmie</span> Stress Test!</span>
+          <span class="min-w-0">Welcome to the <span class="text-primary-500">Karmie</span> Stress Test!</span>
         </h2>
         <p class="text-base sm:text-lg opacity-80">Help test if this reputation app can help reward real users who contribute, and protect the community from bad actors.</p>
       </div>
