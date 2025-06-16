@@ -43,23 +43,21 @@
   backdropClasses="backdrop-blur-sm"
 >
   {#snippet content()}
-    <header class="flex flex-col sm:flex-row justify-between items-start gap-3">
-      <div class="space-y-2 min-w-0 flex-1">
-        <h2 class="h2 flex flex-col sm:flex-row sm:items-center gap-2">
-          <div class="flex items-center gap-2 flex-shrink-0">
-            <Zap class="text-warning-500" size={32} />
-            <span class="whitespace-nowrap">Welcome to the</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="text-primary-500">Karmie</span>
-            <span>Stress Test!</span>
-          </div>
+    <!-- Close button on its own line -->
+    <div class="flex justify-end">
+      <button type="button" class="btn-icon variant-ghost" onclick={modalClose}>
+        ✕
+      </button>
+    </div>
+    
+    <header class="space-y-4 -mt-2">
+      <div class="space-y-2">
+        <h2 class="h2 flex items-center gap-2 flex-wrap">
+          <Zap class="text-warning-500 flex-shrink-0" size={32} />
+          <span>Welcome to the <span class="text-primary-500">Karmie</span> Stress Test!</span>
         </h2>
         <p class="text-base sm:text-lg opacity-80">Help test if this reputation app can help reward real users who contribute, and protect the community from bad actors.</p>
       </div>
-      <button type="button" class="btn-icon variant-ghost flex-shrink-0" onclick={modalClose}>
-        ✕
-      </button>
     </header>
 
     <div class="space-y-6">
